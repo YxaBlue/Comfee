@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "400",
     marginBottom: 2,
   },
