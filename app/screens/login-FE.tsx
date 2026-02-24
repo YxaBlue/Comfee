@@ -1,29 +1,48 @@
-// app/screens/login-FE.tsx
+import { signIn } from "@/services/auth-service";
+import { validateLogin } from "@/utils/validation";
 import { MaterialIcons } from "@expo/vector-icons";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import React, { useState } from "react";
+import { useState } from "react";
+
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { RootStackParamList } from "../../App";
 
-type Props = {
-  navigation: NativeStackNavigationProp<RootStackParamList, "Login">;
-};
-
-export default function LoginScreen({ navigation }: Props) {
+export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [generalError, setGeneralError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  const handleLogin = () => {
-    console.log("Email:", email);
-    console.log("Password:", password);
+  const handleLogin = async () => {
+    setEmailError("");
+    setPasswordError("");
+    setGeneralError("");
+    setSuccessMessage("");
+
+    // validate if email and passwords fields are filled
+    const errors = validateLogin(email, password);
+
+    if (errors.email) setEmailError(errors.email);
+    if (errors.password) setPasswordError(errors.password);
+
+    // do not try to sign in if any field is empty
+    if (Object.keys(errors).length > 0) return;
+
+    // try to sign in and return results
+    try {
+      await signIn(email.trim(), password);
+      setSuccessMessage("Logged in successfully!");
+    } catch (error: any) {
+      setGeneralError(error.message || "Invalid login credentials.");
+    }
   };
 
   return (
@@ -32,6 +51,7 @@ export default function LoginScreen({ navigation }: Props) {
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Email</Text>
+
         <View style={styles.input}>
           <MaterialIcons
             name="email"
@@ -47,10 +67,12 @@ export default function LoginScreen({ navigation }: Props) {
             onChangeText={setEmail}
           />
         </View>
+        {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Password</Text>
+
         <View style={styles.input}>
           <MaterialIcons
             name="lock"
@@ -58,14 +80,16 @@ export default function LoginScreen({ navigation }: Props) {
             color="#D2BA94"
             style={{ marginRight: 10 }}
           />
+
           <TextInput
             style={styles.inputWithIcon}
             placeholder="Enter your password"
             placeholderTextColor="#D2BA94"
-            secureTextEntry={!showPassword}
+            secureTextEntry={!showPassword} // toggle visibility
             value={password}
             onChangeText={setPassword}
           />
+
           <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
             <MaterialIcons
               name={showPassword ? "visibility" : "visibility-off"}
@@ -74,11 +98,22 @@ export default function LoginScreen({ navigation }: Props) {
             />
           </TouchableOpacity>
         </View>
+        {passwordError ? (
+          <Text style={styles.errorText}>{passwordError}</Text>
+        ) : null}
       </View>
 
       <TouchableOpacity onPress={() => console.log("Forgot Password clicked")}>
         <Text style={styles.forgotLabel}>Forgot Password?</Text>
       </TouchableOpacity>
+
+      {generalError ? (
+        <Text style={styles.errorText}>{generalError}</Text>
+      ) : null}
+
+      {successMessage ? (
+        <Text style={styles.successText}>{successMessage}</Text>
+      ) : null}
 
       <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>LOGIN</Text>
@@ -147,5 +182,18 @@ const styles = StyleSheet.create({
     marginBottom: 7,
     marginTop: 1,
     textAlign: "center",
+  },
+
+  errorText: {
+    color: "#B00020",
+    textAlign: "center",
+    fontSize: 12,
+    marginVertical: 4,
+  },
+
+  successText: {
+    color: "green",
+    textAlign: "center",
+    marginBottom: 10,
   },
 });
