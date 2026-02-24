@@ -1,6 +1,9 @@
+import { signUp } from "@/services/auth-service";
+import { formatDate } from "@/utils/date-utils";
+import { validateSignUp } from "@/utils/validation";
 import { Picker } from "@react-native-picker/picker";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -15,6 +18,21 @@ type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "CreateAccount">;
 };
 
+const months = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
 export default function CreateAcc({ navigation }: Props) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -26,8 +44,23 @@ export default function CreateAcc({ navigation }: Props) {
   const [birthDay, setBirthDay] = useState("");
   const [birthYear, setBirthYear] = useState("");
 
-  const handleCreateAccount = () => {
-    console.log({
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [successMessage, setSuccessMessage] = useState("");
+
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        navigation.navigate("Login");
+      }, 1000); // 1 second after
+
+      return () => clearTimeout(timer); // cleanup if component unmounts
+    }
+  }, [successMessage]);
+
+  const handleCreateAccount = async () => {
+    setErrors({});
+    setSuccessMessage("");
+    const formData = {
       firstName,
       lastName,
       email,
@@ -36,7 +69,41 @@ export default function CreateAcc({ navigation }: Props) {
       birthMonth,
       birthDay,
       birthYear,
-    });
+    };
+    const validationErrors = validateSignUp(formData);
+
+    try {
+      formatDate({
+        birthMonth,
+        birthDay,
+        birthYear,
+      });
+    } catch (error: any) {
+      validationErrors.birthDate = error.message;
+    }
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    const birthDate = formatDate({ birthMonth, birthDay, birthYear })
+      .toISOString()
+      .split("T")[0];
+
+    try {
+      await signUp({
+        firstName,
+        lastName,
+        email,
+        confirmPassword,
+        password,
+        birthDate,
+      });
+      setSuccessMessage("Account created successfully!");
+    } catch (error: any) {
+      setErrors({ general: error.message || "Signup failed." });
+    }
   };
 
   return (
@@ -47,34 +114,46 @@ export default function CreateAcc({ navigation }: Props) {
       <View style={styles.inputContainer}>
         <Text style={styles.label}>Name</Text>
         <View style={styles.nameRow}>
-          <TextInput
-            style={styles.nameInput}
-            placeholder="First name"
-            placeholderTextColor="#D2BA94"
-            value={firstName}
-            onChangeText={setFirstName}
-          />
-          <TextInput
-            style={styles.nameInput}
-            placeholder="Last name"
-            placeholderTextColor="#D2BA94"
-            value={lastName}
-            onChangeText={setLastName}
-          />
+          <View>
+            <TextInput
+              style={styles.nameInput}
+              placeholder="First name"
+              placeholderTextColor="#D2BA94"
+              value={firstName}
+              onChangeText={setFirstName}
+            />
+            {errors.firstName && (
+              <Text style={styles.errorText}>{errors.firstName}</Text>
+            )}
+          </View>
+          <View>
+            <TextInput
+              style={styles.nameInput}
+              placeholder="Last name"
+              placeholderTextColor="#D2BA94"
+              value={lastName}
+              onChangeText={setLastName}
+            />
+            {errors.lastName && (
+              <Text style={styles.errorText}>{errors.lastName}</Text>
+            )}
+          </View>
         </View>
       </View>
 
       {/* Email & Password Inputs */}
       <View style={styles.inputContainer}>
         <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter email address"
-          placeholderTextColor="#D2BA94"
-          value={email}
-          onChangeText={setEmail}
-        />
-
+        <View style={{ gap: 0 }}>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter email address"
+            placeholderTextColor="#D2BA94"
+            value={email}
+            onChangeText={setEmail}
+          />
+          {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+        </View>
         <Text style={styles.label}>Password</Text>
         <TextInput
           style={styles.input}
@@ -84,6 +163,9 @@ export default function CreateAcc({ navigation }: Props) {
           value={password}
           onChangeText={setPassword}
         />
+        {errors.password && (
+          <Text style={styles.errorText}>{errors.password}</Text>
+        )}
         <Text style={styles.label}>Confirm Password</Text>
         <TextInput
           style={styles.input}
@@ -93,6 +175,9 @@ export default function CreateAcc({ navigation }: Props) {
           value={confirmPassword}
           onChangeText={setConfirmPassword}
         />
+        {errors.confirmPassword && (
+          <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+        )}
       </View>
 
       {/* Birthdate Picker */}
@@ -109,20 +194,7 @@ export default function CreateAcc({ navigation }: Props) {
               dropdownIconColor="#A97C4E"
             >
               <Picker.Item label="Month" value="" />
-              {[
-                "Jan",
-                "Feb",
-                "Mar",
-                "Apr",
-                "May",
-                "Jun",
-                "Jul",
-                "Aug",
-                "Sep",
-                "Oct",
-                "Nov",
-                "Dec",
-              ].map((month, i) => (
+              {months.map((month, i) => (
                 <Picker.Item key={i} label={month} value={month} />
               ))}
             </Picker>
@@ -157,8 +229,14 @@ export default function CreateAcc({ navigation }: Props) {
             </Picker>
           </View>
         </View>
+        {errors.birthDate && (
+          <Text style={styles.errorText}>{errors.birthDate}</Text>
+        )}
       </View>
-
+      {errors.general && <Text style={styles.errorText}>{errors.general}</Text>}
+      {successMessage && (
+        <Text style={styles.successText}>{successMessage}</Text>
+      )}
       <Text style={styles.label2}>
         By clicking Sign Up, you agree to our Terms, Privacy Policy and Cookies
         Policy.
@@ -278,5 +356,17 @@ const styles = StyleSheet.create({
     color: "black",
     textAlign: "center",
     fontWeight: "500",
+  },
+  errorText: {
+    color: "#B00020",
+    fontSize: 12,
+    marginVertical: 3,
+    textAlign: "center",
+  },
+  successText: {
+    color: "green",
+    fontSize: 12,
+    marginVertical: 3,
+    textAlign: "center",
   },
 });

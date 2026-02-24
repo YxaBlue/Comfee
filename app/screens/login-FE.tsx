@@ -1,8 +1,8 @@
-import { signIn } from "@/services/auth-service";
+import { forgotPassword, signIn } from "@/services/auth-service";
 import { validateLogin } from "@/utils/validation";
 import { MaterialIcons } from "@expo/vector-icons";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
-
 import {
   ScrollView,
   StyleSheet,
@@ -11,27 +11,29 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { RootStackParamList } from "../../App";
 
-export default function LoginScreen() {
+type Props = {
+  navigation: NativeStackNavigationProp<RootStackParamList, "Login">;
+};
+
+export default function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [emailError, setEmailError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [generalError, setGeneralError] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState("");
 
   const handleLogin = async () => {
-    setEmailError("");
-    setPasswordError("");
-    setGeneralError("");
+    setErrors({});
     setSuccessMessage("");
 
-    // validate if email and passwords fields are filled
-    const errors = validateLogin(email, password);
+    const validationErrors = validateLogin(email, password);
 
-    if (errors.email) setEmailError(errors.email);
-    if (errors.password) setPasswordError(errors.password);
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
 
     // do not try to sign in if any field is empty
     if (Object.keys(errors).length > 0) return;
@@ -41,8 +43,12 @@ export default function LoginScreen() {
       await signIn(email.trim(), password);
       setSuccessMessage("Logged in successfully!");
     } catch (error: any) {
-      setGeneralError(error.message || "Invalid login credentials.");
+      setErrors({ general: error.message || "Invalid login credentials." });
     }
+  };
+
+  const handleForgotPassword = () => {
+    forgotPassword();
   };
 
   return (
@@ -67,7 +73,7 @@ export default function LoginScreen() {
             onChangeText={setEmail}
           />
         </View>
-        {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
+        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
       </View>
 
       <View style={styles.inputGroup}>
@@ -98,18 +104,16 @@ export default function LoginScreen() {
             />
           </TouchableOpacity>
         </View>
-        {passwordError ? (
-          <Text style={styles.errorText}>{passwordError}</Text>
-        ) : null}
+        {errors.password && (
+          <Text style={styles.errorText}>{errors.password}</Text>
+        )}
       </View>
 
-      <TouchableOpacity onPress={() => console.log("Forgot Password clicked")}>
+      <TouchableOpacity onPress={handleForgotPassword}>
         <Text style={styles.forgotLabel}>Forgot Password?</Text>
       </TouchableOpacity>
 
-      {generalError ? (
-        <Text style={styles.errorText}>{generalError}</Text>
-      ) : null}
+      {errors.general && <Text style={styles.errorText}>{errors.general}</Text>}
 
       {successMessage ? (
         <Text style={styles.successText}>{successMessage}</Text>
