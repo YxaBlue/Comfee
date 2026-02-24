@@ -1,6 +1,7 @@
+// app/screens/login-FE.tsx
 import { MaterialIcons } from "@expo/vector-icons";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import React, { useState } from "react";
-
 import {
     ScrollView,
     StyleSheet,
@@ -9,8 +10,13 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import { RootStackParamList } from "../../App";
 
-export default function LoginScreen() {
+type Props = {
+  navigation: NativeStackNavigationProp<RootStackParamList, "Login">;
+};
+
+export default function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -26,7 +32,6 @@ export default function LoginScreen() {
 
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Email</Text>
-
         <View style={styles.input}>
           <MaterialIcons
             name="email"
@@ -53,16 +58,14 @@ export default function LoginScreen() {
             color="#D2BA94"
             style={{ marginRight: 10 }}
           />
-
           <TextInput
             style={styles.inputWithIcon}
             placeholder="Enter your password"
             placeholderTextColor="#D2BA94"
-            secureTextEntry={!showPassword} // toggle visibility
+            secureTextEntry={!showPassword}
             value={password}
             onChangeText={setPassword}
           />
-
           <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
             <MaterialIcons
               name={showPassword ? "visibility" : "visibility-off"}
@@ -83,7 +86,7 @@ export default function LoginScreen() {
 
       <Text style={styles.dont}>Don't have account?</Text>
 
-      <TouchableOpacity onPress={() => console.log("Sign In Clicked")}>
+      <TouchableOpacity onPress={() => navigation.navigate("CreateAccount")}>
         <Text style={styles.sign}>Sign In</Text>
       </TouchableOpacity>
     </ScrollView>
@@ -95,34 +98,22 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
     backgroundColor: "#EDDEC7",
-    justifyContent: "center", // can adjust vertical centering slightly
+    justifyContent: "center",
   },
-
   welcome: {
     fontSize: 32,
     fontWeight: "700",
     marginBottom: 40,
     textAlign: "center",
   },
-
-  inputGroup: {
-    marginBottom: 10,
-  },
-
-  label: {
-    fontSize: 14,
-    fontWeight: "400",
-    marginBottom: 2,
-  },
-
+  inputGroup: { marginBottom: 10 },
+  label: { fontSize: 14, fontWeight: "400", marginBottom: 2 },
   forgotLabel: {
     fontSize: 11,
     fontWeight: "300",
     marginBottom: 7,
-    marginTop: 0,
     alignSelf: "flex-end",
   },
-
   input: {
     flexDirection: "row",
     alignItems: "center",
@@ -134,14 +125,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginTop: 5,
   },
-
-  inputWithIcon: {
-    flex: 1,
-    fontSize: 14,
-    color: "#000",
-    padding: 0,
-  },
-
+  inputWithIcon: { flex: 1, fontSize: 14, color: "#000", padding: 0 },
   button: {
     backgroundColor: "#A97C4E",
     padding: 15,
@@ -149,13 +133,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 25,
   },
-
-  buttonText: {
-    color: "#EDDEC7",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-
+  buttonText: { color: "#EDDEC7", fontWeight: "bold", fontSize: 16 },
   dont: {
     fontSize: 14,
     fontWeight: "400",
@@ -163,10 +141,9 @@ const styles = StyleSheet.create({
     marginBottom: 7,
     marginTop: 100,
   },
-
   sign: {
     fontSize: 14,
-    fontWeight: "400",
+    fontWeight: "500",
     marginBottom: 7,
     marginTop: 1,
     textAlign: "center",
