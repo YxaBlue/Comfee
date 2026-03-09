@@ -2,11 +2,11 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { RootStackParamList } from "../../App";
 
@@ -14,52 +14,45 @@ type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Profile">;
 };
 
+type Tab = "info" | "reviews";
+
 type Review = {
   id: string;
   cafeName: string;
-  cafeLocation: string;
   rating: number;
   comment: string;
   date: string;
-  cafeImage?: string;
+  likes: number;
+  imageCount: number;
 };
 
 const MOCK_REVIEWS: Review[] = [
   {
     id: "1",
-    cafeName: "Brewed Awakenings",
-    cafeLocation: "123 Maple St, Springfield",
-    rating: 5,
-    comment:
-      "Absolutely loved the ambiance! The latte art was stunning and the pastries were freshly baked. Will definitely come back.",
-    date: "March 5, 2025",
+    cafeName: "CafeName13",
+    rating: 2,
+    comment: "Something about their cafe...",
+    date: "07/03/2026 · 11AM",
+    likes: 25,
+    imageCount: 3,
   },
   {
     id: "2",
-    cafeName: "The Daily Grind",
-    cafeLocation: "456 Oak Ave, Shelbyville",
-    rating: 4,
-    comment:
-      "Great coffee selection and friendly staff. A bit crowded on weekends but worth the wait.",
-    date: "February 20, 2025",
+    cafeName: "CafeName123",
+    rating: 1,
+    comment: "Ew...",
+    date: "07/01/2026 · 11AM",
+    likes: 8,
+    imageCount: 0,
   },
   {
     id: "3",
-    cafeName: "Mocha & More",
-    cafeLocation: "789 Pine Rd, Capital City",
-    rating: 3,
-    comment:
-      "Decent coffee but the seating area was a little cramped. Nice vibe though.",
-    date: "January 14, 2025",
-  },
-  {
-    id: "4",
     cafeName: "Cloud Nine Café",
-    cafeLocation: "321 Birch Blvd, Ogdenville",
     rating: 5,
-    comment:
-      "Hands down the best cold brew I've ever had. The cozy interior makes it a perfect study spot.",
-    date: "December 30, 2024",
+    comment: "Best cold brew I've ever had. The cozy interior is perfect!",
+    date: "06/28/2026 · 3PM",
+    likes: 41,
+    imageCount: 2,
   },
 ];
 
@@ -70,8 +63,8 @@ function StarRating({ rating }: { rating: number }) {
         <MaterialIcons
           key={star}
           name={star <= rating ? "star" : "star-border"}
-          size={16}
-          color="#A97C4E"
+          size={15}
+          color="#6B4F2E"
         />
       ))}
     </View>
@@ -81,154 +74,190 @@ function StarRating({ rating }: { rating: number }) {
 function ReviewCard({ review }: { review: Review }) {
   return (
     <View style={styles.reviewCard}>
-      {/* Cafe avatar placeholder */}
-      <View style={styles.cafeAvatarSmall} />
-
-      <View style={styles.reviewContent}>
-        <View style={styles.reviewHeader}>
-          <Text style={styles.reviewCafeName}>{review.cafeName}</Text>
+      <View style={styles.reviewCardHeader}>
+        <View style={styles.cafeAvatarSmall} />
+        <View style={styles.reviewCardMeta}>
+          <Text style={styles.reviewCafeName}>To {review.cafeName}</Text>
+          <StarRating rating={review.rating} />
           <Text style={styles.reviewDate}>{review.date}</Text>
         </View>
+        <TouchableOpacity>
+          <MaterialIcons name="more-vert" size={18} color="#8C6D4F" />
+        </TouchableOpacity>
+      </View>
 
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-          <MaterialIcons
-            name="location-on"
-            size={12}
-            color="#A97C4E"
-            style={{ marginTop: -5 }}
-          />
-          <Text style={styles.reviewLocation}>{review.cafeLocation}</Text>
+      <Text style={styles.reviewComment}>"{review.comment}"</Text>
+
+      {review.imageCount > 0 && (
+        <View style={styles.imageGrid}>
+          {review.imageCount === 1 && (
+            <View
+              style={[styles.imagePlaceholder, { width: "100%", height: 90 }]}
+            />
+          )}
+          {review.imageCount === 2 && (
+            <>
+              <View
+                style={[styles.imagePlaceholder, { flex: 1, height: 80 }]}
+              />
+              <View
+                style={[styles.imagePlaceholder, { flex: 1, height: 80 }]}
+              />
+            </>
+          )}
+          {review.imageCount >= 3 && (
+            <>
+              {/* Left big image */}
+              <View
+                style={[styles.imagePlaceholder, { width: "48%", height: 90 }]}
+              />
+              {/* Right stacked */}
+              <View style={{ width: "48%", gap: 6 }}>
+                <View style={[styles.imagePlaceholder, { height: 42 }]} />
+                <View style={[styles.imagePlaceholder, { height: 42 }]} />
+              </View>
+            </>
+          )}
         </View>
+      )}
 
-        <StarRating rating={review.rating} />
-
-        <Text style={styles.reviewComment}>{review.comment}</Text>
+      <View style={styles.likesRow}>
+        <MaterialIcons name="thumb-up-off-alt" size={18} color="#8C6D4F" />
+        <Text style={styles.likesCount}>{review.likes}</Text>
       </View>
     </View>
   );
 }
 
 export default function ProfileScreen({ navigation }: Props) {
-  const [activeTab, setActiveTab] = useState<"reviews" | "saved">("reviews");
+  const [activeTab, setActiveTab] = useState<Tab>("reviews");
+  const [description, setDescription] = useState("");
+
+  const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
+    { key: "info", icon: "info-outline" },
+    { key: "reviews", icon: "rate-review" },
+  ];
 
   return (
     <View style={styles.wrapper}>
       <ScrollView
-        style={styles.scroll}
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header band */}
-        <View style={styles.headerBand} />
-
-        {/* Avatar */}
-        <View style={styles.avatarWrapper}>
-          <View style={styles.avatarCircle}>
-            <MaterialIcons name="person" size={56} color="#C8A97A" />
-          </View>
-        </View>
-
-        {/* Name + edit */}
-        <View style={styles.nameRow}>
-          <Text style={styles.userName}>Aira Uy</Text>
-          <TouchableOpacity
-            style={styles.editBtn}
-            onPress={() => navigation.navigate("EditProfile" as never)}
-          >
-            <MaterialIcons name="edit" size={15} color="#A97C4E" />
-            <Text style={styles.editLabel}>Edit Profile</Text>
+        {/* ── Header band ── */}
+        <View style={styles.headerBand}>
+          <TouchableOpacity style={styles.menuDots}>
+            <MaterialIcons name="more-vert" size={22} color="#6B4F2E" />
           </TouchableOpacity>
-        </View>
-
-        <Text style={styles.userHandle}>@amberglennLover</Text>
-
-        {/* Stats row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>24</Text>
-            <Text style={styles.statLabel}>Reviews</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>12</Text>
-            <Text style={styles.statLabel}>Saved</Text>
+          <View style={styles.avatarWrapper}>
+            <View style={styles.avatarCircle}>
+              <MaterialIcons name="person" size={52} color="#C8A97A" />
+            </View>
           </View>
         </View>
 
-        {/* Tab selector */}
-        <View style={styles.tabRow}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "reviews" && styles.tabActive]}
-            onPress={() => setActiveTab("reviews")}
-          >
-            <MaterialIcons
-              name="rate-review"
-              size={16}
-              color={activeTab === "reviews" ? "#A97C4E" : "#C4A882"}
-            />
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "reviews" && styles.tabTextActive,
-              ]}
+        {/* ── User info ── */}
+        <View style={styles.userInfoSection}>
+          <View style={styles.nameEditRow}>
+            <Text style={styles.userName}>UserName123</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate("EditProfile" as never)}
             >
-              My Reviews
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "saved" && styles.tabActive]}
-            onPress={() => setActiveTab("saved")}
-          >
-            <MaterialIcons
-              name="bookmark"
-              size={16}
-              color={activeTab === "saved" ? "#A97C4E" : "#C4A882"}
-            />
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === "saved" && styles.tabTextActive,
-              ]}
-            >
-              Saved
-            </Text>
-          </TouchableOpacity>
+              <MaterialIcons name="edit" size={16} color="#8C6D4F" />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.joinedDate}>Joined since 03/2023</Text>
         </View>
 
-        {/* Reviews list */}
-        {activeTab === "reviews" && (
-          <View style={styles.reviewsList}>
-            {MOCK_REVIEWS.length === 0 ? (
-              <View style={styles.emptyState}>
-                <MaterialIcons name="rate-review" size={48} color="#D2BA94" />
-                <Text style={styles.emptyText}>No reviews yet</Text>
-                <Text style={styles.emptySubText}>
-                  Start exploring cafés and share your thoughts!
-                </Text>
+        {/* ── Divider ── */}
+        <View style={styles.divider} />
+
+        {/* ── Icon tab bar ── */}
+        <View style={styles.tabBar}>
+          {TAB_ICONS.map(({ key, icon }) => (
+            <TouchableOpacity
+              key={key}
+              style={styles.tabBtn}
+              onPress={() => setActiveTab(key)}
+            >
+              <MaterialIcons
+                name={icon}
+                size={24}
+                color={activeTab === key ? "#6B4F2E" : "#C4A882"}
+              />
+              {activeTab === key && <View style={styles.tabUnderline} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* ── Tab content ── */}
+        <View style={styles.tabContent}>
+          {/* REVIEWS */}
+          {activeTab === "reviews" && (
+            <View>
+              {MOCK_REVIEWS.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <MaterialIcons name="menu-book" size={44} color="#D2BA94" />
+                  <Text style={styles.emptyText}>No reviews yet</Text>
+                  <Text style={styles.emptySubText}>
+                    Start exploring cafés and share your thoughts!
+                  </Text>
+                </View>
+              ) : (
+                MOCK_REVIEWS.map((r) => <ReviewCard key={r.id} review={r} />)
+              )}
+            </View>
+          )}
+
+          {/* INFO */}
+          {activeTab === "info" && (
+            <View style={styles.infoSection}>
+              <View style={styles.infoRow}>
+                <View style={styles.infoField}>
+                  <Text style={styles.infoLabel}>First Name</Text>
+                  <View style={styles.infoValueBox}>
+                    <Text style={styles.infoValue}>Hannah</Text>
+                  </View>
+                </View>
+                <View style={styles.infoField}>
+                  <Text style={styles.infoLabel}>Last Name</Text>
+                  <View style={styles.infoValueBox}>
+                    <Text style={styles.infoValue}>Rivera</Text>
+                  </View>
+                </View>
               </View>
-            ) : (
-              MOCK_REVIEWS.map((review) => (
-                <ReviewCard key={review.id} review={review} />
-              ))
-            )}
-          </View>
-        )}
 
-        {activeTab === "saved" && (
-          <View style={styles.emptyState}>
-            <MaterialIcons name="bookmark-border" size={48} color="#D2BA94" />
-            <Text style={styles.emptyText}>No saved cafés yet</Text>
-            <Text style={styles.emptySubText}>
-              Bookmark your favourite spots to find them quickly!
-            </Text>
-          </View>
-        )}
+              <View style={styles.infoRow}>
+                <View style={styles.infoField}>
+                  <Text style={styles.infoLabel}>Age</Text>
+                  <View style={styles.infoValueBox}>
+                    <Text style={styles.infoValue}>24</Text>
+                  </View>
+                </View>
+                <View style={styles.infoField}>
+                  <Text style={styles.infoLabel}>Birth Date</Text>
+                  <View style={styles.infoValueBox}>
+                    <Text style={styles.infoValue}>March 15, 2001</Text>
+                  </View>
+                </View>
+              </View>
 
-        <View style={{ height: 100 }} />
+              <View style={styles.infoField}>
+                <Text style={styles.infoLabel}>Bio</Text>
+                <View style={[styles.infoValueBox, { minHeight: 80 }]}>
+                  <Text style={styles.infoValue}>
+                    Coffee lover exploring one café at a time ☕
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+        </View>
+
+        <View style={{ height: 90 }} />
       </ScrollView>
 
-      {/* Bottom nav */}
+      {/* ── Bottom nav ── */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem}>
           <View style={styles.profileNavAvatar}>
@@ -252,199 +281,192 @@ export default function ProfileScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    flex: 1,
-    backgroundColor: "#EDDEC7",
-  },
-  scroll: {
-    flex: 1,
-  },
-  container: {
-    flexGrow: 1,
-    backgroundColor: "#EDDEC7",
-  },
+  wrapper: { flex: 1, backgroundColor: "#EDDEC7" },
+  container: { flexGrow: 1, backgroundColor: "#EDDEC7" },
 
-  /* Header band */
+  /* Header */
   headerBand: {
-    height: 140,
+    height: 160,
     backgroundColor: "#D4B896",
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-
-  /* Avatar */
-  avatarWrapper: {
     alignItems: "center",
-    marginTop: -60,
-    marginBottom: 12,
+    justifyContent: "flex-end",
+  },
+  menuDots: {
+    position: "absolute",
+    top: 12,
+    right: 14,
+  },
+  avatarWrapper: {
+    marginBottom: -46,
+    marginLeft: 150,
   },
   avatarCircle: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+    width: 106,
+    height: 106,
+    borderRadius: 48,
     backgroundColor: "#E6D6BE",
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: "#EDDEC7",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
 
-  /* Name row */
-  nameRow: {
+  /* User info */
+  userInfoSection: {
+    marginTop: 20,
+    paddingHorizontal: 20,
+  },
+  nameEditRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingHorizontal: 20,
+    gap: 6,
   },
   userName: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
     color: "#3B2A1A",
   },
-  editBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: "#E6D6BE",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  editLabel: {
-    fontSize: 11,
-    color: "#A97C4E",
-    fontWeight: "500",
-  },
-  userHandle: {
-    textAlign: "center",
-    fontSize: 13,
+  joinedDate: {
+    fontSize: 12,
     color: "#8C6D4F",
     marginTop: 2,
-    marginBottom: 16,
   },
 
-  /* Stats */
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#E6D6BE",
-    marginHorizontal: 20,
-    borderRadius: 14,
-    paddingVertical: 14,
-    marginBottom: 20,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: "center",
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#3B2A1A",
-  },
-  statLabel: {
-    fontSize: 11,
-    color: "#8C6D4F",
-    marginTop: 2,
-  },
-  statDivider: {
-    width: 1,
-    height: 36,
+  /* Divider */
+  divider: {
+    height: 1,
     backgroundColor: "#D2BA94",
-  },
-
-  /* Tabs */
-  tabRow: {
-    flexDirection: "row",
     marginHorizontal: 20,
-    marginBottom: 16,
-    backgroundColor: "#E6D6BE",
-    borderRadius: 10,
-    padding: 4,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    paddingVertical: 9,
-    borderRadius: 8,
-  },
-  tabActive: {
-    backgroundColor: "#EDDEC7",
-    shadowColor: "#A97C4E",
-    shadowOpacity: 0.12,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  tabText: {
-    fontSize: 13,
-    color: "#C4A882",
-    fontWeight: "500",
-  },
-  tabTextActive: {
-    color: "#A97C4E",
-    fontWeight: "600",
+    marginTop: 14,
   },
 
-  /* Reviews */
-  reviewsList: {
+  /* Tab bar */
+  tabBar: {
+    flexDirection: "row",
+    justifyContent: "space-around",
     paddingHorizontal: 20,
-    gap: 12,
+    backgroundColor: "#EDDEC7",
   },
+  tabBtn: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 10,
+    position: "relative",
+  },
+  tabUnderline: {
+    position: "absolute",
+    bottom: 0,
+    left: 8,
+    right: 8,
+    height: 2,
+    backgroundColor: "#6B4F2E",
+    borderRadius: 2,
+  },
+
+  /* Tab content */
+  tabContent: {
+    paddingHorizontal: 16,
+    paddingTop: 14,
+  },
+
+  /* Review card */
   reviewCard: {
     backgroundColor: "#E6D6BE",
-    borderRadius: 14,
-    padding: 14,
-    flexDirection: "row",
-    gap: 12,
+    borderRadius: 12,
+    padding: 12,
     marginBottom: 12,
   },
+  reviewCardHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    marginBottom: 8,
+  },
   cafeAvatarSmall: {
-    width: 46,
-    height: 46,
-    borderRadius: 10,
+    width: 42,
+    height: 42,
+    borderRadius: 8,
     backgroundColor: "#D2BA94",
     flexShrink: 0,
   },
-  reviewContent: {
-    flex: 1,
-  },
-  reviewHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 2,
-  },
+  reviewCardMeta: { flex: 1 },
   reviewCafeName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
     color: "#3B2A1A",
-    flex: 1,
-    marginRight: 6,
+  },
+  starsRow: {
+    flexDirection: "row",
+    marginVertical: 2,
   },
   reviewDate: {
     fontSize: 10,
     color: "#A08060",
-    flexShrink: 0,
-  },
-  reviewLocation: {
-    fontSize: 11,
-    color: "#8C6D4F",
-    marginBottom: 4,
-  },
-  starsRow: {
-    flexDirection: "row",
-    marginBottom: 6,
   },
   reviewComment: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#5C3D1E",
+    fontStyle: "italic",
     lineHeight: 18,
+    marginBottom: 10,
+  },
+
+  /* Image grid */
+  imageGrid: {
+    flexDirection: "row",
+    gap: 6,
+    marginBottom: 10,
+  },
+  imagePlaceholder: {
+    backgroundColor: "#D2BA94",
+    borderRadius: 6,
+  },
+
+  /* Likes */
+  likesRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 4,
+  },
+  likesCount: {
+    fontSize: 13,
+    color: "#8C6D4F",
+    fontWeight: "500",
+  },
+
+  /* Info tab */
+  infoSection: { gap: 12 },
+  infoLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#A97C4E",
+    marginBottom: 4,
+  },
+  infoTextArea: {
+    backgroundColor: "#E6D6BE",
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 13,
+    color: "#3B2A1A",
+    minHeight: 110,
+    textAlignVertical: "top",
+  },
+  infoRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  infoField: { flex: 1, gap: 4 },
+  infoValueBox: {
+    backgroundColor: "#E6D6BE",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  infoValue: {
+    fontSize: 13,
+    color: "#3B2A1A",
   },
 
   /* Empty state */
@@ -454,17 +476,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "600",
     color: "#8C6D4F",
-    marginTop: 12,
+    marginTop: 10,
   },
   emptySubText: {
-    fontSize: 13,
+    fontSize: 12,
     color: "#B09070",
     textAlign: "center",
-    marginTop: 6,
-    lineHeight: 18,
+    marginTop: 4,
+    lineHeight: 17,
   },
 
   /* Bottom nav */
@@ -473,14 +495,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 72,
+    height: 68,
     backgroundColor: "#D4B896",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
-    paddingBottom: 8,
-    borderTopLeftRadius: 0,
-    borderTopRightRadius: 0,
+    paddingBottom: 6,
   },
   navItem: {
     alignItems: "center",
