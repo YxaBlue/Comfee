@@ -9,7 +9,7 @@ import ProfileScreen from "./app/screens/profile-FE";
 export type RootStackParamList = {
   Login: undefined;
   CreateAccount: undefined;
-  Profile: undefined;
+  Profile: { userId: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();

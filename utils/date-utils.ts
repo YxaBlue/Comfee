@@ -13,7 +13,7 @@ const monthMap: { [key: string]: number } = {
   Dec: 11,
 };
 
-export function formatDate(data: {
+export function dateFromInput(data: {
   birthMonth: string;
   birthDay: string;
   birthYear: string;
@@ -35,15 +35,12 @@ export function formatDate(data: {
   return date;
 }
 
-// utils/date-utils.ts
-
 export function calculateAge(birthDate: Date | string): number {
   const birth = typeof birthDate === "string" ? new Date(birthDate) : birthDate;
   const today = new Date();
 
   let age = today.getFullYear() - birth.getFullYear();
 
-  // Adjust if birthday hasn't occurred yet this year
   const monthDiff = today.getMonth() - birth.getMonth();
   const dayDiff = today.getDate() - birth.getDate();
   if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {

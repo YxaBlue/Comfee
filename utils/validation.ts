@@ -1,8 +1,10 @@
 // utils/validation.ts
+import { supabase } from "@/services/supabase-client";
 
 type signUpData = {
   firstName: string;
   lastName: string;
+  username: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -10,6 +12,21 @@ type signUpData = {
   birthDay: string;
   birthYear: string;
 };
+
+async function validateUsername(username: string) {
+  if (!username.trim()) return "Username is required.";
+
+  // check uniqueness in Supabase
+  const { data, error } = await supabase
+    .from("profile")
+    .select("id")
+    .eq("username", username.trim());
+
+  if (error) return "Error checking username.";
+  if (data && data.length > 0) return "Username already taken.";
+
+  return "";
+}
 
 function validateEmail(email: string) {
   if (!email.trim()) return "Email is required.";
@@ -34,12 +51,15 @@ export function validateLogin(email: string, password: string) {
   return errors;
 }
 
-export function validateSignUp(data: signUpData) {
+export async function validateSignUp(data: signUpData) {
   const errors: Record<string, string> = {};
 
   if (!data.firstName.trim()) errors.firstName = "First name is required.";
 
   if (!data.lastName.trim()) errors.lastName = "Last name is required.";
+
+  const usernameError = await validateUsername(data.username);
+  if (usernameError) errors.username = usernameError;
 
   const emailError = validateEmail(data.email);
   if (emailError) errors.email = emailError;

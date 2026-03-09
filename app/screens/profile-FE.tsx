@@ -1,6 +1,9 @@
+import { getProfile } from "@/services/profile-service";
 import { MaterialIcons } from "@expo/vector-icons";
+import { RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useState } from "react";
+import { format, parseISO } from "date-fns";
+import { useEffect, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -12,6 +15,7 @@ import { RootStackParamList } from "../../App";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Profile">;
+  route: RouteProp<RootStackParamList, "Profile">;
 };
 
 type Tab = "info" | "reviews";
@@ -129,14 +133,28 @@ function ReviewCard({ review }: { review: Review }) {
   );
 }
 
-export default function ProfileScreen({ navigation }: Props) {
+export default function ProfileScreen({ navigation, route }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("reviews");
   const [description, setDescription] = useState("");
+  const { userId } = route.params;
+  const [profile, setProfile] = useState<null | any>(null);
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: "info", icon: "info-outline" },
     { key: "reviews", icon: "rate-review" },
   ];
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const data = await getProfile(userId);
+        setProfile(data);
+      } catch (err) {
+        console.error("Failed to fetch profile:", err);
+      }
+    };
+    fetchProfile();
+  }, [userId]);
 
   return (
     <View style={styles.wrapper}>
@@ -159,14 +177,19 @@ export default function ProfileScreen({ navigation }: Props) {
         {/* ── User info ── */}
         <View style={styles.userInfoSection}>
           <View style={styles.nameEditRow}>
-            <Text style={styles.userName}>UserName123</Text>
+            <Text style={styles.userName}>{profile?.username || "Error"}</Text>
             <TouchableOpacity
               onPress={() => navigation.navigate("EditProfile" as never)}
             >
               <MaterialIcons name="edit" size={16} color="#8C6D4F" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.joinedDate}>Joined since 03/2023</Text>
+          <Text style={styles.joinedDate}>
+            Joined since{" "}
+            {profile?.joined_at
+              ? format(parseISO(profile.joined_at), "MMMM dd, yyyy")
+              : "Error"}
+          </Text>
         </View>
 
         {/* ── Divider ── */}
@@ -216,13 +239,17 @@ export default function ProfileScreen({ navigation }: Props) {
                 <View style={styles.infoField}>
                   <Text style={styles.infoLabel}>First Name</Text>
                   <View style={styles.infoValueBox}>
-                    <Text style={styles.infoValue}>Hannah</Text>
+                    <Text style={styles.infoValue}>
+                      {profile?.first_name || "Error"}
+                    </Text>
                   </View>
                 </View>
                 <View style={styles.infoField}>
                   <Text style={styles.infoLabel}>Last Name</Text>
                   <View style={styles.infoValueBox}>
-                    <Text style={styles.infoValue}>Rivera</Text>
+                    <Text style={styles.infoValue}>
+                      {profile?.last_name || "Error"}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -231,13 +258,19 @@ export default function ProfileScreen({ navigation }: Props) {
                 <View style={styles.infoField}>
                   <Text style={styles.infoLabel}>Age</Text>
                   <View style={styles.infoValueBox}>
-                    <Text style={styles.infoValue}>24</Text>
+                    <Text style={styles.infoValue}>
+                      {profile?.age || "Error"}
+                    </Text>
                   </View>
                 </View>
                 <View style={styles.infoField}>
                   <Text style={styles.infoLabel}>Birth Date</Text>
                   <View style={styles.infoValueBox}>
-                    <Text style={styles.infoValue}>March 15, 2001</Text>
+                    <Text style={styles.infoValue}>
+                      {profile?.joined_at
+                        ? format(parseISO(profile.birth_date), "MMMM dd, yyyy")
+                        : "Error"}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -245,9 +278,7 @@ export default function ProfileScreen({ navigation }: Props) {
               <View style={styles.infoField}>
                 <Text style={styles.infoLabel}>Bio</Text>
                 <View style={[styles.infoValueBox, { minHeight: 80 }]}>
-                  <Text style={styles.infoValue}>
-                    Coffee lover exploring one café at a time ☕
-                  </Text>
+                  <Text style={styles.infoValue}>{profile?.bio || ""}</Text>
                 </View>
               </View>
             </View>

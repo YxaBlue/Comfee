@@ -4,11 +4,13 @@ import { supabase } from "./supabase-client";
 type signUpData = {
   firstName: string;
   lastName: string;
+  username: string;
   email: string;
   password: string;
   confirmPassword: string;
   birthDate: string;
 };
+
 export async function signIn(email: string, password: string) {
   console.log("LOGGING IN");
   const { data, error } = await supabase.auth.signInWithPassword({
@@ -36,6 +38,9 @@ export async function signUp(data: signUpData) {
   const { error: profileError } = await supabase.from("profile").insert([
     {
       id: user.user?.id,
+      email: user.user?.email,
+      joined_at: user.user?.created_at,
+      username: data.username,
       first_name: data.firstName,
       last_name: data.lastName,
       birth_date: data.birthDate,

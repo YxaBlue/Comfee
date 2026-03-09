@@ -1,5 +1,5 @@
 import { signUp } from "@/services/auth-service";
-import { formatDate } from "@/utils/date-utils";
+import { dateFromInput } from "@/utils/date-utils";
 import { validateSignUp } from "@/utils/validation";
 import { Picker } from "@react-native-picker/picker";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -36,6 +36,7 @@ const months = [
 export default function CreateAcc({ navigation }: Props) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -63,6 +64,7 @@ export default function CreateAcc({ navigation }: Props) {
     const formData = {
       firstName,
       lastName,
+      username,
       email,
       password,
       confirmPassword,
@@ -70,10 +72,11 @@ export default function CreateAcc({ navigation }: Props) {
       birthDay,
       birthYear,
     };
-    const validationErrors = validateSignUp(formData);
+
+    const validationErrors = await validateSignUp(formData);
 
     try {
-      formatDate({
+      dateFromInput({
         birthMonth,
         birthDay,
         birthYear,
@@ -87,7 +90,7 @@ export default function CreateAcc({ navigation }: Props) {
       return;
     }
 
-    const birthDate = formatDate({ birthMonth, birthDay, birthYear })
+    const birthDate = dateFromInput({ birthMonth, birthDay, birthYear })
       .toISOString()
       .split("T")[0];
 
@@ -95,6 +98,7 @@ export default function CreateAcc({ navigation }: Props) {
       await signUp({
         firstName,
         lastName,
+        username,
         email,
         confirmPassword,
         password,
@@ -143,6 +147,19 @@ export default function CreateAcc({ navigation }: Props) {
 
       {/* Email & Password Inputs */}
       <View style={styles.inputContainer}>
+        <Text style={styles.label}>Username</Text>
+        <View style={{ gap: 0 }}>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter username"
+            placeholderTextColor="#D2BA94"
+            value={username}
+            onChangeText={setUsername}
+          />
+          {errors.username && (
+            <Text style={styles.errorText}>{errors.username}</Text>
+          )}
+        </View>
         <Text style={styles.label}>Email</Text>
         <View style={{ gap: 0 }}>
           <TextInput
