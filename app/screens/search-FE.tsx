@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 
 import { MaterialIcons } from "@expo/vector-icons";
 import { ScrollView } from "react-native";
@@ -7,25 +7,13 @@ import {
   FlatList,
   Image,
   ImageBackground,
-  Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 
-export default function CafeCard() {
-  const [search, setSearch] = useState("");
-
-  const filter = [
-    "Near Me",
-    "Wifi",
-    "Ambiance",
-    "Quality",
-    "Service",
-    "Affordable",
-  ];
-
+export default function Search() {
+  //sample data
   const cafes = [
     {
       id: "1",
@@ -59,8 +47,6 @@ export default function CafeCard() {
     },
   ];
 
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-
   return (
     <ImageBackground
       source={require("../../assets/images/bg1.png")}
@@ -81,61 +67,12 @@ export default function CafeCard() {
           />
         </View>
       </View>
-      <View style={styles.rectangle3}>
-        <Text style={styles.locText1}>Location</Text>
-        <Text style={styles.locText2}>Montreal, Canada </Text>
-        <MaterialIcons
-          name="keyboard-arrow-down"
-          size={20}
-          color="#4B2C11"
-          style={{ marginLeft: 125, marginTop: 4 }}
-        />
-      </View>
-
+      <View style={styles.rectangle3}></View>
       <View style={[styles.searchBar, styles.androidShadow]}>
         <MaterialIcons name="search" size={24} color="#C8AA7A" />
-
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search cafe"
-          placeholderTextColor="#C8AA7A"
-          value={search}
-          onChangeText={setSearch}
-        />
+        <Text style={styles.searchText}>Search cafe</Text>
 
         <MaterialIcons name="tune" size={22} color="#C8AA7A" />
-      </View>
-
-      <View style={styles.filterHolder}>
-        <FlatList
-          data={filter}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item, index) => index.toString()}
-          renderItem={({ item, index }) => (
-            <Pressable
-              onPress={() => setSelectedIndex(index)}
-              style={[
-                styles.filter,
-                {
-                  backgroundColor:
-                    selectedIndex === index ? "#A97C4E" : "#E9D0A2",
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  {
-                    color: selectedIndex === index ? "#FFFAF3" : "#A97C4E",
-                  },
-                ]}
-              >
-                {item}
-              </Text>
-            </Pressable>
-          )}
-        />
       </View>
 
       <ScrollView
@@ -143,12 +80,6 @@ export default function CafeCard() {
         contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.promo}>
-          <Text style={styles.promoText}>Today’s Special Promo</Text>
-        </View>
-
-        <Text style={styles.labelText}>Featured Cafés</Text>
-
         <View style={{ marginTop: 3 }}>
           <FlatList
             data={cafes}
@@ -157,10 +88,8 @@ export default function CafeCard() {
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <View style={styles.cafeHolder}>
-                {/* Empty space will push the bottom row down */}
                 <View style={{ flex: 1 }} />
 
-                {/* Bottom row */}
                 <View style={styles.cafeText}>
                   <View>
                     <Text style={styles.cafeName}>{item.name}</Text>
@@ -179,7 +108,6 @@ export default function CafeCard() {
             )}
           />
         </View>
-        <Text style={styles.labelText}>Discover More</Text>
 
         <View style={{ marginTop: 3 }}>
           <FlatList
@@ -189,10 +117,8 @@ export default function CafeCard() {
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
               <View style={styles.cafeHolder}>
-                {/* Empty space will push the bottom row down */}
                 <View style={{ flex: 1 }} />
 
-                {/* Bottom row */}
                 <View style={styles.cafeText}>
                   <View>
                     <Text style={styles.cafeName}>{item.name}</Text>
@@ -315,53 +241,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
 
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: "#4B2C11",
-    marginLeft: 8,
-  },
-
-  filter: {
-    backgroundColor: "#E9D6B9",
-    borderRadius: 8,
-    paddingHorizontal: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-    height: 31,
-  },
-
-  filterHolder: {
-    marginTop: 15,
-    paddingLeft: 10,
-  },
-
-  filterText: {
+  searchText: {
+    fontSize: 13,
     color: "#C8AA7A",
-    fontWeight: "500",
-    fontSize: 11,
-  },
-
-  promo: {
-    width: "90%",
-    height: 131,
-    backgroundColor: "#966A0C",
-    borderRadius: 8,
-    marginVertical: 8,
-    alignSelf: "center",
-    marginTop: 15,
-    position: "relative", // make container relative
-    padding: 10,
-  },
-
-  promoText: {
-    position: "absolute",
-    color: "#E9D6B9",
-    fontWeight: "bold",
-    bottom: 10,
-    fontSize: 15,
-    left: 15,
+    marginLeft: 5,
+    flex: 1,
+    marginRight: 8,
   },
 
   labelText: {
@@ -395,8 +280,8 @@ const styles = StyleSheet.create({
 
   locationRow: {
     flexDirection: "row",
-    alignItems: "center", // vertically centers icon & text
-    marginTop: 2, // optional spacing from name
+    alignItems: "center",
+    marginTop: 2,
   },
 
   cafeName: {
