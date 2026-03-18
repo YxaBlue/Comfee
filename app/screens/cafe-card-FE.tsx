@@ -1,19 +1,206 @@
-import React from "react";
+import React, { useState } from "react";
 
-import { StyleSheet, Text, View } from "react-native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { ScrollView } from "react-native";
+
+import {
+  FlatList,
+  Image,
+  ImageBackground,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 export default function CafeCard() {
-  return (
-    <View style={styles.container}>
-      <View style={styles.rectangle1}></View>
+  const filter = [
+    "Near Me",
+    "Wifi",
+    "Ambiance",
+    "Quality",
+    "Service",
+    "Affordable",
+  ];
 
-      <View style={styles.rectangle2}>
+  const cafes = [
+    {
+      id: "1",
+      name: "Ilya Rozy Cafe",
+      location: "Mactan, Lapu-Lapu City",
+      rating: 4.5,
+    },
+    {
+      id: "2",
+      name: "Hollander Cafe",
+      location: "Mactan, Lapu-Lapu City",
+      rating: 4.2,
+    },
+    {
+      id: "3",
+      name: "Ilya Rozy Cafe",
+      location: "Mactan, Lapu-Lapu City",
+      rating: 4.8,
+    },
+    {
+      id: "4",
+      name: "Ilya Rozy Cafe",
+      location: "Mactan, Lapu-Lapu City",
+      rating: 4.6,
+    },
+    {
+      id: "5",
+      name: "Ilya Rozy Cafe",
+      location: "Mactan, Lapu-Lapu City",
+      rating: 4.7,
+    },
+  ];
+
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  return (
+    <ImageBackground
+      source={require("../../assets/images/bg1.png")}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <View style={[styles.rectangle1, styles.shadow, styles.androidShadow]}>
+        <View style={styles.header}>
+          <Image
+            source={require("../../assets/images/logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Image
+            source={require("../../assets/images/profileHolder1.png")}
+            style={styles.profHolder}
+            resizeMode="contain"
+          />
+        </View>
+      </View>
+      <View style={styles.rectangle3}>
         <Text style={styles.locText1}>Location</Text>
         <Text style={styles.locText2}>Montreal, Canada </Text>
+        <MaterialIcons
+          name="keyboard-arrow-down"
+          size={20}
+          color="#4B2C11"
+          style={{ marginLeft: 125, marginTop: 4 }}
+        />
+      </View>
+      <View style={[styles.searchBar, styles.androidShadow]}>
+        <MaterialIcons name="search" size={24} color="#C8AA7A" />
+        <Text style={styles.searchText}>Search cafe</Text>
+
+        <MaterialIcons name="tune" size={22} color="#C8AA7A" />
+      </View>
+      <View style={styles.filterHolder}>
+        <FlatList
+          data={filter}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={({ item, index }) => (
+            <Pressable
+              onPress={() => setSelectedIndex(index)}
+              style={[
+                styles.filter,
+                {
+                  backgroundColor:
+                    selectedIndex === index ? "#A97C4E" : "#E9D0A2",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterText,
+                  {
+                    color: selectedIndex === index ? "#FFFAF3" : "#A97C4E",
+                  },
+                ]}
+              >
+                {item}
+              </Text>
+            </Pressable>
+          )}
+        />
       </View>
 
-      <View style={styles.searchBar}></View>
-    </View>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.promo}>
+          <Text style={styles.promoText}>Today’s Special Promo</Text>
+        </View>
+
+        <Text style={styles.labelText}>Featured Cafés</Text>
+
+        <View style={{ marginTop: 3 }}>
+          <FlatList
+            data={cafes}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.cafeHolder}>
+                {/* Empty space will push the bottom row down */}
+                <View style={{ flex: 1 }} />
+
+                {/* Bottom row */}
+                <View style={styles.cafeText}>
+                  <View>
+                    <Text style={styles.cafeName}>{item.name}</Text>
+                    <View style={styles.locationRow}>
+                      <MaterialIcons
+                        name="location-on"
+                        size={7}
+                        color="#E9D0A2"
+                      />
+                      <Text style={styles.location}>{item.location}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.rating}> {item.rating}</Text>
+                </View>
+              </View>
+            )}
+          />
+        </View>
+        <Text style={styles.labelText}>Discover More</Text>
+
+        <View style={{ marginTop: 3 }}>
+          <FlatList
+            data={cafes}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.cafeHolder}>
+                {/* Empty space will push the bottom row down */}
+                <View style={{ flex: 1 }} />
+
+                {/* Bottom row */}
+                <View style={styles.cafeText}>
+                  <View>
+                    <Text style={styles.cafeName}>{item.name}</Text>
+                    <View style={styles.locationRow}>
+                      <MaterialIcons
+                        name="location-on"
+                        size={7}
+                        color="#E9D0A2"
+                      />
+                      <Text style={styles.location}>{item.location}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.rating}> {item.rating}</Text>
+                </View>
+              </View>
+            )}
+          />
+        </View>
+      </ScrollView>
+    </ImageBackground>
   );
 }
 
@@ -21,51 +208,205 @@ export default function CafeCard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F3E6CF", // background color
+    backgroundColor: "#F3E6CF",
+  },
+
+  background: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
   },
 
   rectangle1: {
-    backgroundColor: "#DFC299", // rectangle color
-    borderRadius: 0, // rounded corners
-    padding: 0, // inner spacing
-    marginBottom: 0, // spacing below rectangle
-    justifyContent: "center",
-    alignItems: "center",
+    backgroundColor: "#E9D0A2",
+    borderRadius: 0,
+    padding: 0,
+    marginBottom: 1,
     width: "100%",
-    height: 60,
+    height: 79,
+    shadowColor: "#0b0b0b",
+    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 5,
   },
 
-  rectangle2: {
-    backgroundColor: "#E9D6B9", // rectangle color
-    borderRadius: 0, // rounded corners
-    padding: 0, // inner spacing
-    marginBottom: 20, // spacing below rectangle
-    justifyContent: "center",
+  shadow: {
+    shadowColor: "#00000040",
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.75,
+    shadowRadius: 7,
+  },
+
+  androidShadow: {
+    elevation: 15,
+  },
+
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    height: 79,
+  },
+
+  logo: {
+    top: 15,
+    width: 40,
+    height: 40,
+  },
+
+  profHolder: {
+    top: 15,
+    width: 40,
+    height: 40,
+  },
+
+  rectangle3: {
+    backgroundColor: "#E9D6B9",
+    borderRadius: 0,
+    padding: 0,
+    marginBottom: 20,
     width: "100%",
-    height: 80,
+    height: 78,
   },
 
   locText1: {
-    fontSize: 12,
+    top: "25%",
+    fontSize: 9,
     color: "#4B2C11",
-    marginLeft: 15,
+    marginLeft: 25,
   },
 
   locText2: {
-    fontSize: 15,
+    top: "25%",
+    fontSize: 12,
     color: "#4B2C11",
-    marginLeft: 15,
+    marginLeft: 25,
+    fontWeight: "bold",
   },
 
   searchBar: {
-    backgroundColor: "#FFFAF3", // rectangle color
-    borderRadius: 15, // rounded corners
-    marginBottom: 0, // spacing below rectangle
+    position: "absolute",
+    backgroundColor: "#FFFAF3",
+    borderRadius: 15,
+    top: 135,
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "center",
+    width: "75%",
+    height: 46,
+    shadowColor: "#E9D6B9",
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 20,
+    paddingHorizontal: 10,
+  },
+
+  searchText: {
+    fontSize: 13,
+    color: "#C8AA7A",
+    marginLeft: 5,
+    flex: 1,
+    marginRight: 8,
+  },
+
+  filter: {
+    backgroundColor: "#E9D6B9",
+    borderRadius: 8,
+    paddingHorizontal: 20,
     justifyContent: "center",
-    alignContent: "center",
-    marginLeft: 70,
-    marginRight: 0,
-    width: "70%",
-    height: 50,
+    alignItems: "center",
+    marginRight: 10,
+    height: 31,
+  },
+
+  filterHolder: {
+    marginTop: 15,
+    paddingLeft: 10,
+  },
+
+  filterText: {
+    color: "#C8AA7A",
+    fontWeight: "500",
+    fontSize: 11,
+  },
+
+  promo: {
+    width: "90%",
+    height: 131,
+    backgroundColor: "#966A0C",
+    borderRadius: 8,
+    marginVertical: 8,
+    alignSelf: "center",
+    marginTop: 15,
+    position: "relative", // make container relative
+    padding: 10,
+  },
+
+  promoText: {
+    position: "absolute",
+    color: "#E9D6B9",
+    fontWeight: "bold",
+    bottom: 10,
+    fontSize: 15,
+    left: 15,
+  },
+
+  labelText: {
+    color: "#4B2C11",
+    fontWeight: "bold",
+    fontSize: 18,
+    marginLeft: 15,
+    top: 5,
+  },
+
+  cafeHolder: {
+    width: 143,
+    height: 136,
+    backgroundColor: "#FFFAF3",
+    borderRadius: 10,
+    padding: 10,
+    margin: 10,
+    alignItems: "flex-start",
+    shadowColor: "#A97C4E",
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 4,
+    elevation: 20,
+  },
+
+  cafeText: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    width: "100%",
+  },
+
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center", // vertically centers icon & text
+    marginTop: 2, // optional spacing from name
+  },
+
+  cafeName: {
+    fontSize: 11,
+    color: "#4B2C11",
+    fontWeight: 600,
+    marginBottom: 0,
+  },
+
+  location: {
+    fontSize: 7,
+    color: "#E9D0A2",
+    fontWeight: "400",
+    marginBottom: 0,
+    marginLeft: 2,
+  },
+
+  rating: {
+    fontSize: 12,
+    color: "#4B2C11",
+    marginBottom: 0,
+    fontWeight: 400,
   },
 });
