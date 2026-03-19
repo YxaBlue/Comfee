@@ -1,4 +1,4 @@
-import { forgotPassword, signIn } from "@/services/auth-service";
+import { signIn } from "@/services/auth-service";
 import { validateLogin } from "@/utils/validation";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -42,14 +42,10 @@ export default function LoginScreen({ navigation }: Props) {
     try {
       const { user } = await signIn(email.trim(), password);
       if (!user) throw new Error("User not found");
-      navigation.navigate("Profile", { userId: user.id });
+      navigation.navigate("Profile");
     } catch (error: any) {
       setErrors({ general: error.message || "Invalid login credentials." });
     }
-  };
-
-  const handleForgotPassword = () => {
-    forgotPassword();
   };
 
   return (
@@ -110,7 +106,7 @@ export default function LoginScreen({ navigation }: Props) {
         )}
       </View>
 
-      <TouchableOpacity onPress={handleForgotPassword}>
+      <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")}>
         <Text style={styles.forgotLabel}>Forgot Password?</Text>
       </TouchableOpacity>
 

@@ -1,4 +1,5 @@
 import { calculateAge } from "@/utils/date-utils";
+import { makeRedirectUri } from "expo-auth-session";
 import { supabase } from "./supabase-client";
 
 type signUpData = {
@@ -53,6 +54,28 @@ export async function signUp(data: signUpData) {
   return user;
 }
 
-export async function forgotPassword() {
-  console.log("Handle password reset");
+export async function forgotPassword(email: string) {
+  const redirectTo = makeRedirectUri({
+    path: "reset-password",
+  });
+
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo,
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+export async function resetPassword(newPassword: string) {
+  const { data, error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+  if (error) throw error;
+  return data;
+}
+
+export async function signOut() {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
 }

@@ -1,10 +1,11 @@
+import { signOut } from "@/services/auth-service";
 import {
   editProfile,
   getProfile,
   uploadAvatar,
 } from "@/services/profile-service";
+import { supabase } from "@/services/supabase-client";
 import { MaterialIcons } from "@expo/vector-icons";
-import { RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { format, parseISO } from "date-fns";
 import * as ImagePicker from "expo-image-picker";
@@ -22,7 +23,6 @@ import { RootStackParamList } from "../../App";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Profile">;
-  route: RouteProp<RootStackParamList, "Profile">;
 };
 
 type Tab = "info" | "reviews";
@@ -147,9 +147,9 @@ function ReviewCard({ review }: { review: Review }) {
   );
 }
 
-export default function ProfileScreen({ navigation, route }: Props) {
+export default function ProfileScreen({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("reviews");
-  const { userId } = route.params;
+  const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<null | any>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -162,6 +162,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
     birth_date: "",
     bio: "",
   });
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: "info", icon: "info-outline" },
@@ -171,14 +172,24 @@ export default function ProfileScreen({ navigation, route }: Props) {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const data = await getProfile(userId);
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!user) {
+          navigation.navigate("Login");
+          return;
+        }
+
+        setUserId(user.id);
+        const data = await getProfile(user.id);
         setProfile(data);
       } catch (err) {
         console.error("Failed to fetch profile:", err);
       }
     };
     fetchProfile();
-  }, [userId]);
+  }, []);
 
   const handleEditPress = () => {
     setActiveTab("info");
@@ -195,6 +206,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
   };
 
   const handleSave = async () => {
+    if (!userId) return;
     setFieldErrors({});
     setIsSaving(true);
     try {
@@ -208,7 +220,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
           birth_date: editFields.birth_date,
           bio: editFields.bio,
         },
-        profile?.username, // ← original username for uniqueness check
+        profile?.username,
       );
       setProfile((prev: any) => ({
         ...prev,
@@ -217,7 +229,6 @@ export default function ProfileScreen({ navigation, route }: Props) {
       }));
       setIsEditing(false);
     } catch (err: any) {
-      // Validation errors are plain objects thrown from validateEditProfile
       if (err?.firstName || err?.lastName || err?.username || err?.birthDate) {
         setFieldErrors(err);
       } else {
@@ -239,6 +250,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
   };
 
   const handlePickAvatar = async () => {
+    if (!userId) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
 
@@ -252,7 +264,6 @@ export default function ProfileScreen({ navigation, route }: Props) {
     if (!result.canceled) {
       try {
         const url = await uploadAvatar(userId, result.assets[0].uri);
-        // Use profile_picture to match what uploadAvatar saves in the DB
         setProfile((prev: any) => ({ ...prev, profile_picture: url }));
       } catch (err) {
         console.error("Failed to upload avatar:", err);
@@ -268,11 +279,40 @@ export default function ProfileScreen({ navigation, route }: Props) {
       >
         {/* ── Header band ── */}
         <View style={styles.headerBand}>
-          <TouchableOpacity style={styles.menuDots}>
+          {/* ── Tap anywhere to close menu ── */}
+          {menuVisible && (
+            <TouchableOpacity
+              style={styles.menuOverlay}
+              onPress={() => setMenuVisible(false)}
+              activeOpacity={1}
+            />
+          )}
+
+          {/* ── 3 dots button ── */}
+          <TouchableOpacity
+            style={styles.menuDots}
+            onPress={() => setMenuVisible((prev) => !prev)}
+          >
             <MaterialIcons name="more-vert" size={22} color="#6B4F2E" />
           </TouchableOpacity>
+
+          {/* ── Dropdown box ── */}
+          {menuVisible && (
+            <View style={styles.dropdown}>
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={async () => {
+                  setMenuVisible(false);
+                  await signOut();
+                  navigation.navigate("Login");
+                }}
+              >
+                <MaterialIcons name="logout" size={16} color="#6B4F2E" />
+                <Text style={styles.dropdownText}>Log out</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           <View style={styles.avatarWrapper}>
-            {/* Avatar — tappable only while editing */}
             <TouchableOpacity
               onPress={isEditing ? handlePickAvatar : undefined}
               activeOpacity={isEditing ? 0.7 : 1}
@@ -280,14 +320,13 @@ export default function ProfileScreen({ navigation, route }: Props) {
               <View style={styles.avatarCircle}>
                 {profile?.profile_picture ? (
                   <Image
-                    key={profile.profile_picture} // ← forces remount when URL changes
+                    key={profile.profile_picture}
                     source={{ uri: profile.profile_picture }}
                     style={{ width: "100%", height: "100%", borderRadius: 48 }}
                   />
                 ) : (
                   <MaterialIcons name="person" size={52} color="#C8A97A" />
                 )}
-                {/* Camera badge — only visible while editing */}
                 {isEditing && (
                   <View style={styles.cameraBadge}>
                     <MaterialIcons name="photo-camera" size={12} color="#fff" />
@@ -312,9 +351,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
                 placeholderTextColor="#B09070"
               />
             ) : (
-              <Text style={styles.userName}>
-                {profile?.username || "Error"}
-              </Text>
+              <Text style={styles.userName}>{profile?.username}</Text>
             )}
             {!isEditing && (
               <TouchableOpacity onPress={handleEditPress}>
@@ -329,7 +366,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
             Joined since{" "}
             {profile?.joined_at
               ? format(parseISO(profile.joined_at), "MMMM dd, yyyy")
-              : "Error"}
+              : "Not available"}
           </Text>
         </View>
 
@@ -404,7 +441,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
                   ) : (
                     <View style={styles.infoValueBox}>
                       <Text style={styles.infoValue}>
-                        {profile?.first_name || "Error"}
+                        {profile?.first_name}
                       </Text>
                     </View>
                   )}
@@ -428,9 +465,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
                     />
                   ) : (
                     <View style={styles.infoValueBox}>
-                      <Text style={styles.infoValue}>
-                        {profile?.last_name || "Error"}
-                      </Text>
+                      <Text style={styles.infoValue}>{profile?.last_name}</Text>
                     </View>
                   )}
                   {fieldErrors.lastName && (
@@ -455,9 +490,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
                     />
                   ) : (
                     <View style={styles.infoValueBox}>
-                      <Text style={styles.infoValue}>
-                        {profile?.age || "Error"}
-                      </Text>
+                      <Text style={styles.infoValue}>{profile?.age}</Text>
                     </View>
                   )}
                 </View>
@@ -481,7 +514,7 @@ export default function ProfileScreen({ navigation, route }: Props) {
                               parseISO(profile.birth_date),
                               "MMMM dd, yyyy",
                             )
-                          : "Error"}
+                          : "Not available"}
                       </Text>
                     </View>
                   )}
@@ -546,15 +579,14 @@ export default function ProfileScreen({ navigation, route }: Props) {
 
       {/* ── Bottom nav ── */}
       <View style={styles.bottomNav}>
-        {/* Avatar in bottom nav — tappable anytime to change photo */}
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => navigation.navigate("Profile", { userId })}
+          onPress={() => navigation.navigate("Profile")}
         >
           <View style={styles.profileNavAvatar}>
             {profile?.profile_picture ? (
               <Image
-                key={profile.profile_picture} // ← forces remount when URL changes
+                key={profile.profile_picture}
                 source={{ uri: profile.profile_picture }}
                 style={{ width: "100%", height: "100%", borderRadius: 48 }}
               />
@@ -874,5 +906,40 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
+  },
+  menuOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 9,
+  },
+  dropdown: {
+    position: "absolute",
+    top: 38,
+    right: 14,
+    backgroundColor: "#FDF6EC",
+    borderRadius: 10,
+    paddingVertical: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 5,
+    zIndex: 10,
+    minWidth: 130,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  dropdownText: {
+    fontSize: 14,
+    color: "#6B4F2E",
+    fontWeight: "500",
   },
 });
