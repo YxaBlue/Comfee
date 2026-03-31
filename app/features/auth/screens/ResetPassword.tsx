@@ -1,25 +1,23 @@
-"use client";
-
-import { resetPassword } from "@/services/auth-service";
-import { supabase } from "@/services/supabase-client";
+import { resetPassword } from "@/app/features/auth/services/authService";
+import { supabase } from "@/app/shared/lib/supabaseClient";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { RootStackParamList } from "../../App";
+import { RootStackParamList } from "../../../../App";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
-export default function ResetPasswordPage() {
+export default function ResetPasswordScreen() {
   const navigation = useNavigation<NavProp>();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");

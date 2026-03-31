@@ -1,6 +1,6 @@
-import { calculateAge } from "@/utils/date-utils";
-import { validateEditProfile } from "@/utils/validation";
-import { supabase } from "./supabase-client";
+import { validateEditProfile } from "@/app/features/auth/utils/validation";
+import { calculateAge } from "@/app/shared/utils/dateUtils";
+import { supabase } from "../../../shared/lib/supabaseClient";
 
 type updatedData = {
   userId: string;

@@ -1,24 +1,22 @@
-"use client";
-
-import { forgotPassword } from "@/services/auth-service";
+import { forgotPassword } from "@/app/features/auth/services/authService";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { RootStackParamList } from "../../App";
+import { RootStackParamList } from "../../../../App";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
-export default function ForgotPasswordPage() {
+export default function ForgotPasswordScreen() {
   const navigation = useNavigation<NavProp>();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);

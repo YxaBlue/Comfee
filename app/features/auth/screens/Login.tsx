@@ -1,5 +1,5 @@
-import { signIn } from "@/services/auth-service";
-import { validateLogin } from "@/utils/validation";
+import { signIn } from "@/app/features/auth/services/authService";
+import { validateLogin } from "@/app/features/auth/utils/validation";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { RootStackParamList } from "../../App";
+import { RootStackParamList } from "../../../../App";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Login">;

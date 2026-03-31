@@ -1,6 +1,6 @@
-import { signUp } from "@/services/auth-service";
-import { dateFromInput } from "@/utils/date-utils";
-import { validateSignUp } from "@/utils/validation";
+import { signUp } from "@/app/features/auth/services/authService";
+import { validateSignUp } from "@/app/features/auth/utils/validation";
+import { dateFromInput } from "@/app/shared/utils/dateUtils";
 import { Picker } from "@react-native-picker/picker";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useEffect, useState } from "react";
@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { RootStackParamList } from "../../App";
+import { RootStackParamList } from "../../../../App";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "CreateAccount">;
@@ -33,7 +33,7 @@ const months = [
   "Dec",
 ];
 
-export default function CreateAcc({ navigation }: Props) {
+export default function CreateAccountScreen({ navigation }: Props) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [username, setUsername] = useState("");

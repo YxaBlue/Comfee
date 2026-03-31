@@ -1,11 +1,11 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import CreateAcc from "./app/screens/createAcc-FE";
-import ForgotPasswordPage from "./app/screens/forgotPassword-FE";
-import LoginScreen from "./app/screens/login-FE";
-import ProfileScreen from "./app/screens/profile-FE";
-import ResetPasswordPage from "./app/screens/resetPassword-FE";
+import CreateAccountScreen from "./app/features/auth/screens/CreateAccount";
+import ForgotPasswordScreen from "./app/features/auth/screens/ForgotPassword";
+import LoginScreen from "./app/features/auth/screens/Login";
+import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
+import ProfileScreen from "./app/features/profile/screens/Profile";
 
 export type RootStackParamList = {
   Login: undefined;
@@ -38,10 +38,10 @@ export default function App() {
         screenOptions={{ headerShown: false }}
       >
         <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="CreateAccount" component={CreateAcc} />
+        <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordPage} />
-        <Stack.Screen name="ResetPassword" component={ResetPasswordPage} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

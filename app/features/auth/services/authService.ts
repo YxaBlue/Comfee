@@ -1,6 +1,6 @@
-import { calculateAge } from "@/utils/date-utils";
+import { calculateAge } from "@/app/shared/utils/dateUtils";
 import { makeRedirectUri } from "expo-auth-session";
-import { supabase } from "./supabase-client";
+import { supabase } from "../../../shared/lib/supabaseClient";
 
 type signUpData = {
   firstName: string;

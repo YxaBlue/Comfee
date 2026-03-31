@@ -1,10 +1,10 @@
-import { signOut } from "@/services/auth-service";
+import { signOut } from "@/app/features/auth/services/authService";
 import {
   editProfile,
   getProfile,
   uploadAvatar,
-} from "@/services/profile-service";
-import { supabase } from "@/services/supabase-client";
+} from "@/app/features/profile/services/profileService";
+import { supabase } from "@/app/shared/lib/supabaseClient";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { format, parseISO } from "date-fns";
@@ -19,7 +19,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { RootStackParamList } from "../../App";
+import { RootStackParamList } from "../../../../App";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Profile">;

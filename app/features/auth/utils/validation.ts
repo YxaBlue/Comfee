@@ -1,5 +1,5 @@
 // utils/validation.ts
-import { supabase } from "@/services/supabase-client";
+import { supabase } from "@/app/shared/lib/supabaseClient";
 
 type signUpData = {
   firstName: string;
