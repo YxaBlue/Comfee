@@ -603,7 +603,10 @@ export default function ProfileScreen({ navigation }: Props) {
           <MaterialIcons name="home" size={28} color="#6B4F2E" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate("Settings")}
+        >
           <MaterialIcons name="settings" size={26} color="#6B4F2E" />
         </TouchableOpacity>
       </View>
