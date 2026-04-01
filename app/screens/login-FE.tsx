@@ -4,6 +4,8 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
+  Image,
+  ImageBackground,
   ScrollView,
   StyleSheet,
   Text,
@@ -52,83 +54,99 @@ export default function LoginScreen({ navigation }: Props) {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.welcome}>WELCOME!</Text>
+    <ImageBackground
+      source={require("../../assets/images/bg1.png")}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <ScrollView contentContainerStyle={styles.container}>
+        <Image
+          source={require("../../assets/images/logo-name.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Email</Text>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Email</Text>
 
-        <View style={styles.input}>
-          <MaterialIcons
-            name="email"
-            size={24}
-            color="#D2BA94"
-            style={{ marginRight: 10 }}
-          />
-          <TextInput
-            style={styles.inputWithIcon}
-            placeholder="Enter your email address"
-            placeholderTextColor="#D2BA94"
-            value={email}
-            onChangeText={setEmail}
-          />
-        </View>
-        {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-      </View>
-
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>Password</Text>
-
-        <View style={styles.input}>
-          <MaterialIcons
-            name="lock"
-            size={24}
-            color="#D2BA94"
-            style={{ marginRight: 10 }}
-          />
-
-          <TextInput
-            style={styles.inputWithIcon}
-            placeholder="Enter your password"
-            placeholderTextColor="#D2BA94"
-            secureTextEntry={!showPassword} // toggle visibility
-            value={password}
-            onChangeText={setPassword}
-          />
-
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+          <View
+            style={[styles.input, errors.email && { borderColor: "#670718" }]}
+          >
             <MaterialIcons
-              name={showPassword ? "visibility" : "visibility-off"}
+              name="email"
               size={24}
-              color="#D2BA94"
+              color="#C8AA7A"
+              style={{ marginRight: 10 }}
             />
-          </TouchableOpacity>
+            <TextInput
+              style={styles.inputWithIcon}
+              placeholder="Enter your email address"
+              placeholderTextColor="#C8AA7A"
+              value={email}
+              onChangeText={setEmail}
+            />
+          </View>
+          {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
         </View>
-        {errors.password && (
-          <Text style={styles.errorText}>{errors.password}</Text>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Password</Text>
+
+          <View
+            style={[styles.input, errors.email && { borderColor: "#670718" }]}
+          >
+            <MaterialIcons
+              name="lock"
+              size={24}
+              color="#C8AA7A"
+              style={{ marginRight: 10 }}
+            />
+
+            <TextInput
+              style={styles.inputWithIcon}
+              placeholder="Enter your password"
+              placeholderTextColor="#C8AA7A"
+              secureTextEntry={!showPassword} // toggle visibility
+              value={password}
+              onChangeText={setPassword}
+            />
+
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <MaterialIcons
+                name={showPassword ? "visibility" : "visibility-off"}
+                size={24}
+                color="#C8AA7A"
+              />
+            </TouchableOpacity>
+          </View>
+          {errors.password && (
+            <Text style={styles.errorText}>{errors.password}</Text>
+          )}
+        </View>
+
+        <TouchableOpacity onPress={handleForgotPassword}>
+          <Text style={styles.forgotLabel}>Forgot Password?</Text>
+        </TouchableOpacity>
+
+        {errors.general && (
+          <Text style={styles.errorText}>{errors.general}</Text>
         )}
-      </View>
 
-      <TouchableOpacity onPress={handleForgotPassword}>
-        <Text style={styles.forgotLabel}>Forgot Password?</Text>
-      </TouchableOpacity>
+        {successMessage ? (
+          <Text style={styles.successText}>{successMessage}</Text>
+        ) : null}
 
-      {errors.general && <Text style={styles.errorText}>{errors.general}</Text>}
+        <TouchableOpacity style={styles.button} onPress={handleLogin}>
+          <Text style={styles.buttonText}>LOGIN</Text>
+        </TouchableOpacity>
 
-      {successMessage ? (
-        <Text style={styles.successText}>{successMessage}</Text>
-      ) : null}
+        <Text style={styles.dont}>Don't have account?</Text>
 
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>LOGIN</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.dont}>Don't have account?</Text>
-
-      <TouchableOpacity onPress={() => navigation.navigate("CreateAccount")}>
-        <Text style={styles.sign}>Sign In</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity onPress={() => navigation.navigate("CreateAccount")}>
+          <Text style={styles.sign}>Sign In</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </ImageBackground>
   );
 }
 
@@ -136,68 +154,114 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 20,
-    backgroundColor: "#EDDEC7",
     justifyContent: "center",
   },
-  welcome: {
-    fontSize: 32,
-    fontWeight: "700",
-    marginBottom: 40,
-    textAlign: "center",
-  },
+
   inputGroup: { marginBottom: 10 },
-  label: { fontSize: 14, fontWeight: "400", marginBottom: 2 },
+
+  label: {
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 2,
+    color: "#4B2C11",
+    fontFamily: "SourceSerifPro-Regular",
+    marginLeft: 40,
+  },
+
   forgotLabel: {
     fontSize: 11,
-    fontWeight: "300",
+    fontWeight: "400",
     marginBottom: 7,
     alignSelf: "flex-end",
+    color: "#4B2C11",
+    fontFamily: "SourceSerifPro-Regular",
+    marginRight: 40,
+    marginTop: -15,
   },
+
   input: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#E6D6BE",
-    backgroundColor: "#E6D6BE",
+    backgroundColor: "#F0D8B4",
     borderRadius: 9,
     paddingHorizontal: 15,
     paddingVertical: 12,
     marginTop: 5,
+    marginLeft: 40,
+    marginRight: 40,
+    height: 55,
+    marginBottom: 20,
   },
+
   inputWithIcon: { flex: 1, fontSize: 14, color: "#000", padding: 0 },
+
   button: {
     backgroundColor: "#A97C4E",
-    padding: 15,
+    padding: 10,
     borderRadius: 8,
     alignItems: "center",
-    marginTop: 25,
+    marginTop: 55,
+    marginLeft: 40,
+    marginRight: 40,
+    height: 40,
   },
-  buttonText: { color: "#EDDEC7", fontWeight: "bold", fontSize: 16 },
+
+  buttonText: {
+    color: "#FFEFD5",
+    fontWeight: "bold",
+    fontSize: 20,
+    fontFamily: "SourceSerifPro-Regular",
+    alignSelf: "center",
+  },
+
   dont: {
     fontSize: 14,
     fontWeight: "400",
     textAlign: "center",
-    marginBottom: 7,
-    marginTop: 100,
+    marginBottom: 4,
+    marginTop: 20,
+    fontFamily: "SourceSerifPro-Regular",
+    color: "#4B2C11",
   },
+
   sign: {
-    fontSize: 14,
-    fontWeight: "500",
+    fontSize: 17,
+    fontWeight: "700",
     marginBottom: 7,
     marginTop: 1,
     textAlign: "center",
+    fontFamily: "SourceSerifPro-Regular",
+    color: "#4B2C11",
   },
 
   errorText: {
-    color: "#B00020",
-    textAlign: "center",
+    color: "#670718",
+    textAlign: "left",
     fontSize: 12,
-    marginVertical: 4,
+    marginTop: -10,
+    marginBottom: 10,
+    marginLeft: 40,
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   successText: {
     color: "green",
     textAlign: "center",
     marginBottom: 10,
+  },
+
+  background: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  },
+
+  logo: {
+    width: 250,
+    height: 200,
+    alignSelf: "center",
+    marginBottom: 50,
   },
 });
