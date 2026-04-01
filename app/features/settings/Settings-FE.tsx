@@ -13,7 +13,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { RootStackParamList } from "../../../../App";
+import { RootStackParamList } from "../../../App";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Settings">;
@@ -33,8 +33,16 @@ const ACTION_OPTIONS: ActionOption[] = [
 
 export default function SettingsScreen({ navigation }: Props) {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [darkModeEnabled, setDarkModeEnabled] = useState(false);
   const insets = useSafeAreaInsets();
+
+  const handleOptionPress = (label: string) => {
+    if (label === "Change Password") {
+      navigation.navigate("ChangePassword");
+      return;
+    }
+
+    handleComingSoon(label);
+  };
 
   const handleComingSoon = (label: string) => {
     Alert.alert(label, "This setting is not connected yet.");
@@ -88,17 +96,6 @@ export default function SettingsScreen({ navigation }: Props) {
             />
           </View>
 
-          <View style={styles.optionCard}>
-            <Text style={styles.optionText}>Dark Mode</Text>
-            <Switch
-              value={darkModeEnabled}
-              onValueChange={setDarkModeEnabled}
-              trackColor={{ false: "#D8C7B0", true: "#6B3F18" }}
-              thumbColor="#F7F3EC"
-              ios_backgroundColor="#D8C7B0"
-            />
-          </View>
-
           {ACTION_OPTIONS.map(({ label, destructive }) => (
             <Pressable
               key={label}
@@ -106,7 +103,7 @@ export default function SettingsScreen({ navigation }: Props) {
                 styles.optionCard,
                 pressed && styles.optionCardPressed,
               ]}
-              onPress={() => handleComingSoon(label)}
+              onPress={() => handleOptionPress(label)}
             >
               <Text
                 style={[

@@ -6,13 +6,15 @@ import ForgotPasswordScreen from "./app/features/auth/screens/ForgotPassword";
 import LoginScreen from "./app/features/auth/screens/Login";
 import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
 import ProfileScreen from "./app/features/profile/screens/Profile";
-import SettingsScreen from "./app/features/profile/screens/Settings-FE";
+import ChangePasswordScreen from "./app/features/settings/ChangePassword-FE";
+import SettingsScreen from "./app/features/settings/Settings-FE";
 
 export type RootStackParamList = {
   Login: undefined;
   CreateAccount: undefined;
   Profile: undefined;
   Settings: undefined;
+  ChangePassword: undefined;
   EditProfile: undefined;
   ForgotPassword: undefined;
   ResetPassword: undefined;
@@ -43,6 +45,7 @@ export default function App() {
         <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       </Stack.Navigator>
