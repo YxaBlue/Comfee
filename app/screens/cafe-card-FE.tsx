@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 
 import { MaterialIcons } from "@expo/vector-icons";
-import { ScrollView } from "react-native";
-
+import { useRouter } from "expo-router";
 import {
   FlatList,
   Image,
   ImageBackground,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +15,7 @@ import {
 } from "react-native";
 
 export default function CafeCard() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
 
   const filter = [
@@ -103,7 +104,13 @@ export default function CafeCard() {
           onChangeText={setSearch}
         />
 
-        <MaterialIcons name="tune" size={22} color="#C8AA7A" />
+        <Pressable
+          onPress={() => router.push("/screens/Filter-FE")}
+          hitSlop={10}
+          style={styles.filterTrigger}
+        >
+          <MaterialIcons name="tune" size={22} color="#C8AA7A" />
+        </Pressable>
       </View>
 
       <View style={styles.filterHolder}>
@@ -320,6 +327,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#4B2C11",
     marginLeft: 8,
+  },
+
+  filterTrigger: {
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 4,
   },
 
   filter: {
