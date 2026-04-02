@@ -1,13 +1,14 @@
-import { validateEditProfile } from "@/app/features/auth/utils/validation";
 import { calculateAge } from "@/app/shared/utils/dateUtils";
 import { supabase } from "../../../shared/lib/supabaseClient";
+import { validateEditProfile } from "../utils/profileValidation";
 
+// FIX #6: Removed `age` from type — it's always derived from birth_date,
+// never taken from the caller.
 type updatedData = {
   userId: string;
   username: string;
   first_name: string;
   last_name: string;
-  age: string;
   birth_date: string;
   bio: string;
 };
@@ -36,7 +37,14 @@ export async function editProfile(data: updatedData, currentUsername: string) {
     currentUsername,
   );
 
-  if (Object.keys(errors).length > 0) throw errors;
+  // FIX #4: Throw a proper Error with a `validationErrors` field instead of
+  // throwing a plain object. Plain object throws are not standard and upset TS.
+  if (Object.keys(errors).length > 0) {
+    const err = new Error("Validation failed") as any;
+    err.validationErrors = errors;
+    throw err;
+  }
+
   const age = calculateAge(data.birth_date);
 
   const { error } = await supabase
@@ -46,7 +54,7 @@ export async function editProfile(data: updatedData, currentUsername: string) {
       first_name: data.first_name,
       last_name: data.last_name,
       birth_date: data.birth_date,
-      age: age,
+      age,
       bio: data.bio,
     })
     .eq("id", data.userId);
@@ -88,7 +96,7 @@ export async function uploadAvatar(userId: string, uri: string) {
 
   const { data } = supabase.storage.from("avatars").getPublicUrl(path);
 
-  // ← Bust the CDN cache with a timestamp
+  // Bust the CDN cache with a timestamp
   const bustUrl = `${data.publicUrl}?t=${Date.now()}`;
 
   const { error: updateError } = await supabase

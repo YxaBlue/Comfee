@@ -1,22 +1,22 @@
-import { changePassword } from "@/app/features/settings/ChangePassword-BE";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { RootStackParamList } from "../../../App";
+import { RootStackParamList } from "../../../../App";
+import { changePassword } from "../services/settingsService";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "ChangePassword">;
@@ -97,14 +97,15 @@ export default function ChangePasswordScreen({ navigation }: Props) {
     }
   };
 
-  const handleGoBack = () => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-      return;
-    }
-
-    navigation.navigate("Settings");
-  };
+  <Pressable
+    onPress={() => {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+        return;
+      }
+      navigation.navigate("Settings");
+    }}
+  ></Pressable>;
 
   return (
     <View style={styles.wrapper}>

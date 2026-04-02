@@ -1,4 +1,3 @@
-import { dateFromInput } from "@/app/shared/utils/dateUtils";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -15,7 +14,7 @@ import {
 } from "react-native";
 import { RootStackParamList } from "../../../../App";
 import { signUp } from "../services/authService";
-import { validateSignUp } from "../utils/validation";
+import { validateSignUp } from "../utils/authValidation";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "CreateAccount">;
@@ -66,7 +65,8 @@ export default function CreateAccountScreen({ navigation }: Props) {
   const handleCreateAccount = async () => {
     setErrors({});
     setSuccessMessage("");
-    const formData = {
+
+    const { errors: validationErrors, birthDate } = await validateSignUp({
       firstName,
       lastName,
       username,
@@ -76,28 +76,12 @@ export default function CreateAccountScreen({ navigation }: Props) {
       birthMonth,
       birthDay,
       birthYear,
-    };
-
-    const validationErrors = await validateSignUp(formData);
-
-    try {
-      dateFromInput({
-        birthMonth,
-        birthDay,
-        birthYear,
-      });
-    } catch (error: any) {
-      validationErrors.birthDate = error.message;
-    }
+    });
 
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
       return;
     }
-
-    const birthDate = dateFromInput({ birthMonth, birthDay, birthYear })
-      .toISOString()
-      .split("T")[0];
 
     try {
       await signUp({
@@ -105,9 +89,8 @@ export default function CreateAccountScreen({ navigation }: Props) {
         lastName,
         username,
         email,
-        confirmPassword,
         password,
-        birthDate,
+        birthDate: birthDate!,
       });
       setSuccessMessage("Account created successfully!");
     } catch (error: any) {
@@ -170,18 +153,16 @@ export default function CreateAccountScreen({ navigation }: Props) {
         {/* Email */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Email</Text>
-          <View style={{ gap: 0 }}>
-            <TextInput
-              style={[styles.input, errors.email && { borderColor: "#670718" }]}
-              placeholder="Enter email address"
-              placeholderTextColor="#C8AA7A"
-              value={email}
-              onChangeText={setEmail}
-            />
-            {errors.email && (
-              <Text style={styles.errorText2}>{errors.email}</Text>
-            )}
-          </View>
+          <TextInput
+            style={[styles.input, errors.email && { borderColor: "#670718" }]}
+            placeholder="Enter email address"
+            placeholderTextColor="#C8AA7A"
+            value={email}
+            onChangeText={setEmail}
+          />
+          {errors.email && (
+            <Text style={styles.errorText2}>{errors.email}</Text>
+          )}
         </View>
 
         {/* Password */}
@@ -374,7 +355,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     fontSize: 14,
-    color: "#000",
+    color: "#4B2C11",
     fontFamily: "SourceSerifPro-Regular",
   },
 
@@ -426,7 +407,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 12,
     fontSize: 14,
-    color: "#F0D8B4",
+    color: "#C8AA7A",
     marginBottom: 15,
     fontFamily: "SourceSerifPro-Regular",
     marginLeft: 40,

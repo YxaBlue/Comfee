@@ -1,4 +1,4 @@
-import { supabase } from "../../shared/lib/supabaseClient";
+import { supabase } from "@/app/shared/lib/supabaseClient";
 
 export const changePassword = async (
   currentPassword: string,

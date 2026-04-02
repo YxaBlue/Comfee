@@ -8,12 +8,10 @@ type signUpData = {
   username: string;
   email: string;
   password: string;
-  confirmPassword: string;
   birthDate: string;
 };
 
 export async function signIn(email: string, password: string) {
-  console.log("LOGGING IN");
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,

@@ -1,5 +1,5 @@
 import { signIn } from "@/app/features/auth/services/authService";
-import { validateLogin } from "@/app/features/auth/utils/validation";
+import { validateLogin } from "@/app/features/auth/utils/authValidation";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
@@ -37,14 +37,11 @@ export default function LoginScreen({ navigation }: Props) {
       return;
     }
 
-    // do not try to sign in if any field is empty
-    if (Object.keys(errors).length > 0) return;
-
     // try to sign in and return results
     try {
       const { user } = await signIn(email.trim(), password);
       if (!user) throw new Error("User not found");
-      navigation.navigate("Profile");
+      navigation.navigate("Profile"); // change this to Home if home is done
     } catch (error: any) {
       setErrors({ general: error.message || "Invalid login credentials." });
     }
@@ -90,7 +87,10 @@ export default function LoginScreen({ navigation }: Props) {
           <Text style={styles.label}>Password</Text>
 
           <View
-            style={[styles.input, errors.email && { borderColor: "#670718" }]}
+            style={[
+              styles.input,
+              errors.password && { borderColor: "#670718" },
+            ]}
           >
             <MaterialIcons
               name="lock"
@@ -140,7 +140,7 @@ export default function LoginScreen({ navigation }: Props) {
         <Text style={styles.dont}>Don't have account?</Text>
 
         <TouchableOpacity onPress={() => navigation.navigate("CreateAccount")}>
-          <Text style={styles.sign}>Sign In</Text>
+          <Text style={styles.sign}>Sign Up</Text>
         </TouchableOpacity>
       </ScrollView>
     </ImageBackground>
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  inputWithIcon: { flex: 1, fontSize: 14, color: "#000", padding: 0 },
+  inputWithIcon: { flex: 1, fontSize: 14, color: "#4B2C11", padding: 0 },
 
   button: {
     backgroundColor: "#A97C4E",

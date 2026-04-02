@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { RootStackParamList } from "../../../../App";
+import { validateResetPassword } from "../utils/authValidation";
 
 type NavProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -40,18 +41,9 @@ export default function ResetPasswordScreen() {
   async function handleSubmit() {
     setError("");
 
-    if (!password || !confirmPassword) {
-      setError("Please fill in both fields.");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    const validationError = validateResetPassword(password, confirmPassword);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -76,7 +68,7 @@ export default function ResetPasswordScreen() {
         style={styles.background}
         resizeMode="cover"
       >
-        <View style={styles.container}>
+        <View style={styles.centeredContent}>
           <Text style={styles.title}>Invalid or expired link</Text>
           <Text style={styles.subtitle}>
             This link is no longer valid. Please request a new one.
@@ -100,7 +92,7 @@ export default function ResetPasswordScreen() {
         style={styles.background}
         resizeMode="cover"
       >
-        <View style={styles.container}>
+        <View style={styles.centeredContent}>
           <Text style={styles.title2}>Password updated!</Text>
           <Text style={styles.subtitle}>Redirecting you to login...</Text>
         </View>
@@ -164,24 +156,20 @@ export default function ResetPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  background: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  },
+
+  // Shared centered layout for invalid-link and success states
+  centeredContent: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
-  card: {
-    width: "100%",
-    maxWidth: 420,
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    padding: 28,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
+
   title: {
     fontSize: 38,
     fontWeight: "700",
@@ -191,7 +179,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 56,
   },
-
   title2: {
     fontSize: 38,
     fontWeight: "700",
@@ -199,9 +186,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     fontFamily: "SourceSerifPro-Regular",
     textAlign: "center",
-    marginTop: 150,
   },
-
   subtitle: {
     fontSize: 15,
     color: "#4B2C11",
@@ -210,7 +195,6 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginTop: 15,
   },
-
   label: {
     fontSize: 14,
     fontWeight: "500",
@@ -220,7 +204,6 @@ const styles = StyleSheet.create({
     fontFamily: "SourceSerifPro-Regular",
   },
   input: {
-    flexDirection: "row",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -233,7 +216,6 @@ const styles = StyleSheet.create({
     borderColor: "#C8AA7A",
     borderWidth: 1,
   },
-
   errorText: {
     fontSize: 13,
     color: "#670718",
@@ -251,9 +233,8 @@ const styles = StyleSheet.create({
     marginLeft: 40,
     marginRight: 40,
   },
-
   buttonDisabled: {
-    backgroundColor: "#A97C4E",
+    backgroundColor: "#C8A87A",
   },
   buttonText: {
     color: "#FFEFD5",
@@ -267,11 +248,5 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "SourceSerifPro-Regular",
     paddingHorizontal: 50,
-  },
-
-  background: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
   },
 });

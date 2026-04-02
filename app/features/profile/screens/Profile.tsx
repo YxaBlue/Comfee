@@ -11,6 +11,7 @@ import { format, parseISO } from "date-fns";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   ScrollView,
   StyleSheet,
@@ -41,7 +42,6 @@ type EditableFields = {
   username: string;
   first_name: string;
   last_name: string;
-  age: string;
   birth_date: string;
   bio: string;
 };
@@ -147,10 +147,34 @@ function ReviewCard({ review }: { review: Review }) {
   );
 }
 
+// PERF: Skeleton shown while profile data is loading — prevents blank screen flash.
+function ProfileSkeleton() {
+  return (
+    <View style={styles.wrapper}>
+      <View
+        style={[
+          styles.headerBand,
+          { justifyContent: "center", alignItems: "center" },
+        ]}
+      >
+        <ActivityIndicator size="large" color="#8C6D4F" />
+      </View>
+      <View style={{ padding: 20, gap: 10 }}>
+        <View style={styles.skeletonLine} />
+        <View style={[styles.skeletonLine, { width: "50%" }]} />
+        <View style={[styles.skeletonLine, { width: "70%", marginTop: 20 }]} />
+        <View style={[styles.skeletonLine, { width: "60%" }]} />
+      </View>
+    </View>
+  );
+}
+
 export default function ProfileScreen({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("reviews");
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<null | any>(null);
+  // PERF: Track loading state so we show a skeleton instead of a blank screen.
+  const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -158,7 +182,6 @@ export default function ProfileScreen({ navigation }: Props) {
     username: "",
     first_name: "",
     last_name: "",
-    age: "",
     birth_date: "",
     bio: "",
   });
@@ -173,23 +196,37 @@ export default function ProfileScreen({ navigation }: Props) {
     const fetchProfile = async () => {
       try {
         const {
-          data: { user },
-        } = await supabase.auth.getUser();
+          data: { session },
+        } = await supabase.auth.getSession();
 
-        if (!user) {
+        if (!session?.user) {
           navigation.navigate("Login");
           return;
         }
 
-        setUserId(user.id);
-        const data = await getProfile(user.id);
+        const uid = session.user.id;
+        setUserId(uid);
+
+        const [data] = await Promise.all([
+          getProfile(uid),
+          supabase.auth.getUser(),
+        ]);
+
         setProfile(data);
       } catch (err) {
         console.error("Failed to fetch profile:", err);
+      } finally {
+        // PERF: Always clear loading whether fetch succeeded or failed.
+        setIsLoading(false);
       }
     };
+
     fetchProfile();
+    // No auth listener here — that lives once in App.tsx.
   }, []);
+
+  // PERF: Show skeleton while loading instead of a half-rendered screen.
+  if (isLoading) return <ProfileSkeleton />;
 
   const handleEditPress = () => {
     setActiveTab("info");
@@ -198,7 +235,6 @@ export default function ProfileScreen({ navigation }: Props) {
       username: profile?.username || "",
       first_name: profile?.first_name || "",
       last_name: profile?.last_name || "",
-      age: profile?.age?.toString() || "",
       birth_date: profile?.birth_date || "",
       bio: profile?.bio || "",
     });
@@ -216,7 +252,6 @@ export default function ProfileScreen({ navigation }: Props) {
           username: editFields.username || profile?.username,
           first_name: editFields.first_name,
           last_name: editFields.last_name,
-          age: editFields.age,
           birth_date: editFields.birth_date,
           bio: editFields.bio,
         },
@@ -225,12 +260,11 @@ export default function ProfileScreen({ navigation }: Props) {
       setProfile((prev: any) => ({
         ...prev,
         ...editFields,
-        age: editFields.age ? Number(editFields.age) : prev?.age,
       }));
       setIsEditing(false);
     } catch (err: any) {
-      if (err?.firstName || err?.lastName || err?.username || err?.birthDate) {
-        setFieldErrors(err);
+      if (err?.validationErrors) {
+        setFieldErrors(err.validationErrors);
       } else {
         console.error("Failed to save profile:", err);
       }
@@ -279,7 +313,6 @@ export default function ProfileScreen({ navigation }: Props) {
       >
         {/* ── Header band ── */}
         <View style={styles.headerBand}>
-          {/* ── Tap anywhere to close menu ── */}
           {menuVisible && (
             <TouchableOpacity
               style={styles.menuOverlay}
@@ -288,7 +321,6 @@ export default function ProfileScreen({ navigation }: Props) {
             />
           )}
 
-          {/* ── 3 dots button ── */}
           <TouchableOpacity
             style={styles.menuDots}
             onPress={() => setMenuVisible((prev) => !prev)}
@@ -296,7 +328,6 @@ export default function ProfileScreen({ navigation }: Props) {
             <MaterialIcons name="more-vert" size={22} color="#6B4F2E" />
           </TouchableOpacity>
 
-          {/* ── Dropdown box ── */}
           {menuVisible && (
             <View style={styles.dropdown}>
               <TouchableOpacity
@@ -312,6 +343,7 @@ export default function ProfileScreen({ navigation }: Props) {
               </TouchableOpacity>
             </View>
           )}
+
           <View style={styles.avatarWrapper}>
             <TouchableOpacity
               onPress={isEditing ? handlePickAvatar : undefined}
@@ -322,7 +354,7 @@ export default function ProfileScreen({ navigation }: Props) {
                   <Image
                     key={profile.profile_picture}
                     source={{ uri: profile.profile_picture }}
-                    style={{ width: "100%", height: "100%", borderRadius: 48 }}
+                    style={{ width: "100%", height: "100%", borderRadius: 53 }}
                   />
                 ) : (
                   <MaterialIcons name="person" size={52} color="#C8A97A" />
@@ -477,22 +509,9 @@ export default function ProfileScreen({ navigation }: Props) {
               <View style={styles.infoRow}>
                 <View style={styles.infoField}>
                   <Text style={styles.infoLabel}>Age</Text>
-                  {isEditing ? (
-                    <TextInput
-                      style={styles.infoInput}
-                      value={editFields.age}
-                      onChangeText={(v) =>
-                        setEditFields((p) => ({ ...p, age: v }))
-                      }
-                      placeholder="Age"
-                      placeholderTextColor="#B09070"
-                      keyboardType="numeric"
-                    />
-                  ) : (
-                    <View style={styles.infoValueBox}>
-                      <Text style={styles.infoValue}>{profile?.age}</Text>
-                    </View>
-                  )}
+                  <View style={styles.infoValueBox}>
+                    <Text style={styles.infoValue}>{profile?.age}</Text>
+                  </View>
                 </View>
                 <View style={styles.infoField}>
                   <Text style={styles.infoLabel}>Birth Date</Text>
@@ -549,7 +568,6 @@ export default function ProfileScreen({ navigation }: Props) {
                 )}
               </View>
 
-              {/* ── Save / Cancel buttons ── */}
               {isEditing && (
                 <View style={styles.editActionsRow}>
                   <TouchableOpacity
@@ -588,14 +606,13 @@ export default function ProfileScreen({ navigation }: Props) {
               <Image
                 key={profile.profile_picture}
                 source={{ uri: profile.profile_picture }}
-                style={{ width: "100%", height: "100%", borderRadius: 48 }}
+                style={{ width: "100%", height: "100%", borderRadius: 18 }}
               />
             ) : (
-              <MaterialIcons name="person" size={52} color="#C8A97A" />
+              <MaterialIcons name="person" size={28} color="#C8A97A" />
             )}
           </View>
         </TouchableOpacity>
-
         <TouchableOpacity
           style={styles.navItem}
           onPress={() => navigation.navigate("Home" as never)}
@@ -605,7 +622,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => navigation.navigate("Settings")}
+          onPress={() => navigation.navigate("Settings" as never)}
         >
           <MaterialIcons name="settings" size={26} color="#6B4F2E" />
         </TouchableOpacity>
@@ -617,6 +634,14 @@ export default function ProfileScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: "#EDDEC7" },
   container: { flexGrow: 1, backgroundColor: "#EDDEC7" },
+
+  // PERF: Skeleton pulse lines shown while profile loads.
+  skeletonLine: {
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#D4B896",
+    width: "80%",
+  },
 
   /* Header */
   headerBand: {
@@ -637,7 +662,7 @@ const styles = StyleSheet.create({
   avatarCircle: {
     width: 106,
     height: 106,
-    borderRadius: 48,
+    borderRadius: 53,
     backgroundColor: "#E6D6BE",
     borderWidth: 3,
     borderColor: "#EDDEC7",
@@ -910,6 +935,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
   },
+
   menuOverlay: {
     position: "absolute",
     top: 0,
@@ -925,10 +951,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FDF6EC",
     borderRadius: 10,
     paddingVertical: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.12,
-    shadowRadius: 6,
+    boxShadow: "0px 1px 8px rgba(0, 0, 0, 0.06)",
     elevation: 5,
     zIndex: 10,
     minWidth: 130,

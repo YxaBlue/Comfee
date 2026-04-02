@@ -40,26 +40,26 @@ export default function ForgotPasswordScreen() {
     }
   }
 
-  // Success state — shown after email is sent
+  // Success state
   if (sent) {
     return (
-      <View style={styles.container}>
-        <ImageBackground
-          source={require("../../../../assets/images/bg1.png")}
-          style={styles.background}
-          resizeMode="cover"
-        >
+      <ImageBackground
+        source={require("../../../../assets/images/bg1.png")}
+        style={styles.background}
+        resizeMode="cover"
+      >
+        <View style={styles.centeredContent}>
           <Text style={styles.title2}>Check your email</Text>
           <Text style={styles.subtitle}>
-            Comfee sent a password reset link to{" "}
+            We sent a password reset link to{" "}
             <Text style={styles.emailHighlight}>{email}</Text>
           </Text>
           <Text style={styles.linkText}>Didn't receive it?</Text>
           <TouchableOpacity onPress={() => setSent(false)}>
             <Text style={styles.linkTextBold}>Try again</Text>
           </TouchableOpacity>
-        </ImageBackground>
-      </View>
+        </View>
+      </ImageBackground>
     );
   }
 
@@ -113,23 +113,20 @@ export default function ForgotPasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+  background: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  },
+
+  // Used only in the sent/success state
+  centeredContent: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 20,
   },
-  card: {
-    width: "100%",
-    maxWidth: 420,
-    backgroundColor: "#F0D8B4",
-    borderRadius: 16,
-    padding: 28,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
+
   backButton: {
     marginBottom: 20,
   },
@@ -150,7 +147,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 56,
   },
-
   title2: {
     fontSize: 38,
     fontWeight: "700",
@@ -158,14 +154,13 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     fontFamily: "SourceSerifPro-Regular",
     textAlign: "center",
-    marginTop: 150,
   },
   subtitle: {
     fontSize: 15,
     color: "#4B2C11",
     marginBottom: 20,
     fontFamily: "SourceSerifPro-Regular",
-    alignSelf: "center",
+    textAlign: "center",
     marginTop: 15,
   },
   emailHighlight: {
@@ -181,7 +176,6 @@ const styles = StyleSheet.create({
     fontFamily: "SourceSerifPro-Regular",
   },
   input: {
-    flexDirection: "row",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -194,7 +188,6 @@ const styles = StyleSheet.create({
     borderColor: "#C8AA7A",
     borderWidth: 1,
   },
-
   errorText: {
     fontSize: 13,
     color: "#670718",
@@ -212,8 +205,9 @@ const styles = StyleSheet.create({
     marginLeft: 40,
     marginRight: 40,
   },
+  // FIX #7 (applied here too for consistency): disabled state is visually distinct
   buttonDisabled: {
-    backgroundColor: "#A97C4E",
+    backgroundColor: "#C8A87A",
   },
   buttonText: {
     color: "#FFEFD5",
@@ -221,7 +215,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: "SourceSerifPro-Regular",
   },
-
   linkText: {
     fontSize: 13,
     color: "#4B2C11",
@@ -241,11 +234,5 @@ const styles = StyleSheet.create({
     marginRight: 100,
     fontFamily: "SourceSerifPro-Regular",
     fontSize: 15,
-  },
-
-  background: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
   },
 });

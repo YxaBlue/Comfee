@@ -13,7 +13,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { RootStackParamList } from "../../../App";
+import { RootStackParamList } from "../../../../App";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Settings">;
