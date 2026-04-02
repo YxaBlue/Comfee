@@ -1,8 +1,10 @@
 // utils/validation.ts
+import { supabase } from "@/app/shared/lib/supabaseClient";
 
 type signUpData = {
   firstName: string;
   lastName: string;
+  username: string;
   email: string;
   password: string;
   confirmPassword: string;
@@ -10,6 +12,21 @@ type signUpData = {
   birthDay: string;
   birthYear: string;
 };
+
+async function validateUsername(username: string) {
+  if (!username.trim()) return "Username is required.";
+
+  // check uniqueness in Supabase
+  const { data, error } = await supabase
+    .from("profile")
+    .select("id")
+    .eq("username", username.trim());
+
+  if (error) return "Error checking username.";
+  if (data && data.length > 0) return "Username already taken.";
+
+  return "";
+}
 
 function validateEmail(email: string) {
   if (!email.trim()) return "Email is required.";
@@ -34,12 +51,15 @@ export function validateLogin(email: string, password: string) {
   return errors;
 }
 
-export function validateSignUp(data: signUpData) {
+export async function validateSignUp(data: signUpData) {
   const errors: Record<string, string> = {};
 
   if (!data.firstName.trim()) errors.firstName = "First name is required.";
 
   if (!data.lastName.trim()) errors.lastName = "Last name is required.";
+
+  const usernameError = await validateUsername(data.username);
+  if (usernameError) errors.username = usernameError;
 
   const emailError = validateEmail(data.email);
   if (emailError) errors.email = emailError;
@@ -78,6 +98,47 @@ export function validateSignUp(data: signUpData) {
   const currentYear = new Date().getFullYear();
   if (isNaN(year) || year < 1900 || year > currentYear)
     errors.birthYear = "Birth year is invalid.";
+
+  return errors;
+}
+
+export async function validateEditProfile(
+  data: {
+    username: string;
+    first_name: string;
+    last_name: string;
+    birth_date: string; // expects "YYYY-MM-DD"
+    bio: string;
+  },
+  currentUsername: string, // pass the original so we skip uniqueness check if unchanged
+) {
+  const errors: Record<string, string> = {};
+
+  if (!data.first_name.trim()) errors.firstName = "First name is required.";
+  if (!data.last_name.trim()) errors.lastName = "Last name is required.";
+
+  // Only check uniqueness if username actually changed
+  if (!data.username.trim()) {
+    errors.username = "Username is required.";
+  } else if (data.username.trim() !== currentUsername.trim()) {
+    const usernameError = await validateUsername(data.username);
+    if (usernameError) errors.username = usernameError;
+  }
+
+  if (!data.birth_date.trim()) {
+    errors.birthDate = "Birth date is required.";
+  } else {
+    const parsed = new Date(data.birth_date);
+    const currentYear = new Date().getFullYear();
+    if (isNaN(parsed.getTime())) {
+      errors.birthDate = "Birth date is invalid.";
+    } else if (
+      parsed.getFullYear() < 1900 ||
+      parsed.getFullYear() > currentYear
+    ) {
+      errors.birthDate = "Birth date is out of range.";
+    }
+  }
 
   return errors;
 }
