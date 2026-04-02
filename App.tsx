@@ -22,14 +22,14 @@ export type RootStackParamList = {
 
 const linking = {
   prefixes: ["yourapp://", "exp://"],
-  // config: {
-  //   screens: {
-  //     ResetPassword: "reset-password",
-  //     Login: "login",
-  //     CreateAccount: "create-account",
-  //     ForgotPassword: "forgot-password",
-  //   },
-  // },
+  config: {
+    screens: {
+      ResetPassword: "reset-password",
+      Login: "login",
+      CreateAccount: "create-account",
+      ForgotPassword: "forgot-password",
+    },
+  },
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
