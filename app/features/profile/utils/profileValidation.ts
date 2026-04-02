@@ -1,6 +1,4 @@
 // app/shared/utils/validation.ts
-// FIX #10: validateEditProfile moved here from app/features/auth/utils/validation.ts
-// so that the profile feature doesn't depend on the auth feature's internals.
 import { validateUsername } from "@/app/shared/utils/validation";
 
 export async function validateEditProfile(

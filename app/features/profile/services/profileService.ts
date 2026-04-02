@@ -2,8 +2,6 @@ import { calculateAge } from "@/app/shared/utils/dateUtils";
 import { supabase } from "../../../shared/lib/supabaseClient";
 import { validateEditProfile } from "../utils/profileValidation";
 
-// FIX #6: Removed `age` from type — it's always derived from birth_date,
-// never taken from the caller.
 type updatedData = {
   userId: string;
   username: string;
@@ -37,8 +35,6 @@ export async function editProfile(data: updatedData, currentUsername: string) {
     currentUsername,
   );
 
-  // FIX #4: Throw a proper Error with a `validationErrors` field instead of
-  // throwing a plain object. Plain object throws are not standard and upset TS.
   if (Object.keys(errors).length > 0) {
     const err = new Error("Validation failed") as any;
     err.validationErrors = errors;

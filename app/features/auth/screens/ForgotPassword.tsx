@@ -205,7 +205,6 @@ const styles = StyleSheet.create({
     marginLeft: 40,
     marginRight: 40,
   },
-  // FIX #7 (applied here too for consistency): disabled state is visually distinct
   buttonDisabled: {
     backgroundColor: "#C8A87A",
   },
