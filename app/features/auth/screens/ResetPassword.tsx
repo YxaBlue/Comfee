@@ -5,8 +5,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+  ImageBackground,
   StyleSheet,
   Text,
   TextInput,
@@ -72,11 +71,12 @@ export default function ResetPasswordScreen() {
   // User arrived without a valid reset link
   if (!isValidSession) {
     return (
-      <View style={styles.container}>
-        <View style={styles.card}>
-          <View style={styles.iconCircleYellow}>
-            <Text style={styles.iconText}>!</Text>
-          </View>
+      <ImageBackground
+        source={require("../../../../assets/images/bg1.png")}
+        style={styles.background}
+        resizeMode="cover"
+      >
+        <View style={styles.container}>
           <Text style={styles.title}>Invalid or expired link</Text>
           <Text style={styles.subtitle}>
             This link is no longer valid. Please request a new one.
@@ -85,91 +85,87 @@ export default function ResetPasswordScreen() {
             style={styles.button}
             onPress={() => navigation.navigate("ForgotPassword")}
           >
-            <Text style={styles.buttonText}>Request new link</Text>
+            <Text style={styles.resetText}>Request new link</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ImageBackground>
     );
   }
 
   // Success state
   if (success) {
     return (
-      <View style={styles.container}>
-        <View style={styles.card}>
-          <View style={styles.iconCircleGreen}>
-            <Text style={styles.iconText}>✓</Text>
-          </View>
-          <Text style={styles.title}>Password updated!</Text>
+      <ImageBackground
+        source={require("../../../../assets/images/bg1.png")}
+        style={styles.background}
+        resizeMode="cover"
+      >
+        <View style={styles.container}>
+          <Text style={styles.title2}>Password updated!</Text>
           <Text style={styles.subtitle}>Redirecting you to login...</Text>
         </View>
-      </View>
+      </ImageBackground>
     );
   }
 
+  //Set new pass
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <ImageBackground
+      source={require("../../../../assets/images/bg1.png")}
+      style={styles.background}
+      resizeMode="cover"
     >
-      <View style={styles.card}>
-        <Text style={styles.title}>Set a new password</Text>
-        <Text style={styles.subtitle}>Must be at least 8 characters.</Text>
+      <Text style={styles.title}>Set a new password</Text>
+      <Text style={styles.subtitle}>Must be at least 8 characters.</Text>
 
-        {/* New password */}
-        <Text style={styles.label}>New password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="••••••••"
-          placeholderTextColor="#9ca3af"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
+      {/* New password */}
+      <Text style={styles.label}>New password</Text>
+      <TextInput
+        style={[styles.input, error && { borderColor: "#670718" }]}
+        placeholder="Enter new password"
+        placeholderTextColor="#C8AA7A"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
 
-        {/* Confirm password */}
-        <Text style={styles.label}>Confirm new password</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="••••••••"
-          placeholderTextColor="#9ca3af"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
+      {/* Confirm password */}
+      <Text style={styles.label}>Confirm new password</Text>
+      <TextInput
+        style={[styles.input, error && { borderColor: "#670718" }]}
+        placeholder="Confirm new password"
+        placeholderTextColor="#C8AA7A"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        secureTextEntry
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
 
-        {/* Error message */}
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
+      {/* Error message */}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        {/* Submit button */}
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Update password</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+      {/* Submit button */}
+      <TouchableOpacity
+        style={[styles.button, loading && styles.buttonDisabled]}
+        onPress={handleSubmit}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Update password</Text>
+        )}
+      </TouchableOpacity>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 16,
@@ -187,83 +183,95 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   title: {
-    fontSize: 22,
-    fontWeight: "600",
-    color: "#111827",
+    fontSize: 38,
+    fontWeight: "700",
+    color: "#4B2C11",
     marginBottom: 6,
+    fontFamily: "SourceSerifPro-Regular",
     textAlign: "center",
+    marginTop: 56,
   },
+
+  title2: {
+    fontSize: 38,
+    fontWeight: "700",
+    color: "#4B2C11",
+    marginBottom: 6,
+    fontFamily: "SourceSerifPro-Regular",
+    textAlign: "center",
+    marginTop: 150,
+  },
+
   subtitle: {
-    fontSize: 14,
-    color: "#6b7280",
-    marginBottom: 20,
-    textAlign: "center",
+    fontSize: 15,
+    color: "#4B2C11",
+    marginBottom: 30,
+    fontFamily: "SourceSerifPro-Regular",
+    alignSelf: "center",
+    marginTop: 15,
   },
+
   label: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#374151",
-    marginBottom: 6,
+    color: "#4B2C11",
+    marginTop: 20,
+    marginLeft: 42,
+    fontFamily: "SourceSerifPro-Regular",
   },
   input: {
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
+    flexDirection: "row",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    color: "#111827",
-    marginBottom: 12,
+    color: "#4B2C11",
+    backgroundColor: "#F0D8B4",
+    marginLeft: 40,
+    marginRight: 40,
+    marginTop: 7,
+    borderColor: "#C8AA7A",
+    borderWidth: 1,
   },
-  errorBox: {
-    backgroundColor: "#fef2f2",
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 12,
-  },
+
   errorText: {
     fontSize: 13,
-    color: "#ef4444",
+    color: "#670718",
+    textAlign: "left",
+    marginLeft: 42,
+    fontFamily: "SourceSerifPro-Regular",
+    marginTop: 7,
   },
   button: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#A97C4E",
     borderRadius: 10,
     paddingVertical: 13,
     alignItems: "center",
-    marginTop: 4,
+    marginTop: 15,
+    marginLeft: 40,
+    marginRight: 40,
   },
+
   buttonDisabled: {
-    backgroundColor: "#93c5fd",
+    backgroundColor: "#A97C4E",
   },
   buttonText: {
-    color: "#ffffff",
-    fontWeight: "600",
-    fontSize: 14,
+    color: "#FFEFD5",
+    fontWeight: "500",
+    fontSize: 20,
+    fontFamily: "SourceSerifPro-Regular",
   },
-  iconCircleGreen: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#dcfce7",
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "center",
-    marginBottom: 16,
+  resetText: {
+    color: "#FFEFD5",
+    fontWeight: "500",
+    fontSize: 15,
+    fontFamily: "SourceSerifPro-Regular",
+    paddingHorizontal: 50,
   },
-  iconCircleYellow: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#fef9c3",
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "center",
-    marginBottom: 16,
-  },
-  iconText: {
-    fontSize: 28,
-    color: "#16a34a",
+
+  background: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
   },
 });

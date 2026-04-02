@@ -4,8 +4,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
+  ImageBackground,
   StyleSheet,
   Text,
   TextInput,
@@ -25,7 +24,7 @@ export default function ForgotPasswordScreen() {
 
   async function handleSubmit() {
     if (!email) {
-      setError("Please enter your email address.");
+      setError("Please enter your email address");
       return;
     }
     setLoading(true);
@@ -45,94 +44,84 @@ export default function ForgotPasswordScreen() {
   if (sent) {
     return (
       <View style={styles.container}>
-        <View style={styles.card}>
-          <View style={styles.iconCircleGreen}>
-            <Text style={styles.iconText}>✓</Text>
-          </View>
-          <Text style={styles.title}>Check your email</Text>
+        <ImageBackground
+          source={require("../../../../assets/images/bg1.png")}
+          style={styles.background}
+          resizeMode="cover"
+        >
+          <Text style={styles.title2}>Check your email</Text>
           <Text style={styles.subtitle}>
-            We sent a password reset link to{" "}
+            Comfee sent a password reset link to{" "}
             <Text style={styles.emailHighlight}>{email}</Text>
           </Text>
+          <Text style={styles.linkText}>Didn't receive it?</Text>
           <TouchableOpacity onPress={() => setSent(false)}>
-            <Text style={styles.linkText}>
-              Didn't receive it?{" "}
-              <Text style={styles.linkTextBold}>Try again</Text>
-            </Text>
+            <Text style={styles.linkTextBold}>Try again</Text>
           </TouchableOpacity>
-        </View>
+        </ImageBackground>
       </View>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    <ImageBackground
+      source={require("../../../../assets/images/bg1.png")}
+      style={styles.background}
+      resizeMode="cover"
     >
-      <View style={styles.card}>
-        {/* Back to login */}
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.navigate("Login")}
-        >
-          <Text style={styles.backButtonText}>← Back to login</Text>
-        </TouchableOpacity>
+      <Text style={styles.title}>Forgot your password?</Text>
 
-        <Text style={styles.title}>Forgot your password?</Text>
-        <Text style={styles.subtitle}>
-          Enter your email and we'll send you a reset link.
-        </Text>
+      {/* Email input */}
+      <Text style={styles.label}>Enter email address</Text>
 
-        {/* Email input */}
-        <Text style={styles.label}>Email address</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="you@example.com"
-          placeholderTextColor="#9ca3af"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
+      <TextInput
+        style={[styles.input, error && { borderColor: "#670718" }]}
+        placeholder="you@example.com"
+        placeholderTextColor="#C8AA7A"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+      />
 
-        {/* Error message */}
-        {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        ) : null}
+      {/* Error message */}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        {/* Submit button */}
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Send reset link</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+      {/* Submit button */}
+      <TouchableOpacity
+        style={[styles.button, loading && styles.buttonDisabled]}
+        onPress={handleSubmit}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Send reset link</Text>
+        )}
+      </TouchableOpacity>
+
+      {/* Back to login */}
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => navigation.navigate("Login")}
+      >
+        <Text style={styles.backButtonText}>Back to Login</Text>
+      </TouchableOpacity>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 16,
   },
   card: {
     width: "100%",
     maxWidth: 420,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#F0D8B4",
     borderRadius: 16,
     padding: 28,
     shadowColor: "#000",
@@ -145,89 +134,118 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   backButtonText: {
-    fontSize: 14,
-    color: "#6b7280",
+    fontSize: 15,
+    color: "#4B2C11",
+    fontFamily: "SourceSerifPro-Regular",
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: 35,
   },
   title: {
-    fontSize: 22,
-    fontWeight: "600",
-    color: "#111827",
+    fontSize: 38,
+    fontWeight: "700",
+    color: "#4B2C11",
     marginBottom: 6,
+    fontFamily: "SourceSerifPro-Regular",
+    textAlign: "center",
+    marginTop: 56,
+  },
+
+  title2: {
+    fontSize: 38,
+    fontWeight: "700",
+    color: "#4B2C11",
+    marginBottom: 6,
+    fontFamily: "SourceSerifPro-Regular",
+    textAlign: "center",
+    marginTop: 150,
   },
   subtitle: {
-    fontSize: 14,
-    color: "#6b7280",
+    fontSize: 15,
+    color: "#4B2C11",
     marginBottom: 20,
+    fontFamily: "SourceSerifPro-Regular",
+    alignSelf: "center",
+    marginTop: 15,
   },
   emailHighlight: {
     fontWeight: "500",
-    color: "#374151",
+    color: "#4B2C11",
   },
   label: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "500",
-    color: "#374151",
-    marginBottom: 6,
+    color: "#4B2C11",
+    marginTop: 80,
+    marginLeft: 42,
+    fontFamily: "SourceSerifPro-Regular",
   },
   input: {
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
+    flexDirection: "row",
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    color: "#111827",
-    marginBottom: 12,
+    color: "#4B2C11",
+    backgroundColor: "#F0D8B4",
+    marginLeft: 40,
+    marginRight: 40,
+    marginTop: 7,
+    borderColor: "#C8AA7A",
+    borderWidth: 1,
   },
-  errorBox: {
-    backgroundColor: "#fef2f2",
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 12,
-  },
+
   errorText: {
     fontSize: 13,
-    color: "#ef4444",
+    color: "#670718",
+    textAlign: "left",
+    marginLeft: 42,
+    fontFamily: "SourceSerifPro-Regular",
+    marginTop: 7,
   },
   button: {
-    backgroundColor: "#2563eb",
+    backgroundColor: "#A97C4E",
     borderRadius: 10,
     paddingVertical: 13,
     alignItems: "center",
-    marginTop: 4,
+    marginTop: 15,
+    marginLeft: 40,
+    marginRight: 40,
   },
   buttonDisabled: {
-    backgroundColor: "#93c5fd",
+    backgroundColor: "#A97C4E",
   },
   buttonText: {
-    color: "#ffffff",
-    fontWeight: "600",
-    fontSize: 14,
+    color: "#FFEFD5",
+    fontWeight: "500",
+    fontSize: 20,
+    fontFamily: "SourceSerifPro-Regular",
   },
-  iconCircleGreen: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#dcfce7",
-    alignItems: "center",
-    justifyContent: "center",
-    alignSelf: "center",
-    marginBottom: 16,
-  },
-  iconText: {
-    fontSize: 28,
-    color: "#16a34a",
-  },
+
   linkText: {
     fontSize: 13,
-    color: "#9ca3af",
+    color: "#4B2C11",
     textAlign: "center",
-    marginTop: 12,
+    marginTop: 18,
+    marginBottom: 7,
+    fontFamily: "SourceSerifPro-Regular",
   },
   linkTextBold: {
-    color: "#2563eb",
-    fontWeight: "500",
+    color: "#4B2C11",
+    fontWeight: "600",
+    textAlign: "center",
+    borderRadius: 10,
+    paddingVertical: 10,
+    backgroundColor: "#F0D8B4",
+    marginLeft: 100,
+    marginRight: 100,
+    fontFamily: "SourceSerifPro-Regular",
+    fontSize: 15,
+  },
+
+  background: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
   },
 });
