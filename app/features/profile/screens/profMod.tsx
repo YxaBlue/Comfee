@@ -1,8 +1,10 @@
+//untouched version
+
 import { signOut } from "@/app/features/auth/services/authService";
 import {
-  editProfile,
-  getProfile,
-  uploadAvatar,
+    editProfile,
+    getProfile,
+    uploadAvatar,
 } from "@/app/features/profile/services/profileService";
 import { supabase } from "@/app/shared/lib/supabaseClient";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -11,14 +13,14 @@ import { format, parseISO } from "date-fns";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { RootStackParamList } from "../../../../App";
 
@@ -307,23 +309,6 @@ export default function ProfileScreen({ navigation }: Props) {
 
   return (
     <View style={styles.wrapper}>
-      <View style={[styles.headCont, styles.shadow, styles.androidShadow]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate("Dashboard")}>
-            <Image
-              source={require("../../../../assets/images/logo.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-          <Image
-            source={require("../../../../assets/images/profileHolder1.png")}
-            style={styles.profHolder}
-            resizeMode="contain"
-          />
-        </View>
-      </View>
-
       <ScrollView
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
@@ -342,12 +327,11 @@ export default function ProfileScreen({ navigation }: Props) {
             style={styles.menuDots}
             onPress={() => setMenuVisible((prev) => !prev)}
           >
-            <MaterialIcons name="more-vert" size={22} color="#e12f2f" />
+            <MaterialIcons name="more-vert" size={22} color="#6B4F2E" />
           </TouchableOpacity>
 
           {menuVisible && (
             <View style={styles.dropdown}>
-              {/*Logout option*/}
               <TouchableOpacity
                 style={styles.dropdownItem}
                 onPress={async () => {
@@ -356,7 +340,7 @@ export default function ProfileScreen({ navigation }: Props) {
                   navigation.navigate("Login");
                 }}
               >
-                <MaterialIcons name="logout" size={16} color="#4d2e6b" />
+                <MaterialIcons name="logout" size={16} color="#6B4F2E" />
                 <Text style={styles.dropdownText}>Log out</Text>
               </TouchableOpacity>
             </View>
@@ -663,14 +647,14 @@ const styles = StyleSheet.create({
 
   /* Header */
   headerBand: {
-    height: 100,
+    height: 160,
     backgroundColor: "#D4B896",
     alignItems: "center",
     justifyContent: "flex-end",
   },
   menuDots: {
     position: "absolute",
-    marginTop: 10,
+    top: 12,
     right: 14,
   },
   avatarWrapper: {
@@ -964,9 +948,9 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     position: "absolute",
-    top: 100,
+    top: 38,
     right: 14,
-    backgroundColor: "#e2ab6d",
+    backgroundColor: "#FDF6EC",
     borderRadius: 10,
     paddingVertical: 6,
     boxShadow: "0px 1px 8px rgba(0, 0, 0, 0.06)",
@@ -985,53 +969,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#6B4F2E",
     fontWeight: "500",
-  },
-
-  /* Added */
-
-  headCont: {
-    backgroundColor: "#E9D0A2",
-    borderRadius: 0,
-    padding: 0,
-    marginBottom: 1,
-    width: "100%",
-    height: 79,
-    shadowColor: "#0b0b0b",
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 5,
-  },
-
-  shadow: {
-    shadowColor: "#00000040",
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.75,
-    shadowRadius: 7,
-  },
-
-  androidShadow: {
-    elevation: 15,
-  },
-
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    height: 79,
-  },
-
-  logo: {
-    top: 15,
-    width: 40,
-    height: 40,
-  },
-
-  profHolder: {
-    top: 15,
-    width: 40,
-    height: 40,
   },
 });

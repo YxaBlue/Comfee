@@ -1,7 +1,11 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 import { MaterialIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+//import { useRouter } from "expo-router";
+import { RootStackParamList } from "@/App";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+
 import {
   FlatList,
   Image,
@@ -11,11 +15,14 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 
+type NavProps = NativeStackNavigationProp<RootStackParamList, "Dashboard">;
+
 export default function CafeCard() {
-  const router = useRouter();
+  const navigation = useNavigation<NavProps>();
   const [search, setSearch] = useState("");
 
   const filter = [
@@ -64,22 +71,27 @@ export default function CafeCard() {
 
   return (
     <ImageBackground
-      source={require("../../assets/images/bg1.png")}
+      source={require("../../../../assets/images/bg1.png")}
       style={styles.background}
       resizeMode="cover"
     >
       <View style={[styles.rectangle1, styles.shadow, styles.androidShadow]}>
         <View style={styles.header}>
-          <Image
-            source={require("../../assets/images/logo.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-          <Image
-            source={require("../../assets/images/profileHolder1.png")}
-            style={styles.profHolder}
-            resizeMode="contain"
-          />
+          <TouchableOpacity onPress={() => navigation.navigate("Dashboard")}>
+            <Image
+              source={require("../../../../assets/images/logo.png")}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate("Profile")}>
+            <Image
+              source={require("../../../../assets/images/profileHolder1.png")}
+              style={styles.profHolder}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
         </View>
       </View>
       <View style={styles.rectangle3}>
@@ -105,7 +117,7 @@ export default function CafeCard() {
         />
 
         <Pressable
-          onPress={() => router.push("/screens/Filter-FE")}
+          onPress={() => navigation.navigate("Filter" as never)}
           hitSlop={10}
           style={styles.filterTrigger}
         >

@@ -10,6 +10,8 @@ import CreateAccountScreen from "./app/features/auth/screens/CreateAccount";
 import ForgotPasswordScreen from "./app/features/auth/screens/ForgotPassword";
 import LoginScreen from "./app/features/auth/screens/Login";
 import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
+import CafeCard from "./app/features/cafe/screens/cafe-card-FE";
+import FilterScreen from "./app/features/cafe/screens/Filter-FE";
 import ProfileScreen from "./app/features/profile/screens/Profile";
 import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";
 import SettingsScreen from "./app/features/settings/screens/Settings";
@@ -23,6 +25,8 @@ export type RootStackParamList = {
   EditProfile: undefined;
   ForgotPassword: undefined;
   ResetPassword: undefined;
+  Dashboard: undefined;
+  Filter: undefined;
 };
 
 const linking = {
@@ -84,6 +88,8 @@ export default function App() {
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+        <Stack.Screen name="Dashboard" component={CafeCard} />
+        <Stack.Screen name="Filter" component={FilterScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

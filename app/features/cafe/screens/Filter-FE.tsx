@@ -1,7 +1,9 @@
-import React, { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
+import { RootStackParamList } from "@/App";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -182,7 +184,8 @@ const createInitialSelections = (
   }, {});
 
 export default function FilterScreen() {
-  const router = useRouter();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [selectedFilters, setSelectedFilters] = useState<FilterSelectionState>(
     () => createInitialSelections(FILTER_CATEGORIES),
   );
@@ -229,7 +232,7 @@ export default function FilterScreen() {
         <View style={styles.header}>
           <View style={styles.headerRow}>
             <Pressable
-              onPress={() => router.back()}
+              onPress={() => navigation.goBack()}
               hitSlop={10}
               style={styles.iconButton}
             >
@@ -323,7 +326,10 @@ export default function FilterScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <Pressable style={styles.applyButton} onPress={() => router.back()}>
+          <Pressable
+            style={styles.applyButton}
+            onPress={() => navigation.goBack()}
+          >
             <Text style={styles.applyButtonText}>Apply Filters</Text>
           </Pressable>
         </View>
