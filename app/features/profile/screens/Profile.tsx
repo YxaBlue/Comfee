@@ -359,6 +359,18 @@ export default function ProfileScreen({ navigation }: Props) {
                 <MaterialIcons name="logout" size={16} color="#4d2e6b" />
                 <Text style={styles.dropdownText}>Log out</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setMenuVisible(false);
+                  navigation.navigate("Dashboard");
+                }}
+              >
+                <Text style={[styles.dropdownText, { color: "#f0e9d5" }]}>
+                  Dashboard
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -670,7 +682,7 @@ const styles = StyleSheet.create({
   },
   menuDots: {
     position: "absolute",
-    marginTop: 10,
+    top: 20,
     right: 14,
   },
   avatarWrapper: {
@@ -964,7 +976,7 @@ const styles = StyleSheet.create({
   },
   dropdown: {
     position: "absolute",
-    top: 100,
+    top: 50,
     right: 14,
     backgroundColor: "#e2ab6d",
     borderRadius: 10,
