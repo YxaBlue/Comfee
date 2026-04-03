@@ -10,6 +10,7 @@ import CreateAccountScreen from "./app/features/auth/screens/CreateAccount";
 import ForgotPasswordScreen from "./app/features/auth/screens/ForgotPassword";
 import LoginScreen from "./app/features/auth/screens/Login";
 import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
+import ProfileBusi from "./app/features/business/screens/profile-busi";
 import CafeCard from "./app/features/cafe/screens/cafe-card-FE";
 import FilterScreen from "./app/features/cafe/screens/Filter-FE";
 import ProfileScreen from "./app/features/profile/screens/Profile";
@@ -27,6 +28,7 @@ export type RootStackParamList = {
   ResetPassword: undefined;
   Dashboard: undefined;
   Filter: undefined;
+  ProfileBusi: undefined;
 };
 
 const linking = {
@@ -90,6 +92,7 @@ export default function App() {
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         <Stack.Screen name="Dashboard" component={CafeCard} />
         <Stack.Screen name="Filter" component={FilterScreen} />
+        <Stack.Screen name="ProfileBusi" component={ProfileBusi} />
       </Stack.Navigator>
     </NavigationContainer>
   );
