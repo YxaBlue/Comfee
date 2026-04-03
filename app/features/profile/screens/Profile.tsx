@@ -330,14 +330,6 @@ export default function ProfileScreen({ navigation }: Props) {
       >
         {/* ── Header band ── */}
         <View style={styles.headerBand}>
-          {menuVisible && (
-            <TouchableOpacity
-              style={styles.menuOverlay}
-              onPress={() => setMenuVisible(false)}
-              activeOpacity={1}
-            />
-          )}
-
           <TouchableOpacity
             style={styles.menuDots}
             onPress={() => setMenuVisible((prev) => !prev)}
@@ -358,6 +350,19 @@ export default function ProfileScreen({ navigation }: Props) {
               >
                 <MaterialIcons name="logout" size={16} color="#4d2e6b" />
                 <Text style={styles.dropdownText}>Log out</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.dropdownItem}
+                onPress={() => {
+                  console.log("Business clicked");
+                  setMenuVisible(false);
+                  navigation.navigate("ProfileBusi");
+                }}
+              >
+                <Text style={[styles.dropdownText, { color: "#f0e9d5" }]}>
+                  Business
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -972,18 +977,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 9,
+    zIndex: 15,
+    pointerEvents: "box-none",
   },
   dropdown: {
     position: "absolute",
-    top: 50,
-    right: 14,
+    top: 10,
+    right: 40,
     backgroundColor: "#e2ab6d",
     borderRadius: 10,
     paddingVertical: 6,
     boxShadow: "0px 1px 8px rgba(0, 0, 0, 0.06)",
     elevation: 5,
-    zIndex: 10,
+    zIndex: 16,
     minWidth: 130,
   },
   dropdownItem: {
