@@ -1,7 +1,9 @@
 import { signOut } from "@/app/features/auth/services/authService";
-import { MaterialIcons } from "@expo/vector-icons";
+import { getProfile } from "@/app/features/profile/services/profileService";
+import { supabase } from "@/app/shared/lib/supabaseClient";
+import TopBar from "@/components/TopBar";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -33,7 +35,27 @@ const ACTION_OPTIONS: ActionOption[] = [
 
 export default function SettingsScreen({ navigation }: Props) {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
   const insets = useSafeAreaInsets();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session?.user) return;
+
+        const data = await getProfile(session.user.id);
+        setProfile(data);
+      } catch (error) {
+        console.error("Failed to load settings profile:", error);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   const handleOptionPress = (label: string) => {
     if (label === "Change Password") {
@@ -63,23 +85,13 @@ export default function SettingsScreen({ navigation }: Props) {
 
   return (
     <View style={styles.wrapper}>
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: insets.top + 18,
-            paddingBottom: 20,
-          },
-        ]}
-      >
-        <Text style={styles.title}>Settings</Text>
-      </View>
+      <TopBar navigation={navigation} profilePicture={profile?.profile_picture} />
 
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingBottom: insets.bottom + 42,
+            paddingBottom: insets.bottom + 152,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -121,26 +133,6 @@ export default function SettingsScreen({ navigation }: Props) {
           <Text style={styles.logoutText}>LOG OUT</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      <View style={[styles.bottomNav]}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("Profile")}
-        >
-          <MaterialIcons name="person" size={28} color="#6B4F2E" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItem}>
-          <MaterialIcons name="home" size={28} color="#6B4F2E" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.navItem, styles.activeNavItem]}
-          onPress={() => navigation.navigate("Settings")}
-        >
-          <MaterialIcons name="settings" size={26} color="#4A2A0D" />
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -149,24 +141,6 @@ const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
     backgroundColor: "#EFE2CC",
-  },
-  header: {
-    backgroundColor: "#E4C79E",
-    alignItems: "center",
-    justifyContent: "center",
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    shadowColor: "#7A5A37",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.14,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#4A2A0D",
-    letterSpacing: 0.3,
   },
   scrollContent: {
     flexGrow: 1,
@@ -186,7 +160,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    shadowColor: "#7A5A37",
+    // shadowColor: "#7A5A37",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 10,
@@ -225,26 +199,5 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: "#FFFFFF",
     letterSpacing: 0.8,
-  },
-  bottomNav: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 68,
-    backgroundColor: "#D4B896",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-  },
-  navItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 8,
-    minWidth: 48,
-  },
-  activeNavItem: {
-    backgroundColor: "#EAD9BE",
-    borderRadius: 999,
   },
 });

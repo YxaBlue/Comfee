@@ -1,10 +1,10 @@
-import { signOut } from "@/app/features/auth/services/authService";
 import {
   editProfile,
   getProfile,
   uploadAvatar,
 } from "@/app/features/profile/services/profileService";
 import { supabase } from "@/app/shared/lib/supabaseClient";
+import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { format, parseISO } from "date-fns";
@@ -185,7 +185,6 @@ export default function ProfileScreen({ navigation }: Props) {
     birth_date: "",
     bio: "",
   });
-  const [menuVisible, setMenuVisible] = useState(false);
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: "info", icon: "info-outline" },
@@ -307,22 +306,10 @@ export default function ProfileScreen({ navigation }: Props) {
 
   return (
     <View style={styles.wrapper}>
-      <View style={[styles.headCont, styles.shadow, styles.androidShadow]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate("Dashboard")}>
-            <Image
-              source={require("../../../../assets/images/logo.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-          <Image
-            source={require("../../../../assets/images/profileHolder1.png")}
-            style={styles.profHolder}
-            resizeMode="contain"
-          />
-        </View>
-      </View>
+      <TopBar
+        navigation={navigation}
+        profilePicture={profile?.profile_picture}
+      />
 
       <ScrollView
         contentContainerStyle={styles.container}
@@ -330,55 +317,6 @@ export default function ProfileScreen({ navigation }: Props) {
       >
         {/* ── Header band ── */}
         <View style={styles.headerBand}>
-          <TouchableOpacity
-            style={styles.menuDots}
-            onPress={() => setMenuVisible((prev) => !prev)}
-          >
-            <MaterialIcons name="more-vert" size={22} color="#e12f2f" />
-          </TouchableOpacity>
-
-          {menuVisible && (
-            <View style={styles.dropdown}>
-              {/*Logout option*/}
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={async () => {
-                  setMenuVisible(false);
-                  await signOut();
-                  navigation.navigate("Login");
-                }}
-              >
-                <MaterialIcons name="logout" size={16} color="#4d2e6b" />
-                <Text style={styles.dropdownText}>Log out</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  console.log("Business clicked");
-                  setMenuVisible(false);
-                  navigation.navigate("ProfileBusi");
-                }}
-              >
-                <Text style={[styles.dropdownText, { color: "#f0e9d5" }]}>
-                  Business
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  setMenuVisible(false);
-                  navigation.navigate("Dashboard");
-                }}
-              >
-                <Text style={[styles.dropdownText, { color: "#f0e9d5" }]}>
-                  Dashboard
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
           <View style={styles.avatarWrapper}>
             <TouchableOpacity
               onPress={isEditing ? handlePickAvatar : undefined}
@@ -629,39 +567,6 @@ export default function ProfileScreen({ navigation }: Props) {
 
         <View style={{ height: 90 }} />
       </ScrollView>
-
-      {/* ── Bottom nav ── */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("Profile")}
-        >
-          <View style={styles.profileNavAvatar}>
-            {profile?.profile_picture ? (
-              <Image
-                key={profile.profile_picture}
-                source={{ uri: profile.profile_picture }}
-                style={{ width: "100%", height: "100%", borderRadius: 18 }}
-              />
-            ) : (
-              <MaterialIcons name="person" size={28} color="#C8A97A" />
-            )}
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("Home" as never)}
-        >
-          <MaterialIcons name="home" size={28} color="#6B4F2E" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("Settings" as never)}
-        >
-          <MaterialIcons name="settings" size={26} color="#6B4F2E" />
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -684,11 +589,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#D4B896",
     alignItems: "center",
     justifyContent: "flex-end",
-  },
-  menuDots: {
-    position: "absolute",
-    top: 20,
-    right: 14,
   },
   avatarWrapper: {
     marginBottom: -46,
@@ -942,25 +842,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     lineHeight: 17,
   },
-
-  /* Bottom nav */
-  bottomNav: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 68,
-    backgroundColor: "#D4B896",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    paddingBottom: 6,
-  },
-  navItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 8,
-  },
   profileNavAvatar: {
     width: 36,
     height: 36,
@@ -969,87 +850,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-  },
-
-  menuOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 15,
-    pointerEvents: "box-none",
-  },
-  dropdown: {
-    position: "absolute",
-    top: 10,
-    right: 40,
-    backgroundColor: "#e2ab6d",
-    borderRadius: 10,
-    paddingVertical: 6,
-    boxShadow: "0px 1px 8px rgba(0, 0, 0, 0.06)",
-    elevation: 5,
-    zIndex: 16,
-    minWidth: 130,
-  },
-  dropdownItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  dropdownText: {
-    fontSize: 14,
-    color: "#6B4F2E",
-    fontWeight: "500",
-  },
-
-  /* Added */
-
-  headCont: {
-    backgroundColor: "#E9D0A2",
-    borderRadius: 0,
-    padding: 0,
-    marginBottom: 1,
-    width: "100%",
-    height: 79,
-    shadowColor: "#0b0b0b",
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 5,
-  },
-
-  shadow: {
-    shadowColor: "#00000040",
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.75,
-    shadowRadius: 7,
-  },
-
-  androidShadow: {
-    elevation: 15,
-  },
-
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    height: 79,
-  },
-
-  logo: {
-    top: 15,
-    width: 40,
-    height: 40,
-  },
-
-  profHolder: {
-    top: 15,
-    width: 40,
-    height: 40,
   },
 });
