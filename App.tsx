@@ -51,30 +51,58 @@ const PUBLIC_ROUTES: (keyof RootStackParamList)[] = [
 ];
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-
+  
 export default function App() {
   const navigationRef =
     useRef<NavigationContainerRef<RootStackParamList>>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
+    const syncInitialRoute = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!isMounted || !navigationRef.current) return;
+
+      navigationRef.current.reset({
+        index: 0,
+        routes: [{ name: session ? "Dashboard" : "Login" }],
+      });
+    };
+
+    syncInitialRoute();
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT" || !session) {
-        const currentRoute = navigationRef.current?.getCurrentRoute()?.name as
-          | keyof RootStackParamList
-          | undefined;
-
-        if (currentRoute && PUBLIC_ROUTES.includes(currentRoute)) return;
-
+      if (event === "SIGNED_IN" && session) {
         navigationRef.current?.reset({
           index: 0,
-          routes: [{ name: "Login" }],
+          routes: [{ name: "Dashboard" }],
         });
+        return;
       }
+
+      if (event !== "SIGNED_OUT" && session) return;
+
+      const currentRoute = navigationRef.current?.getCurrentRoute()?.name as
+        | keyof RootStackParamList
+        | undefined;
+
+      if (currentRoute && PUBLIC_ROUTES.includes(currentRoute)) return;
+
+      navigationRef.current?.reset({
+        index: 0,
+        routes: [{ name: "Login" }],
+      });
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (

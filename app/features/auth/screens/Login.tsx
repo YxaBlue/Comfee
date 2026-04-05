@@ -41,7 +41,10 @@ export default function LoginScreen({ navigation }: Props) {
     try {
       const { user } = await signIn(email.trim(), password);
       if (!user) throw new Error("User not found");
-      navigation.navigate("Profile"); // change this to Home if home is done
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Dashboard" }],
+      });
     } catch (error: any) {
       setErrors({ general: error.message || "Invalid login credentials." });
     }

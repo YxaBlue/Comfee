@@ -46,6 +46,10 @@ type EditableFields = {
   bio: string;
 };
 
+const AVATAR_SIZE = 106;
+const AVATAR_RIGHT_OFFSET = 20;
+const USER_INFO_RIGHT_GUTTER = AVATAR_SIZE + AVATAR_RIGHT_OFFSET + 14;
+
 const MOCK_REVIEWS: Review[] = [
   {
     id: "1",
@@ -106,7 +110,7 @@ function ReviewCard({ review }: { review: Review }) {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.reviewComment}>"{review.comment}"</Text>
+      <Text style={styles.reviewComment}>{`"${review.comment}"`}</Text>
 
       {review.imageCount > 0 && (
         <View style={styles.imageGrid}>
@@ -190,6 +194,33 @@ export default function ProfileScreen({ navigation }: Props) {
     { key: "info", icon: "info-outline" },
     { key: "reviews", icon: "rate-review" },
   ];
+  const trimmedUsername = editFields.username.trim();
+  const trimmedFirstName = editFields.first_name.trim();
+  const trimmedLastName = editFields.last_name.trim();
+  const trimmedBirthDate = editFields.birth_date.trim();
+  const parsedBirthDate = trimmedBirthDate ? new Date(trimmedBirthDate) : null;
+  const currentYear = new Date().getFullYear();
+  const usernameError =
+    isEditing && !trimmedUsername ? "Username is required." : "";
+  const firstNameError =
+    isEditing && !trimmedFirstName ? "First name is required." : "";
+  const lastNameError =
+    isEditing && !trimmedLastName ? "Last name is required." : "";
+  const birthDateError = !isEditing
+    ? ""
+    : !trimmedBirthDate
+      ? "Birth date is required."
+      : !parsedBirthDate || isNaN(parsedBirthDate.getTime())
+        ? "Birth date is invalid."
+        : parsedBirthDate.getFullYear() < 1900 ||
+            parsedBirthDate.getFullYear() > currentYear
+          ? "Birth date is out of range."
+          : "";
+  const isSaveDisabled =
+    isSaving ||
+    Boolean(
+      usernameError || firstNameError || lastNameError || birthDateError,
+    );
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -242,13 +273,21 @@ export default function ProfileScreen({ navigation }: Props) {
 
   const handleSave = async () => {
     if (!userId) return;
+    if (!trimmedUsername) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        username: "Username is required.",
+      }));
+      return;
+    }
+
     setFieldErrors({});
     setIsSaving(true);
     try {
       await editProfile(
         {
           userId,
-          username: editFields.username || profile?.username,
+          username: trimmedUsername,
           first_name: editFields.first_name,
           last_name: editFields.last_name,
           birth_date: editFields.birth_date,
@@ -259,6 +298,7 @@ export default function ProfileScreen({ navigation }: Props) {
       setProfile((prev: any) => ({
         ...prev,
         ...editFields,
+        username: trimmedUsername,
       }));
       setIsEditing(false);
     } catch (err: any) {
@@ -319,6 +359,7 @@ export default function ProfileScreen({ navigation }: Props) {
         <View style={styles.headerBand}>
           <View style={styles.avatarWrapper}>
             <TouchableOpacity
+              style={styles.avatarTouchTarget}
               onPress={isEditing ? handlePickAvatar : undefined}
               activeOpacity={isEditing ? 0.7 : 1}
             >
@@ -332,12 +373,12 @@ export default function ProfileScreen({ navigation }: Props) {
                 ) : (
                   <MaterialIcons name="person" size={52} color="#C8A97A" />
                 )}
-                {isEditing && (
-                  <View style={styles.cameraBadge}>
-                    <MaterialIcons name="photo-camera" size={12} color="#fff" />
-                  </View>
-                )}
               </View>
+              {isEditing && (
+                <View style={styles.cameraBadge}>
+                  <MaterialIcons name="photo-camera" size={12} color="#fff" />
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -349,11 +390,19 @@ export default function ProfileScreen({ navigation }: Props) {
               <TextInput
                 style={styles.usernameInput}
                 value={editFields.username}
-                onChangeText={(v) =>
-                  setEditFields((p) => ({ ...p, username: v }))
-                }
+                onChangeText={(v) => {
+                  setEditFields((p) => ({ ...p, username: v }));
+                  setFieldErrors((prev) => {
+                    if (!prev.username) return prev;
+                    const next = { ...prev };
+                    delete next.username;
+                    return next;
+                  });
+                }}
                 placeholder={profile?.username}
                 placeholderTextColor="#B09070"
+                autoCapitalize="none"
+                autoCorrect={false}
               />
             ) : (
               <Text style={styles.userName}>{profile?.username}</Text>
@@ -364,8 +413,10 @@ export default function ProfileScreen({ navigation }: Props) {
               </TouchableOpacity>
             )}
           </View>
-          {fieldErrors.username && (
-            <Text style={styles.errorText}>{fieldErrors.username}</Text>
+          {(fieldErrors.username || usernameError) && (
+            <Text style={styles.errorText}>
+              {fieldErrors.username || usernameError}
+            </Text>
           )}
           <Text style={styles.joinedDate}>
             Joined since{" "}
@@ -437,9 +488,15 @@ export default function ProfileScreen({ navigation }: Props) {
                     <TextInput
                       style={styles.infoInput}
                       value={editFields.first_name}
-                      onChangeText={(v) =>
-                        setEditFields((p) => ({ ...p, first_name: v }))
-                      }
+                      onChangeText={(v) => {
+                        setEditFields((p) => ({ ...p, first_name: v }));
+                        setFieldErrors((prev) => {
+                          if (!prev.firstName) return prev;
+                          const next = { ...prev };
+                          delete next.firstName;
+                          return next;
+                        });
+                      }}
                       placeholder="First name"
                       placeholderTextColor="#B09070"
                     />
@@ -450,9 +507,9 @@ export default function ProfileScreen({ navigation }: Props) {
                       </Text>
                     </View>
                   )}
-                  {fieldErrors.firstName && (
+                  {(fieldErrors.firstName || firstNameError) && (
                     <Text style={styles.errorText}>
-                      {fieldErrors.firstName}
+                      {fieldErrors.firstName || firstNameError}
                     </Text>
                   )}
                 </View>
@@ -462,9 +519,15 @@ export default function ProfileScreen({ navigation }: Props) {
                     <TextInput
                       style={styles.infoInput}
                       value={editFields.last_name}
-                      onChangeText={(v) =>
-                        setEditFields((p) => ({ ...p, last_name: v }))
-                      }
+                      onChangeText={(v) => {
+                        setEditFields((p) => ({ ...p, last_name: v }));
+                        setFieldErrors((prev) => {
+                          if (!prev.lastName) return prev;
+                          const next = { ...prev };
+                          delete next.lastName;
+                          return next;
+                        });
+                      }}
                       placeholder="Last name"
                       placeholderTextColor="#B09070"
                     />
@@ -473,8 +536,10 @@ export default function ProfileScreen({ navigation }: Props) {
                       <Text style={styles.infoValue}>{profile?.last_name}</Text>
                     </View>
                   )}
-                  {fieldErrors.lastName && (
-                    <Text style={styles.errorText}>{fieldErrors.lastName}</Text>
+                  {(fieldErrors.lastName || lastNameError) && (
+                    <Text style={styles.errorText}>
+                      {fieldErrors.lastName || lastNameError}
+                    </Text>
                   )}
                 </View>
               </View>
@@ -492,9 +557,15 @@ export default function ProfileScreen({ navigation }: Props) {
                     <TextInput
                       style={styles.infoInput}
                       value={editFields.birth_date}
-                      onChangeText={(v) =>
-                        setEditFields((p) => ({ ...p, birth_date: v }))
-                      }
+                      onChangeText={(v) => {
+                        setEditFields((p) => ({ ...p, birth_date: v }));
+                        setFieldErrors((prev) => {
+                          if (!prev.birthDate) return prev;
+                          const next = { ...prev };
+                          delete next.birthDate;
+                          return next;
+                        });
+                      }}
                       placeholder="YYYY-MM-DD"
                       placeholderTextColor="#B09070"
                     />
@@ -510,9 +581,9 @@ export default function ProfileScreen({ navigation }: Props) {
                       </Text>
                     </View>
                   )}
-                  {fieldErrors.birthDate && (
+                  {(fieldErrors.birthDate || birthDateError) && (
                     <Text style={styles.errorText}>
-                      {fieldErrors.birthDate}
+                      {fieldErrors.birthDate || birthDateError}
                     </Text>
                   )}
                 </View>
@@ -551,9 +622,12 @@ export default function ProfileScreen({ navigation }: Props) {
                     <Text style={styles.cancelBtnText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.saveBtn, isSaving && { opacity: 0.6 }]}
+                    style={[
+                      styles.saveBtn,
+                      isSaveDisabled && styles.saveBtnDisabled,
+                    ]}
                     onPress={handleSave}
-                    disabled={isSaving}
+                    disabled={isSaveDisabled}
                   >
                     <Text style={styles.saveBtnText}>
                       {isSaving ? "Saving..." : "Save"}
@@ -585,19 +659,24 @@ const styles = StyleSheet.create({
 
   /* Header */
   headerBand: {
-    height: 100,
+    height: 150,
     backgroundColor: "#D4B896",
     alignItems: "center",
     justifyContent: "flex-end",
   },
   avatarWrapper: {
     marginBottom: -46,
-    marginLeft: 150,
+    alignSelf: "flex-end",
+    marginRight: 30,
+  },
+  avatarTouchTarget: {
+    position: "relative",
+    overflow: "visible",
   },
   avatarCircle: {
-    width: 106,
-    height: 106,
-    borderRadius: 53,
+    width: 126,
+    height: 126,
+    borderRadius: 73,
     backgroundColor: "#E6D6BE",
     borderWidth: 3,
     borderColor: "#EDDEC7",
@@ -607,52 +686,64 @@ const styles = StyleSheet.create({
   },
   cameraBadge: {
     position: "absolute",
-    bottom: 4,
-    right: 4,
+    right: 2,
+    bottom: 2,
     backgroundColor: "#6B4F2E",
-    borderRadius: 10,
-    padding: 4,
+    borderRadius: 15,
+    padding: 6,
+    borderWidth: 2,
+    borderColor: "#EDDEC7",
+    zIndex: 1,
+    elevation: 2,
   },
 
   /* User info */
   userInfoSection: {
     marginTop: 20,
+    paddingTop: 14,
     paddingHorizontal: 20,
+    paddingRight: USER_INFO_RIGHT_GUTTER,
+    minHeight: AVATAR_SIZE - 8,
   },
   nameEditRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    flexWrap: "wrap",
+    minWidth: 0,
   },
   userName: {
     fontSize: 22,
     fontWeight: "700",
     color: "#3B2A1A",
+    flexShrink: 1,
   },
   usernameInput: {
     flex: 1,
     fontSize: 20,
     fontWeight: "700",
     color: "#3B2A1A",
-    backgroundColor: "#FDF6EC",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 1.5,
-    borderColor: "#C8A97A",
+    minWidth: 120,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    borderBottomWidth: 1,
+    borderBottomColor: "#C8A97A",
   },
   joinedDate: {
     fontSize: 12,
     color: "#8C6D4F",
     marginTop: 2,
+    paddingRight: 8,
   },
 
   /* Divider */
   divider: {
     height: 1,
     backgroundColor: "#D2BA94",
-    marginHorizontal: 20,
-    marginTop: 14,
+    marginHorizontal:20,
+    marginTop: -10,
   },
 
   /* Tab bar */
@@ -816,6 +907,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     backgroundColor: "#6B4F2E",
     alignItems: "center",
+  },
+  saveBtnDisabled: {
+    opacity: 0.6,
   },
   saveBtnText: {
     fontSize: 14,
