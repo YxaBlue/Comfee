@@ -11,6 +11,7 @@ import ForgotPasswordScreen from "./app/features/auth/screens/ForgotPassword";
 import LoginScreen from "./app/features/auth/screens/Login";
 import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
 import CafeCard from "./app/features/cafe/screens/cafe-card-FE";
+import FilteredCafes from "./app/features/cafe/screens/CD-Filter-FE";
 import FilterScreen from "./app/features/cafe/screens/Filter-FE";
 import SearchScreen from "./app/features/cafe/screens/Search";
 import ProfileScreen from "./app/features/profile/screens/Profile";
@@ -29,6 +30,7 @@ export type RootStackParamList = {
   Dashboard: undefined;
   Filter: undefined;
   Search: { query: string };
+  FilteredCafes: { filterType: string };
 };
 
 const linking = {
@@ -93,6 +95,7 @@ export default function App() {
         <Stack.Screen name="Dashboard" component={CafeCard} />
         <Stack.Screen name="Filter" component={FilterScreen} />
         <Stack.Screen name="Search" component={SearchScreen} />
+        <Stack.Screen name="FilteredCafes" component={FilteredCafes} />
       </Stack.Navigator>
     </NavigationContainer>
   );
