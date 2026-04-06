@@ -1,31 +1,59 @@
-import { useState } from "react";
-
-import { MaterialIcons } from "@expo/vector-icons";
-//import { useRouter } from "expo-router";
-import { RootStackParamList } from "@/App";
-import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
-  Image,
   ImageBackground,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 
+import { RootStackParamList } from "@/App";
+import { getProfile } from "@/app/features/profile/services/profileService";
+import { supabase } from "@/app/shared/lib/supabaseClient";
+import TopBar from "@/components/TopBar";
+import { MaterialIcons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as Location from "expo-location";
+import {
+  Cafe,
+  getDiscoverCafes,
+  getFeaturedCafes,
+} from "./services/cafeService";
+
 type NavProps = NativeStackNavigationProp<RootStackParamList, "Dashboard">;
+
+function fakeRating(id: number): string {
+  const rand = ((id * 9301 + 49297) % 233280) / 233280;
+  return (3.5 + rand * 1.5).toFixed(1);
+}
 
 export default function CafeCard() {
   const navigation = useNavigation<NavProps>();
-  const [search, setSearch] = useState("");
 
-  const filter = [
+  // --- State ---
+  const [search, setSearch] = useState("");
+  const [profile, setProfile] = useState<any>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  const [locationLabel, setLocationLabel] = useState("Detecting...");
+  const [locationModalVisible, setLocationModalVisible] = useState(false);
+  const [locationSearch, setLocationSearch] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+
+  const [featuredCafes, setFeaturedCafes] = useState<Cafe[]>([]);
+  const [discoverCafes, setDiscoverCafes] = useState<Cafe[]>([]);
+  const [cafesLoading, setCafesLoading] = useState(true);
+  const [userCoords, setUserCoords] = useState<{
+    latitude: number;
+    longitude: number;
+  }>();
+
+  const filterOptions = [
     "Near Me",
     "Wifi",
     "Ambiance",
@@ -34,40 +62,89 @@ export default function CafeCard() {
     "Affordable",
   ];
 
-  const cafes = [
-    {
-      id: "1",
-      name: "Ilya Rozy Cafe",
-      location: "Mactan, Lapu-Lapu City",
-      rating: 4.5,
-    },
-    {
-      id: "2",
-      name: "Hollander Cafe",
-      location: "Mactan, Lapu-Lapu City",
-      rating: 4.2,
-    },
-    {
-      id: "3",
-      name: "Ilya Rozy Cafe",
-      location: "Mactan, Lapu-Lapu City",
-      rating: 4.8,
-    },
-    {
-      id: "4",
-      name: "Ilya Rozy Cafe",
-      location: "Mactan, Lapu-Lapu City",
-      rating: 4.6,
-    },
-    {
-      id: "5",
-      name: "Ilya Rozy Cafe",
-      location: "Mactan, Lapu-Lapu City",
-      rating: 4.7,
-    },
-  ];
+  // --- Effects ---
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") throw new Error("Permission Denied");
 
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+        const loc = await Location.getCurrentPositionAsync({});
+        const coords = {
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+        };
+        setUserCoords(coords);
+
+        const [place] = await Location.reverseGeocodeAsync(coords);
+        setLocationLabel(
+          place?.city
+            ? `${place.city}, ${place.region ?? ""}`
+            : "Cebu City, Philippines",
+        );
+      } catch {
+        setLocationLabel("Cebu City, Philippines");
+        setUserCoords({ latitude: 10.3157, longitude: 123.8854 });
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session?.user) return;
+        const data = await getProfile(session.user.id);
+        setProfile(data);
+      } catch (err) {
+        console.error("Failed to load profile:", err);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!userCoords) return;
+    loadCafes();
+  }, [userCoords]);
+
+  // --- Functions ---
+  async function loadCafes() {
+    setCafesLoading(true);
+    try {
+      const [featured, discover] = await Promise.all([
+        getFeaturedCafes(userCoords!, 10),
+        getDiscoverCafes(userCoords!, 10),
+      ]);
+      setFeaturedCafes(featured ?? []);
+      setDiscoverCafes(discover ?? []);
+    } catch (err) {
+      console.error("Failed to load cafes:", err);
+    } finally {
+      setCafesLoading(false);
+    }
+  }
+
+  const renderCafeCard = ({ item }: { item: Cafe }) => (
+    <View style={styles.cafeHolder}>
+      <View style={{ flex: 1 }} />
+      <View style={styles.cafeText}>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.cafeName} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <View style={styles.locationRow}>
+            <MaterialIcons name="location-on" size={7} color="#E9D0A2" />
+            <Text style={styles.cafeLocation} numberOfLines={1}>
+              {item.address}
+            </Text>
+          </View>
+        </View>
+        <Text style={styles.cafeRating}>{fakeRating(item.id)}</Text>
+      </View>
+    </View>
+  );
 
   return (
     <ImageBackground
@@ -75,39 +152,31 @@ export default function CafeCard() {
       style={styles.background}
       resizeMode="cover"
     >
-      <View style={[styles.rectangle1, styles.shadow, styles.androidShadow]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate("Dashboard")}>
-            <Image
-              source={require("../../../../assets/images/logo.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
+      <TopBar
+        navigation={navigation}
+        profilePicture={profile?.profile_picture}
+      />
 
-          <TouchableOpacity onPress={() => navigation.navigate("Profile")}>
-            <Image
-              source={require("../../../../assets/images/profileHolder1.png")}
-              style={styles.profHolder}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* Location Bar */}
       <View style={styles.rectangle3}>
         <Text style={styles.locText1}>Location</Text>
-        <Text style={styles.locText2}>Montreal, Canada </Text>
-        <MaterialIcons
-          name="keyboard-arrow-down"
-          size={20}
-          color="#4B2C11"
-          style={{ marginLeft: 125, marginTop: 4 }}
-        />
+        <Pressable
+          onPress={() => setLocationModalVisible(true)}
+          style={{ flexDirection: "row", alignItems: "center" }}
+        >
+          <Text style={styles.locText2}>{locationLabel}</Text>
+          <MaterialIcons
+            name="keyboard-arrow-down"
+            size={18}
+            color="#4B2C11"
+            style={{ marginLeft: 6 }}
+          />
+        </Pressable>
       </View>
 
-      <View style={[styles.searchBar, styles.androidShadow]}>
+      {/* Search Bar */}
+      <View style={styles.searchBar}>
         <MaterialIcons name="search" size={24} color="#C8AA7A" />
-
         <TextInput
           style={styles.searchInput}
           placeholder="Search cafe"
@@ -115,7 +184,6 @@ export default function CafeCard() {
           value={search}
           onChangeText={setSearch}
         />
-
         <Pressable
           onPress={() => navigation.navigate("Filter" as never)}
           hitSlop={10}
@@ -125,15 +193,18 @@ export default function CafeCard() {
         </Pressable>
       </View>
 
+      {/* Filter Chips */}
       <View style={styles.filterHolder}>
         <FlatList
-          data={filter}
+          data={filterOptions}
           horizontal
           showsHorizontalScrollIndicator={false}
-          keyExtractor={(item, index) => index.toString()}
+          keyExtractor={(_, i) => i.toString()}
           renderItem={({ item, index }) => (
             <Pressable
-              onPress={() => setSelectedIndex(index)}
+              onPress={() =>
+                setSelectedIndex(index === selectedIndex ? null : index)
+              }
               style={[
                 styles.filter,
                 {
@@ -145,9 +216,7 @@ export default function CafeCard() {
               <Text
                 style={[
                   styles.filterText,
-                  {
-                    color: selectedIndex === index ? "#FFFAF3" : "#A97C4E",
-                  },
+                  { color: selectedIndex === index ? "#FFFAF3" : "#A97C4E" },
                 ]}
               >
                 {item}
@@ -157,165 +226,122 @@ export default function CafeCard() {
         />
       </View>
 
+      {/* Scrollable body */}
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: 30, paddingHorizontal: 15 }}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.promo}>
-          <Text style={styles.promoText}>Today’s Special Promo</Text>
+          <Text style={styles.promoText}>Today's Special Promo</Text>
         </View>
 
         <Text style={styles.labelText}>Featured Cafés</Text>
-
-        <View style={{ marginTop: 3 }}>
+        {cafesLoading ? (
+          <ActivityIndicator color="#A97C4E" style={{ marginVertical: 16 }} />
+        ) : featuredCafes.length > 0 ? (
           <FlatList
-            data={cafes}
+            data={featuredCafes}
             horizontal
             showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.cafeHolder}>
-                {/* Empty space will push the bottom row down */}
-                <View style={{ flex: 1 }} />
-
-                {/* Bottom row */}
-                <View style={styles.cafeText}>
-                  <View>
-                    <Text style={styles.cafeName}>{item.name}</Text>
-                    <View style={styles.locationRow}>
-                      <MaterialIcons
-                        name="location-on"
-                        size={7}
-                        color="#E9D0A2"
-                      />
-                      <Text style={styles.location}>{item.location}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.rating}> {item.rating}</Text>
-                </View>
-              </View>
-            )}
+            keyExtractor={(item) => `featured-${item.id}`}
+            renderItem={renderCafeCard}
+            style={{ marginTop: 3, marginBottom: 14 }}
           />
-        </View>
+        ) : (
+          <Text style={styles.emptyText}>No featured cafés yet.</Text>
+        )}
+
         <Text style={styles.labelText}>Discover More</Text>
-
-        <View style={{ marginTop: 3 }}>
+        {cafesLoading ? (
+          <ActivityIndicator color="#A97C4E" style={{ marginVertical: 16 }} />
+        ) : discoverCafes.length > 0 ? (
           <FlatList
-            data={cafes}
+            data={discoverCafes}
             horizontal
             showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.cafeHolder}>
-                {/* Empty space will push the bottom row down */}
-                <View style={{ flex: 1 }} />
-
-                {/* Bottom row */}
-                <View style={styles.cafeText}>
-                  <View>
-                    <Text style={styles.cafeName}>{item.name}</Text>
-                    <View style={styles.locationRow}>
-                      <MaterialIcons
-                        name="location-on"
-                        size={7}
-                        color="#E9D0A2"
-                      />
-                      <Text style={styles.location}>{item.location}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.rating}> {item.rating}</Text>
-                </View>
-              </View>
-            )}
+            keyExtractor={(item) => `discover-${item.id}`}
+            renderItem={renderCafeCard}
+            style={{ marginTop: 3, marginBottom: 14 }}
           />
-        </View>
+        ) : (
+          <Text style={styles.emptyText}>No cafés to discover yet.</Text>
+        )}
       </ScrollView>
+
+      {/* Location Modal */}
+      {locationModalVisible && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.bottomSheet}>
+            <Text style={styles.modalTitle}>Select Location</Text>
+            <View style={styles.modalSearchBar}>
+              <MaterialIcons name="search" size={20} color="#A97C4E" />
+              <TextInput
+                placeholder="Search address"
+                placeholderTextColor="#C8AA7A"
+                value={locationSearch}
+                onChangeText={setLocationSearch}
+                style={{ flex: 1, marginLeft: 8 }}
+              />
+            </View>
+
+            <FlatList
+              data={suggestions}
+              keyExtractor={(_, i) => i.toString()}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={styles.suggestionItem}
+                  onPress={() => {
+                    const coords = {
+                      latitude: item.latitude,
+                      longitude: item.longitude,
+                    };
+                    setUserCoords(coords);
+                    setLocationLabel(item.description);
+                    setLocationModalVisible(false);
+                    setSuggestions([]);
+                    setLocationSearch("");
+                  }}
+                >
+                  <MaterialIcons name="location-on" size={16} color="#A97C4E" />
+                  <Text style={styles.suggestionText}>
+                    {item.latitude.toFixed(3)}, {item.longitude.toFixed(3)}
+                  </Text>
+                </Pressable>
+              )}
+            />
+
+            <Pressable
+              onPress={() => setLocationModalVisible(false)}
+              style={styles.closeButton}
+            >
+              <Text style={{ color: "#FFF" }}>Close</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
     </ImageBackground>
   );
 }
 
-//styles - format
+// --- Styles ---
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F3E6CF",
-  },
-
-  background: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
-
-  rectangle1: {
-    backgroundColor: "#E9D0A2",
-    borderRadius: 0,
-    padding: 0,
-    marginBottom: 1,
-    width: "100%",
-    height: 79,
-    shadowColor: "#0b0b0b",
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 5,
-  },
-
-  shadow: {
-    shadowColor: "#00000040",
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.75,
-    shadowRadius: 7,
-  },
-
-  androidShadow: {
-    elevation: 15,
-  },
-
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    height: 79,
-  },
-
-  logo: {
-    top: 15,
-    width: 40,
-    height: 40,
-  },
-
-  profHolder: {
-    top: 15,
-    width: 40,
-    height: 40,
-  },
+  background: { flex: 1, width: "100%", height: "100%" },
 
   rectangle3: {
     backgroundColor: "#E9D6B9",
-    borderRadius: 0,
-    padding: 0,
-    marginBottom: 20,
     width: "100%",
-    height: 78,
+    height: 88,
+    justifyContent: "center",
+    paddingHorizontal: 25,
+    marginBottom: 20,
   },
 
-  locText1: {
-    top: "25%",
-    fontSize: 9,
-    color: "#4B2C11",
-    marginLeft: 25,
-  },
-
+  locText1: { fontSize: 9, color: "#4B2C11" },
   locText2: {
-    top: "25%",
     fontSize: 12,
     color: "#4B2C11",
-    marginLeft: 25,
     fontWeight: "bold",
+    marginTop: 2,
   },
 
   searchBar: {
@@ -333,22 +359,11 @@ const styles = StyleSheet.create({
     elevation: 20,
     paddingHorizontal: 10,
   },
+  searchInput: { flex: 1, fontSize: 14, color: "#4B2C11", marginLeft: 8 },
+  filterTrigger: { justifyContent: "center", alignItems: "center", padding: 4 },
 
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    color: "#4B2C11",
-    marginLeft: 8,
-  },
-
-  filterTrigger: {
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 4,
-  },
-
+  filterHolder: { marginTop: 15, paddingLeft: 10 },
   filter: {
-    backgroundColor: "#E9D6B9",
     borderRadius: 8,
     paddingHorizontal: 20,
     justifyContent: "center",
@@ -356,17 +371,7 @@ const styles = StyleSheet.create({
     marginRight: 10,
     height: 31,
   },
-
-  filterHolder: {
-    marginTop: 15,
-    paddingLeft: 10,
-  },
-
-  filterText: {
-    color: "#C8AA7A",
-    fontWeight: "500",
-    fontSize: 11,
-  },
+  filterText: { fontWeight: "500", fontSize: 11 },
 
   promo: {
     width: "90%",
@@ -376,10 +381,8 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     alignSelf: "center",
     marginTop: 15,
-    position: "relative", // make container relative
     padding: 10,
   },
-
   promoText: {
     position: "absolute",
     color: "#E9D6B9",
@@ -393,8 +396,15 @@ const styles = StyleSheet.create({
     color: "#4B2C11",
     fontWeight: "bold",
     fontSize: 18,
-    marginLeft: 15,
-    top: 5,
+    marginLeft: 5,
+    marginBottom: 4,
+    marginTop: 6,
+  },
+  emptyText: {
+    color: "#A97C4E",
+    fontSize: 12,
+    marginLeft: 5,
+    marginBottom: 10,
   },
 
   cafeHolder: {
@@ -410,39 +420,58 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 20,
   },
-
   cafeText: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
     width: "100%",
   },
+  locationRow: { flexDirection: "row", alignItems: "center", marginTop: 2 },
+  cafeName: { fontSize: 11, color: "#4B2C11", fontWeight: "600" },
+  cafeLocation: { fontSize: 7, color: "#E9D0A2", marginLeft: 2 },
+  cafeRating: { fontSize: 11, color: "#4B2C11", fontWeight: "500" },
 
-  locationRow: {
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "flex-end",
+  },
+  bottomSheet: {
+    backgroundColor: "#FFFAF3",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 16,
+    maxHeight: "70%",
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: "#4B2C11",
+  },
+  modalSearchBar: {
     flexDirection: "row",
-    alignItems: "center", // vertically centers icon & text
-    marginTop: 2, // optional spacing from name
+    alignItems: "center",
+    backgroundColor: "#F3E6CF",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
   },
-
-  cafeName: {
-    fontSize: 11,
-    color: "#4B2C11",
-    fontWeight: 600,
-    marginBottom: 0,
+  suggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
   },
-
-  location: {
-    fontSize: 7,
-    color: "#E9D0A2",
-    fontWeight: "400",
-    marginBottom: 0,
-    marginLeft: 2,
-  },
-
-  rating: {
-    fontSize: 12,
-    color: "#4B2C11",
-    marginBottom: 0,
-    fontWeight: 400,
+  suggestionText: { marginLeft: 8, color: "#4B2C11" },
+  closeButton: {
+    marginTop: 10,
+    backgroundColor: "#A97C4E",
+    padding: 10,
+    borderRadius: 10,
+    alignItems: "center",
   },
 });
