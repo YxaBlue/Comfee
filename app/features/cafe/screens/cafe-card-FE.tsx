@@ -115,7 +115,6 @@ export default function CafeCard() {
           value={search}
           onChangeText={setSearch}
         />
-
         <Pressable
           onPress={() => navigation.navigate("Filter" as never)}
           hitSlop={10}
