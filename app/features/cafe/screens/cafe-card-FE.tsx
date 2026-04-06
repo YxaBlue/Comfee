@@ -113,7 +113,12 @@ export default function CafeCard() {
           placeholder="Search cafe"
           placeholderTextColor="#C8AA7A"
           value={search}
-          onChangeText={setSearch}
+          onChangeText={(text) => setSearch(text)}
+          onSubmitEditing={() => {
+            if (search.length > 0) {
+              navigation.navigate("Search", { query: search });
+            }
+          }}
         />
 
         <Pressable
