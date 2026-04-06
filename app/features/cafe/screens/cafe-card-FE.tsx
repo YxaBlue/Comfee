@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { getProfile } from "@/app/features/profile/services/profileService";
+import { supabase } from "@/app/shared/lib/supabaseClient";
+import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 //import { useRouter } from "expo-router";
 import { RootStackParamList } from "@/App";
@@ -24,6 +27,7 @@ type NavProps = NativeStackNavigationProp<RootStackParamList>;
 export default function CafeCard() {
   const navigation = useNavigation<NavProps>();
   const [search, setSearch] = useState("");
+  const [profile, setProfile] = useState<any>(null);
 
   const filter = [
     "Near Me",
@@ -69,31 +73,32 @@ export default function CafeCard() {
 
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+
+        if (!session?.user) return;
+
+        const data = await getProfile(session.user.id);
+        setProfile(data);
+      } catch (error) {
+        console.error("Failed to load dashboard profile:", error);
+      }
+    };
+
+    fetchProfile();
+  }, []);
+
   return (
     <ImageBackground
       source={require("../../../../assets/images/bg1.png")}
       style={styles.background}
       resizeMode="cover"
     >
-      <View style={[styles.rectangle1, styles.shadow, styles.androidShadow]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate("Dashboard")}>
-            <Image
-              source={require("../../../../assets/images/logo.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => navigation.navigate("Profile")}>
-            <Image
-              source={require("../../../../assets/images/profileHolder1.png")}
-              style={styles.profHolder}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <TopBar navigation={navigation} profilePicture={profile?.profile_picture} />
       <View style={styles.rectangle3}>
         <Text style={styles.locText1}>Location</Text>
         <Text style={styles.locText2}>Montreal, Canada </Text>
@@ -120,7 +125,6 @@ export default function CafeCard() {
             }
           }}
         />
-
         <Pressable
           onPress={() => navigation.navigate("Filter" as never)}
           hitSlop={10}
@@ -261,59 +265,13 @@ const styles = StyleSheet.create({
     height: "100%",
   },
 
-  rectangle1: {
-    backgroundColor: "#E9D0A2",
-    borderRadius: 0,
-    padding: 0,
-    marginBottom: 1,
-    width: "100%",
-    height: 79,
-    shadowColor: "#0b0b0b",
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 5,
-  },
-
-  shadow: {
-    shadowColor: "#00000040",
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.75,
-    shadowRadius: 7,
-  },
-
-  androidShadow: {
-    elevation: 15,
-  },
-
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    height: 79,
-  },
-
-  logo: {
-    top: 15,
-    width: 40,
-    height: 40,
-  },
-
-  profHolder: {
-    top: 15,
-    width: 40,
-    height: 40,
-  },
-
   rectangle3: {
     backgroundColor: "#E9D6B9",
     borderRadius: 0,
     padding: 0,
     marginBottom: 20,
     width: "100%",
-    height: 78,
+    height: 88,
   },
 
   locText1: {

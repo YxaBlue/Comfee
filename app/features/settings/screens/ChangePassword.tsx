@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   title: {
-    fontSize: 28,
+    fontSize: 23,
     fontWeight: "700",
     color: "#4A2A0D",
     letterSpacing: 0.3,

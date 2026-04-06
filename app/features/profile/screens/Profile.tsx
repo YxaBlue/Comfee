@@ -1,10 +1,10 @@
-import { signOut } from "@/app/features/auth/services/authService";
 import {
   editProfile,
   getProfile,
   uploadAvatar,
 } from "@/app/features/profile/services/profileService";
 import { supabase } from "@/app/shared/lib/supabaseClient";
+import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { format, parseISO } from "date-fns";
@@ -45,6 +45,10 @@ type EditableFields = {
   birth_date: string;
   bio: string;
 };
+
+const AVATAR_SIZE = 106;
+const AVATAR_RIGHT_OFFSET = 20;
+const USER_INFO_RIGHT_GUTTER = AVATAR_SIZE + AVATAR_RIGHT_OFFSET + 14;
 
 const MOCK_REVIEWS: Review[] = [
   {
@@ -106,7 +110,7 @@ function ReviewCard({ review }: { review: Review }) {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.reviewComment}>"{review.comment}"</Text>
+      <Text style={styles.reviewComment}>{`"${review.comment}"`}</Text>
 
       {review.imageCount > 0 && (
         <View style={styles.imageGrid}>
@@ -185,12 +189,38 @@ export default function ProfileScreen({ navigation }: Props) {
     birth_date: "",
     bio: "",
   });
-  const [menuVisible, setMenuVisible] = useState(false);
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: "info", icon: "info-outline" },
     { key: "reviews", icon: "rate-review" },
   ];
+  const trimmedUsername = editFields.username.trim();
+  const trimmedFirstName = editFields.first_name.trim();
+  const trimmedLastName = editFields.last_name.trim();
+  const trimmedBirthDate = editFields.birth_date.trim();
+  const parsedBirthDate = trimmedBirthDate ? new Date(trimmedBirthDate) : null;
+  const currentYear = new Date().getFullYear();
+  const usernameError =
+    isEditing && !trimmedUsername ? "Username is required." : "";
+  const firstNameError =
+    isEditing && !trimmedFirstName ? "First name is required." : "";
+  const lastNameError =
+    isEditing && !trimmedLastName ? "Last name is required." : "";
+  const birthDateError = !isEditing
+    ? ""
+    : !trimmedBirthDate
+      ? "Birth date is required."
+      : !parsedBirthDate || isNaN(parsedBirthDate.getTime())
+        ? "Birth date is invalid."
+        : parsedBirthDate.getFullYear() < 1900 ||
+            parsedBirthDate.getFullYear() > currentYear
+          ? "Birth date is out of range."
+          : "";
+  const isSaveDisabled =
+    isSaving ||
+    Boolean(
+      usernameError || firstNameError || lastNameError || birthDateError,
+    );
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -243,13 +273,21 @@ export default function ProfileScreen({ navigation }: Props) {
 
   const handleSave = async () => {
     if (!userId) return;
+    if (!trimmedUsername) {
+      setFieldErrors((prev) => ({
+        ...prev,
+        username: "Username is required.",
+      }));
+      return;
+    }
+
     setFieldErrors({});
     setIsSaving(true);
     try {
       await editProfile(
         {
           userId,
-          username: editFields.username || profile?.username,
+          username: trimmedUsername,
           first_name: editFields.first_name,
           last_name: editFields.last_name,
           birth_date: editFields.birth_date,
@@ -260,6 +298,7 @@ export default function ProfileScreen({ navigation }: Props) {
       setProfile((prev: any) => ({
         ...prev,
         ...editFields,
+        username: trimmedUsername,
       }));
       setIsEditing(false);
     } catch (err: any) {
@@ -307,22 +346,10 @@ export default function ProfileScreen({ navigation }: Props) {
 
   return (
     <View style={styles.wrapper}>
-      <View style={[styles.headCont, styles.shadow, styles.androidShadow]}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.navigate("Dashboard")}>
-            <Image
-              source={require("../../../../assets/images/logo.png")}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-          <Image
-            source={require("../../../../assets/images/profileHolder1.png")}
-            style={styles.profHolder}
-            resizeMode="contain"
-          />
-        </View>
-      </View>
+      <TopBar
+        navigation={navigation}
+        profilePicture={profile?.profile_picture}
+      />
 
       <ScrollView
         contentContainerStyle={styles.container}
@@ -330,52 +357,9 @@ export default function ProfileScreen({ navigation }: Props) {
       >
         {/* ── Header band ── */}
         <View style={styles.headerBand}>
-          {menuVisible && (
-            <TouchableOpacity
-              style={styles.menuOverlay}
-              onPress={() => setMenuVisible(false)}
-              activeOpacity={1}
-            />
-          )}
-
-          <TouchableOpacity
-            style={styles.menuDots}
-            onPress={() => setMenuVisible((prev) => !prev)}
-          >
-            <MaterialIcons name="more-vert" size={22} color="#e12f2f" />
-          </TouchableOpacity>
-
-          {menuVisible && (
-            <View style={styles.dropdown}>
-              {/*Logout option*/}
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={async () => {
-                  setMenuVisible(false);
-                  await signOut();
-                  navigation.navigate("Login");
-                }}
-              >
-                <MaterialIcons name="logout" size={16} color="#4d2e6b" />
-                <Text style={styles.dropdownText}>Log out</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.dropdownItem}
-                onPress={() => {
-                  setMenuVisible(false);
-                  navigation.navigate("Dashboard");
-                }}
-              >
-                <Text style={[styles.dropdownText, { color: "#f0e9d5" }]}>
-                  Dashboard
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
           <View style={styles.avatarWrapper}>
             <TouchableOpacity
+              style={styles.avatarTouchTarget}
               onPress={isEditing ? handlePickAvatar : undefined}
               activeOpacity={isEditing ? 0.7 : 1}
             >
@@ -389,12 +373,12 @@ export default function ProfileScreen({ navigation }: Props) {
                 ) : (
                   <MaterialIcons name="person" size={52} color="#C8A97A" />
                 )}
-                {isEditing && (
-                  <View style={styles.cameraBadge}>
-                    <MaterialIcons name="photo-camera" size={12} color="#fff" />
-                  </View>
-                )}
               </View>
+              {isEditing && (
+                <View style={styles.cameraBadge}>
+                  <MaterialIcons name="photo-camera" size={12} color="#fff" />
+                </View>
+              )}
             </TouchableOpacity>
           </View>
         </View>
@@ -406,11 +390,19 @@ export default function ProfileScreen({ navigation }: Props) {
               <TextInput
                 style={styles.usernameInput}
                 value={editFields.username}
-                onChangeText={(v) =>
-                  setEditFields((p) => ({ ...p, username: v }))
-                }
+                onChangeText={(v) => {
+                  setEditFields((p) => ({ ...p, username: v }));
+                  setFieldErrors((prev) => {
+                    if (!prev.username) return prev;
+                    const next = { ...prev };
+                    delete next.username;
+                    return next;
+                  });
+                }}
                 placeholder={profile?.username}
                 placeholderTextColor="#B09070"
+                autoCapitalize="none"
+                autoCorrect={false}
               />
             ) : (
               <Text style={styles.userName}>{profile?.username}</Text>
@@ -421,8 +413,10 @@ export default function ProfileScreen({ navigation }: Props) {
               </TouchableOpacity>
             )}
           </View>
-          {fieldErrors.username && (
-            <Text style={styles.errorText}>{fieldErrors.username}</Text>
+          {(fieldErrors.username || usernameError) && (
+            <Text style={styles.errorText}>
+              {fieldErrors.username || usernameError}
+            </Text>
           )}
           <Text style={styles.joinedDate}>
             Joined since{" "}
@@ -494,9 +488,15 @@ export default function ProfileScreen({ navigation }: Props) {
                     <TextInput
                       style={styles.infoInput}
                       value={editFields.first_name}
-                      onChangeText={(v) =>
-                        setEditFields((p) => ({ ...p, first_name: v }))
-                      }
+                      onChangeText={(v) => {
+                        setEditFields((p) => ({ ...p, first_name: v }));
+                        setFieldErrors((prev) => {
+                          if (!prev.firstName) return prev;
+                          const next = { ...prev };
+                          delete next.firstName;
+                          return next;
+                        });
+                      }}
                       placeholder="First name"
                       placeholderTextColor="#B09070"
                     />
@@ -507,9 +507,9 @@ export default function ProfileScreen({ navigation }: Props) {
                       </Text>
                     </View>
                   )}
-                  {fieldErrors.firstName && (
+                  {(fieldErrors.firstName || firstNameError) && (
                     <Text style={styles.errorText}>
-                      {fieldErrors.firstName}
+                      {fieldErrors.firstName || firstNameError}
                     </Text>
                   )}
                 </View>
@@ -519,9 +519,15 @@ export default function ProfileScreen({ navigation }: Props) {
                     <TextInput
                       style={styles.infoInput}
                       value={editFields.last_name}
-                      onChangeText={(v) =>
-                        setEditFields((p) => ({ ...p, last_name: v }))
-                      }
+                      onChangeText={(v) => {
+                        setEditFields((p) => ({ ...p, last_name: v }));
+                        setFieldErrors((prev) => {
+                          if (!prev.lastName) return prev;
+                          const next = { ...prev };
+                          delete next.lastName;
+                          return next;
+                        });
+                      }}
                       placeholder="Last name"
                       placeholderTextColor="#B09070"
                     />
@@ -530,8 +536,10 @@ export default function ProfileScreen({ navigation }: Props) {
                       <Text style={styles.infoValue}>{profile?.last_name}</Text>
                     </View>
                   )}
-                  {fieldErrors.lastName && (
-                    <Text style={styles.errorText}>{fieldErrors.lastName}</Text>
+                  {(fieldErrors.lastName || lastNameError) && (
+                    <Text style={styles.errorText}>
+                      {fieldErrors.lastName || lastNameError}
+                    </Text>
                   )}
                 </View>
               </View>
@@ -549,9 +557,15 @@ export default function ProfileScreen({ navigation }: Props) {
                     <TextInput
                       style={styles.infoInput}
                       value={editFields.birth_date}
-                      onChangeText={(v) =>
-                        setEditFields((p) => ({ ...p, birth_date: v }))
-                      }
+                      onChangeText={(v) => {
+                        setEditFields((p) => ({ ...p, birth_date: v }));
+                        setFieldErrors((prev) => {
+                          if (!prev.birthDate) return prev;
+                          const next = { ...prev };
+                          delete next.birthDate;
+                          return next;
+                        });
+                      }}
                       placeholder="YYYY-MM-DD"
                       placeholderTextColor="#B09070"
                     />
@@ -567,9 +581,9 @@ export default function ProfileScreen({ navigation }: Props) {
                       </Text>
                     </View>
                   )}
-                  {fieldErrors.birthDate && (
+                  {(fieldErrors.birthDate || birthDateError) && (
                     <Text style={styles.errorText}>
-                      {fieldErrors.birthDate}
+                      {fieldErrors.birthDate || birthDateError}
                     </Text>
                   )}
                 </View>
@@ -608,9 +622,12 @@ export default function ProfileScreen({ navigation }: Props) {
                     <Text style={styles.cancelBtnText}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.saveBtn, isSaving && { opacity: 0.6 }]}
+                    style={[
+                      styles.saveBtn,
+                      isSaveDisabled && styles.saveBtnDisabled,
+                    ]}
                     onPress={handleSave}
-                    disabled={isSaving}
+                    disabled={isSaveDisabled}
                   >
                     <Text style={styles.saveBtnText}>
                       {isSaving ? "Saving..." : "Save"}
@@ -624,39 +641,6 @@ export default function ProfileScreen({ navigation }: Props) {
 
         <View style={{ height: 90 }} />
       </ScrollView>
-
-      {/* ── Bottom nav ── */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("Profile")}
-        >
-          <View style={styles.profileNavAvatar}>
-            {profile?.profile_picture ? (
-              <Image
-                key={profile.profile_picture}
-                source={{ uri: profile.profile_picture }}
-                style={{ width: "100%", height: "100%", borderRadius: 18 }}
-              />
-            ) : (
-              <MaterialIcons name="person" size={28} color="#C8A97A" />
-            )}
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("Home" as never)}
-        >
-          <MaterialIcons name="home" size={28} color="#6B4F2E" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => navigation.navigate("Settings" as never)}
-        >
-          <MaterialIcons name="settings" size={26} color="#6B4F2E" />
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -675,24 +659,24 @@ const styles = StyleSheet.create({
 
   /* Header */
   headerBand: {
-    height: 100,
+    height: 150,
     backgroundColor: "#D4B896",
     alignItems: "center",
     justifyContent: "flex-end",
   },
-  menuDots: {
-    position: "absolute",
-    top: 20,
-    right: 14,
-  },
   avatarWrapper: {
     marginBottom: -46,
-    marginLeft: 150,
+    alignSelf: "flex-end",
+    marginRight: 30,
+  },
+  avatarTouchTarget: {
+    position: "relative",
+    overflow: "visible",
   },
   avatarCircle: {
-    width: 106,
-    height: 106,
-    borderRadius: 53,
+    width: 126,
+    height: 126,
+    borderRadius: 73,
     backgroundColor: "#E6D6BE",
     borderWidth: 3,
     borderColor: "#EDDEC7",
@@ -702,52 +686,64 @@ const styles = StyleSheet.create({
   },
   cameraBadge: {
     position: "absolute",
-    bottom: 4,
-    right: 4,
+    right: 2,
+    bottom: 2,
     backgroundColor: "#6B4F2E",
-    borderRadius: 10,
-    padding: 4,
+    borderRadius: 15,
+    padding: 6,
+    borderWidth: 2,
+    borderColor: "#EDDEC7",
+    zIndex: 1,
+    elevation: 2,
   },
 
   /* User info */
   userInfoSection: {
     marginTop: 20,
+    paddingTop: 14,
     paddingHorizontal: 20,
+    paddingRight: USER_INFO_RIGHT_GUTTER,
+    minHeight: AVATAR_SIZE - 8,
   },
   nameEditRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    flexWrap: "wrap",
+    minWidth: 0,
   },
   userName: {
     fontSize: 22,
     fontWeight: "700",
     color: "#3B2A1A",
+    flexShrink: 1,
   },
   usernameInput: {
     flex: 1,
     fontSize: 20,
     fontWeight: "700",
     color: "#3B2A1A",
-    backgroundColor: "#FDF6EC",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 1.5,
-    borderColor: "#C8A97A",
+    minWidth: 120,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    borderWidth: 0,
+    backgroundColor: "transparent",
+    borderBottomWidth: 1,
+    borderBottomColor: "#C8A97A",
   },
   joinedDate: {
     fontSize: 12,
     color: "#8C6D4F",
     marginTop: 2,
+    paddingRight: 8,
   },
 
   /* Divider */
   divider: {
     height: 1,
     backgroundColor: "#D2BA94",
-    marginHorizontal: 20,
-    marginTop: 14,
+    marginHorizontal:20,
+    marginTop: -10,
   },
 
   /* Tab bar */
@@ -912,6 +908,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#6B4F2E",
     alignItems: "center",
   },
+  saveBtnDisabled: {
+    opacity: 0.6,
+  },
   saveBtnText: {
     fontSize: 14,
     fontWeight: "600",
@@ -937,25 +936,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
     lineHeight: 17,
   },
-
-  /* Bottom nav */
-  bottomNav: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 68,
-    backgroundColor: "#D4B896",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    paddingBottom: 6,
-  },
-  navItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 8,
-  },
   profileNavAvatar: {
     width: 36,
     height: 36,
@@ -964,86 +944,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-  },
-
-  menuOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 9,
-  },
-  dropdown: {
-    position: "absolute",
-    top: 50,
-    right: 14,
-    backgroundColor: "#e2ab6d",
-    borderRadius: 10,
-    paddingVertical: 6,
-    boxShadow: "0px 1px 8px rgba(0, 0, 0, 0.06)",
-    elevation: 5,
-    zIndex: 10,
-    minWidth: 130,
-  },
-  dropdownItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  dropdownText: {
-    fontSize: 14,
-    color: "#6B4F2E",
-    fontWeight: "500",
-  },
-
-  /* Added */
-
-  headCont: {
-    backgroundColor: "#E9D0A2",
-    borderRadius: 0,
-    padding: 0,
-    marginBottom: 1,
-    width: "100%",
-    height: 79,
-    shadowColor: "#0b0b0b",
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 5,
-  },
-
-  shadow: {
-    shadowColor: "#00000040",
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.75,
-    shadowRadius: 7,
-  },
-
-  androidShadow: {
-    elevation: 15,
-  },
-
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    height: 79,
-  },
-
-  logo: {
-    top: 15,
-    width: 40,
-    height: 40,
-  },
-
-  profHolder: {
-    top: 15,
-    width: 40,
-    height: 40,
   },
 });
