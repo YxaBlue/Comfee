@@ -1,30 +1,27 @@
-import { useState } from "react";
-
-import { MaterialIcons } from "@expo/vector-icons";
-//import { useRouter } from "expo-router";
 import { RootStackParamList } from "@/App";
-import { useNavigation } from "@react-navigation/native";
+import { MaterialIcons } from "@expo/vector-icons";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-
+import { useState } from "react";
 import {
-  FlatList,
-  Image,
-  ImageBackground,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    FlatList,
+    Image,
+    ImageBackground,
+    Pressable,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
-
+type FilteredRouteProp = RouteProp<RootStackParamList, "FilteredCafes">;
 type NavProps = NativeStackNavigationProp<RootStackParamList>;
 
-export default function CafeCard() {
+export default function FilteredCafes() {
+  const route = useRoute<FilteredRouteProp>();
   const navigation = useNavigation<NavProps>();
+  const { filterType } = route.params;
   const [search, setSearch] = useState("");
-
   const filter = [
     "Near Me",
     "Wifi",
@@ -34,40 +31,20 @@ export default function CafeCard() {
     "Affordable",
   ];
 
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+
+  // Sample cafes data
   const cafes = [
-    {
-      id: "1",
-      name: "Ilya Rozy Cafe",
-      location: "Mactan, Lapu-Lapu City",
-      rating: 4.5,
-    },
-    {
-      id: "2",
-      name: "Hollander Cafe",
-      location: "Mactan, Lapu-Lapu City",
-      rating: 4.2,
-    },
-    {
-      id: "3",
-      name: "Ilya Rozy Cafe",
-      location: "Mactan, Lapu-Lapu City",
-      rating: 4.8,
-    },
-    {
-      id: "4",
-      name: "Ilya Rozy Cafe",
-      location: "Mactan, Lapu-Lapu City",
-      rating: 4.6,
-    },
-    {
-      id: "5",
-      name: "Ilya Rozy Cafe",
-      location: "Mactan, Lapu-Lapu City",
-      rating: 4.7,
-    },
+    { id: "1", name: "Ilya Rozy Cafe", location: "Mactan", rating: 4.5 },
+    { id: "2", name: "Hollander Cafe", location: "Mactan", rating: 4.2 },
+    { id: "3", name: "Café Lumière", location: "Lapu-Lapu", rating: 4.8 },
+    // add more
   ];
 
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  // Filter logic (example: for demo purposes, just return all)
+  const filteredCafes = cafes.filter((cafe) =>
+    cafe.name.toLowerCase().includes(filterType.toLowerCase()),
+  );
 
   return (
     <ImageBackground
@@ -94,6 +71,7 @@ export default function CafeCard() {
           </TouchableOpacity>
         </View>
       </View>
+
       <View style={styles.rectangle3}>
         <Text style={styles.locText1}>Location</Text>
         <Text style={styles.locText2}>Montreal, Canada </Text>
@@ -139,11 +117,6 @@ export default function CafeCard() {
           renderItem={({ item, index }) => (
             <Pressable
               onPress={() => {
-                console.log(
-                  "Nav state:",
-                  JSON.stringify(navigation.getState(), null, 2),
-                );
-                console.log(navigation.getState());
                 setSelectedIndex(index);
                 navigation.navigate("FilteredCafes", { filterType: item });
               }}
@@ -167,93 +140,58 @@ export default function CafeCard() {
               </Text>
             </Pressable>
           )}
-        />
+        ></FlatList>
       </View>
 
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 20 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.promo}>
-          <Text style={styles.promoText}>Today’s Special Promo</Text>
-        </View>
+      <Text style={styles.title}>Cafés: {filterType}</Text>
 
-        <Text style={styles.labelText}>Featured Cafés</Text>
-
-        <View style={{ marginTop: 3 }}>
-          <FlatList
-            data={cafes}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.cafeHolder}>
-                {/* Empty space will push the bottom row down */}
-                <View style={{ flex: 1 }} />
-
-                {/* Bottom row */}
-                <View style={styles.cafeText}>
-                  <View>
-                    <Text style={styles.cafeName}>{item.name}</Text>
-                    <View style={styles.locationRow}>
-                      <MaterialIcons
-                        name="location-on"
-                        size={7}
-                        color="#E9D0A2"
-                      />
-                      <Text style={styles.location}>{item.location}</Text>
-                    </View>
+      <View style={styles.container2}>
+        <FlatList
+          data={cafes}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          columnWrapperStyle={{
+            justifyContent: "space-between",
+            marginBottom: 10,
+          }}
+          renderItem={({ item }) => (
+            <View style={styles.cafeHolder}>
+              <View style={{ flex: 1 }} />
+              <View style={styles.cafeText}>
+                <View>
+                  <Text style={styles.cafeName}>{item.name}</Text>
+                  <View style={styles.locationRow}>
+                    <MaterialIcons
+                      name="location-on"
+                      size={14}
+                      color="#E9D0A2"
+                    />
+                    <Text style={styles.location}>{item.location}</Text>
                   </View>
-                  <Text style={styles.rating}> {item.rating}</Text>
                 </View>
+                <Text style={styles.rating}>{item.rating}</Text>
               </View>
-            )}
-          />
-        </View>
-        <Text style={styles.labelText}>Discover More</Text>
-
-        <View style={{ marginTop: 3 }}>
-          <FlatList
-            data={cafes}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.cafeHolder}>
-                {/* Empty space will push the bottom row down */}
-                <View style={{ flex: 1 }} />
-
-                {/* Bottom row */}
-                <View style={styles.cafeText}>
-                  <View>
-                    <Text style={styles.cafeName}>{item.name}</Text>
-                    <View style={styles.locationRow}>
-                      <MaterialIcons
-                        name="location-on"
-                        size={7}
-                        color="#E9D0A2"
-                      />
-                      <Text style={styles.location}>{item.location}</Text>
-                    </View>
-                  </View>
-                  <Text style={styles.rating}> {item.rating}</Text>
-                </View>
-              </View>
-            )}
-          />
-        </View>
-      </ScrollView>
+            </View>
+          )}
+        />
+      </View>
     </ImageBackground>
   );
 }
 
-//styles - format
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F3E6CF",
+  container: { flex: 1, padding: 5 },
+  title: { fontSize: 18, fontWeight: "bold", marginBottom: 10, marginTop: 15 },
+  container2: { flex: 1 },
+  card: {
+    padding: 5,
+    backgroundColor: "#E9D6B9",
+    marginBottom: 10,
+    borderRadius: 8,
   },
+  name: { fontWeight: "bold" },
+  location: { fontSize: 12 },
+  rating: { fontSize: 12 },
 
   background: {
     flex: 1,
@@ -330,7 +268,6 @@ const styles = StyleSheet.create({
     marginLeft: 25,
     fontWeight: "bold",
   },
-
   searchBar: {
     position: "absolute",
     backgroundColor: "#FFFAF3",
@@ -381,35 +318,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
 
-  promo: {
-    width: "90%",
-    height: 131,
-    backgroundColor: "#966A0C",
-    borderRadius: 8,
-    marginVertical: 8,
-    alignSelf: "center",
-    marginTop: 15,
-    position: "relative", // make container relative
-    padding: 10,
-  },
-
-  promoText: {
-    position: "absolute",
-    color: "#E9D6B9",
-    fontWeight: "bold",
-    bottom: 10,
-    fontSize: 15,
-    left: 15,
-  },
-
-  labelText: {
-    color: "#4B2C11",
-    fontWeight: "bold",
-    fontSize: 18,
-    marginLeft: 15,
-    top: 5,
-  },
-
   cafeHolder: {
     width: 143,
     height: 136,
@@ -422,6 +330,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 4,
     elevation: 20,
+    flex: 1,
   },
 
   cafeText: {
@@ -442,20 +351,5 @@ const styles = StyleSheet.create({
     color: "#4B2C11",
     fontWeight: 600,
     marginBottom: 0,
-  },
-
-  location: {
-    fontSize: 7,
-    color: "#E9D0A2",
-    fontWeight: "400",
-    marginBottom: 0,
-    marginLeft: 2,
-  },
-
-  rating: {
-    fontSize: 12,
-    color: "#4B2C11",
-    marginBottom: 0,
-    fontWeight: 400,
   },
 });
