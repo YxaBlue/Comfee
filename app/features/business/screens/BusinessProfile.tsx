@@ -3,16 +3,16 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import {
-    Image,
-    ImageBackground,
-    StyleSheet,
-    TouchableOpacity,
-    View,
+  Image,
+  ImageBackground,
+  StyleSheet,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 type NavProps = NativeStackNavigationProp<RootStackParamList, "ProfileBusi">;
 
-export default function ProfileBusi() {
+export default function BusinessProfile() {
   const navigation = useNavigation<NavProps>();
 
   return (

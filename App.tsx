@@ -10,9 +10,9 @@ import CreateAccountScreen from "./app/features/auth/screens/CreateAccount";
 import ForgotPasswordScreen from "./app/features/auth/screens/ForgotPassword";
 import LoginScreen from "./app/features/auth/screens/Login";
 import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
-import ProfileBusi from "./app/features/business/screens/profile-busi";
-import CafeCard from "./app/features/cafe/screens/cafe-card-FE";
-import FilterScreen from "./app/features/cafe/screens/Filter-FE";
+import BusinessProfile from "./app/features/business/screens/BusinessProfile";
+import CafeCard from "./app/features/cafe/screens/CafeCard";
+import FilterScreen from "./app/features/cafe/screens/Filter";
 import ProfileScreen from "./app/features/profile/screens/Profile";
 import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";
 import SettingsScreen from "./app/features/settings/screens/Settings";
@@ -92,7 +92,7 @@ export default function App() {
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         <Stack.Screen name="Dashboard" component={CafeCard} />
         <Stack.Screen name="Filter" component={FilterScreen} />
-        <Stack.Screen name="ProfileBusi" component={ProfileBusi} />
+        <Stack.Screen name="ProfileBusi" component={BusinessProfile} />
       </Stack.Navigator>
     </NavigationContainer>
   );
