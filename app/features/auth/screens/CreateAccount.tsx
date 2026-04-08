@@ -150,6 +150,24 @@ export default function CreateAccountScreen({ navigation }: Props) {
           </View>
         </View>
 
+        {/* Username */}
+        <View style={styles.inputContainer}>
+          <Text style={styles.label}>Username</Text>
+          <TextInput
+            style={[
+              styles.input,
+              errors.username && { borderColor: "#670718" },
+            ]}
+            placeholder="Enter username"
+            placeholderTextColor="#C8AA7A"
+            value={username}
+            onChangeText={setUsername}
+          />
+          {errors.username && (
+            <Text style={styles.errorText2}>{errors.username}</Text>
+          )}
+        </View>
+
         {/* Email */}
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Email</Text>
@@ -396,6 +414,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#C8AA7A",
     fontFamily: "SourceSerifPro-Regular",
+    marginBottom: 15,
   },
 
   input: {
@@ -530,7 +549,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 10,
     alignSelf: "center",
-    marginTop: 30,
+    marginTop: 10,
   },
 
   logo: {
