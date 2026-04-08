@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -64,7 +65,7 @@ const MOCK_REVIEWS: Review[] = [
     id: "2",
     cafeName: "CafeName123",
     rating: 1,
-    comment: "Ew...",
+    comment: "Ew... just no. The service was terrible and the",
     date: "07/01/2026 · 11AM",
     likes: 8,
     imageCount: 0,
@@ -87,7 +88,7 @@ function StarRating({ rating }: { rating: number }) {
         <MaterialIcons
           key={star}
           name={star <= rating ? "star" : "star-border"}
-          size={15}
+          size={18}
           color="#6B4F2E"
         />
       ))}
@@ -96,57 +97,73 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 function ReviewCard({ review }: { review: Review }) {
+  const [isLiked, setIsLiked] = useState(false);
+  const hasImages = review.imageCount > 0;
+  const displayedLikes = review.likes + (isLiked ? 1 : 0);
+
   return (
     <View style={styles.reviewCard}>
       <View style={styles.reviewCardHeader}>
-        <View style={styles.cafeAvatarSmall} />
-        <View style={styles.reviewCardMeta}>
-          <Text style={styles.reviewCafeName}>To {review.cafeName}</Text>
-          <StarRating rating={review.rating} />
-          <Text style={styles.reviewDate}>{review.date}</Text>
+        <View style={styles.reviewMainInfo}>
+          <View style={styles.cafeAvatarSmall} />
+          <View style={styles.reviewCardMeta}>
+            <Text style={styles.reviewLabel}>Review For</Text>
+            <Text style={styles.reviewCafeName}>{review.cafeName}</Text>
+            <StarRating rating={review.rating} />
+            <Text style={styles.reviewDate}>{review.date}</Text>
+          </View>
         </View>
-        <TouchableOpacity>
-          <MaterialIcons name="more-vert" size={18} color="#8C6D4F" />
+
+        <TouchableOpacity style={styles.reviewMoreButton}>
+          <MaterialIcons name="more-vert" size={22} color="#6B4F2E" />
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.reviewComment}>{`"${review.comment}"`}</Text>
+      <Text
+        style={[
+          styles.reviewComment,
+          !hasImages && styles.reviewCommentWithoutMedia,
+        ]}
+      >
+        {`"${review.comment}"`}
+      </Text>
 
-      {review.imageCount > 0 && (
-        <View style={styles.imageGrid}>
-          {review.imageCount === 1 && (
-            <View
-              style={[styles.imagePlaceholder, { width: "100%", height: 90 }]}
-            />
-          )}
-          {review.imageCount === 2 && (
-            <>
-              <View
-                style={[styles.imagePlaceholder, { flex: 1, height: 80 }]}
-              />
-              <View
-                style={[styles.imagePlaceholder, { flex: 1, height: 80 }]}
-              />
-            </>
-          )}
-          {review.imageCount >= 3 && (
-            <>
-              <View
-                style={[styles.imagePlaceholder, { width: "48%", height: 90 }]}
-              />
-              <View style={{ width: "48%", gap: 6 }}>
-                <View style={[styles.imagePlaceholder, { height: 42 }]} />
-                <View style={[styles.imagePlaceholder, { height: 42 }]} />
-              </View>
-            </>
+      {hasImages && (
+        <View style={styles.reviewMediaSection}>
+          <View style={styles.reviewMediaPlaceholder} />
+          {review.imageCount > 1 && (
+            <View style={styles.reviewMediaDots}>
+              {Array.from({ length: Math.min(review.imageCount, 5) }).map(
+                (_, index) => (
+                  <View key={index} style={styles.reviewMediaDot} />
+                ),
+              )}
+            </View>
           )}
         </View>
       )}
 
-      <View style={styles.likesRow}>
-        <MaterialIcons name="thumb-up-off-alt" size={18} color="#8C6D4F" />
-        <Text style={styles.likesCount}>{review.likes}</Text>
-      </View>
+      <Pressable
+        style={({ pressed }) => [
+          styles.likesRow,
+          !hasImages && styles.likesRowWithoutMedia,
+          pressed && styles.likesRowPressed,
+        ]}
+        onPress={() => setIsLiked((prev) => !prev)}
+        accessibilityRole="button"
+        accessibilityLabel={
+          isLiked ? "Remove like from review" : "Like this review"
+        }
+      >
+        <MaterialIcons
+          name={isLiked ? "thumb-up" : "thumb-up-off-alt"}
+          size={20}
+          color={isLiked ? "#6B4F2E" : "#6B4F2E"}
+        />
+        <Text style={[styles.likesCount, isLiked && styles.likesCountActive]}>
+          {displayedLikes}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -218,9 +235,7 @@ export default function ProfileScreen({ navigation }: Props) {
           : "";
   const isSaveDisabled =
     isSaving ||
-    Boolean(
-      usernameError || firstNameError || lastNameError || birthDateError,
-    );
+    Boolean(usernameError || firstNameError || lastNameError || birthDateError);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -742,7 +757,7 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: "#D2BA94",
-    marginHorizontal:20,
+    marginHorizontal: 20,
     marginTop: -10,
   },
 
@@ -777,55 +792,104 @@ const styles = StyleSheet.create({
 
   /* Review card */
   reviewCard: {
-    backgroundColor: "#E6D6BE",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
+    backgroundColor: "#F6F0E8",
+    borderRadius: 14,
+    marginBottom: 13,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#F0E2D0",
   },
   reviewCardHeader: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "flex-start",
-    gap: 10,
-    marginBottom: 8,
+    paddingHorizontal: 13,
+    paddingTop: 13,
   },
+
+  reviewMainInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 11,
+    flex: 1,
+  },
+
+  reviewCardMeta: {
+    justifyContent: "center",
+  },
+
   cafeAvatarSmall: {
-    width: 42,
-    height: 42,
-    borderRadius: 8,
-    backgroundColor: "#D2BA94",
-    flexShrink: 0,
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    backgroundColor: "#F1E7DA",
+    borderWidth: 1,
+    borderColor: "#EADAC6",
   },
-  reviewCardMeta: { flex: 1 },
+
+  reviewMoreButton: {
+    alignSelf: "flex-start",
+  },
+
+  reviewLabel: {
+    fontSize: 12,
+    color: "#8C6D4F",
+    marginBottom: 1,
+  },
   reviewCafeName: {
-    fontSize: 13,
+    fontSize: 16,
     fontWeight: "700",
     color: "#3B2A1A",
   },
   starsRow: {
     flexDirection: "row",
-    marginVertical: 2,
+    marginTop: 3,
+    marginLeft: -2,
   },
   reviewDate: {
     fontSize: 10,
     color: "#A08060",
+    marginTop: 1,
   },
+  // reviewMoreButton: {
+  //   paddingTop: 1,
+  // },
   reviewComment: {
-    fontSize: 12,
+    fontSize: 14,
     color: "#5C3D1E",
-    fontStyle: "italic",
-    lineHeight: 18,
-    marginBottom: 10,
+    lineHeight: 19,
+    marginTop: 16,
+    marginBottom: 5,
+    paddingHorizontal: 22,
+  },
+  reviewCommentWithoutMedia: {
+    marginBottom: 0,
   },
 
   /* Image grid */
-  imageGrid: {
-    flexDirection: "row",
-    gap: 6,
-    marginBottom: 10,
+  reviewMediaSection: {
+    marginBottom: 2,
   },
-  imagePlaceholder: {
-    backgroundColor: "#D2BA94",
-    borderRadius: 6,
+  reviewMediaPlaceholder: {
+    height: 184,
+    backgroundColor: "#F3EADA",
+    borderTopWidth: 1,
+    borderTopColor: "#F1E6D7",
+  },
+  reviewMediaDots: {
+    position: "absolute",
+    bottom: 8,
+    left: 0,
+    right: 0,
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 4,
+  },
+  reviewMediaDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#FFF8ED",
   },
 
   /* Likes */
@@ -833,12 +897,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-end",
-    gap: 4,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 13,
+  },
+  likesRowWithoutMedia: {
+    paddingTop: 2,
+  },
+  likesRowPressed: {
+    opacity: 0.7,
   },
   likesCount: {
-    fontSize: 13,
+    fontSize: 14,
     color: "#8C6D4F",
     fontWeight: "500",
+  },
+  likesCountActive: {
+    color: "#6B4F2E",
   },
 
   /* Info tab */

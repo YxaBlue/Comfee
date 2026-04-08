@@ -169,20 +169,25 @@ export default function CafeCard() {
             name="keyboard-arrow-down"
             size={18}
             color="#4B2C11"
-            style={{ marginLeft: 6 }}
+            style={{ marginLeft: 6, marginTop: 4 }}
           />
         </Pressable>
       </View>
 
       {/* Search Bar */}
-      <View style={styles.searchBar}>
+      <View style={[styles.searchBar, styles.androidShadow]}>
         <MaterialIcons name="search" size={24} color="#C8AA7A" />
         <TextInput
           style={styles.searchInput}
           placeholder="Search cafe"
           placeholderTextColor="#C8AA7A"
           value={search}
-          onChangeText={setSearch}
+          onChangeText={(text) => setSearch(text)}
+          onSubmitEditing={() => {
+            if (search.length > 0) {
+              navigation.navigate("Search", { query: search });
+            }
+          }}
         />
         <Pressable
           onPress={() => navigation.navigate("Filter" as never)}
@@ -202,9 +207,15 @@ export default function CafeCard() {
           keyExtractor={(_, i) => i.toString()}
           renderItem={({ item, index }) => (
             <Pressable
-              onPress={() =>
-                setSelectedIndex(index === selectedIndex ? null : index)
-              }
+              onPress={() => {
+                console.log(
+                  "Nav state:",
+                  JSON.stringify(navigation.getState(), null, 2),
+                );
+                console.log(navigation.getState());
+                setSelectedIndex(index);
+                navigation.navigate("FilteredCafes", { filterType: item });
+              }}
               style={[
                 styles.filter,
                 {
@@ -228,7 +239,8 @@ export default function CafeCard() {
 
       {/* Scrollable body */}
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 30, paddingHorizontal: 15 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.promo}>
@@ -236,36 +248,40 @@ export default function CafeCard() {
         </View>
 
         <Text style={styles.labelText}>Featured Cafés</Text>
-        {cafesLoading ? (
-          <ActivityIndicator color="#A97C4E" style={{ marginVertical: 16 }} />
-        ) : featuredCafes.length > 0 ? (
-          <FlatList
-            data={featuredCafes}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => `featured-${item.id}`}
-            renderItem={renderCafeCard}
-            style={{ marginTop: 3, marginBottom: 14 }}
-          />
-        ) : (
-          <Text style={styles.emptyText}>No featured cafés yet.</Text>
-        )}
+        <View style={{ marginTop: 3 }}>
+          {cafesLoading ? (
+            <ActivityIndicator color="#A97C4E" style={{ marginVertical: 16 }} />
+          ) : featuredCafes.length > 0 ? (
+            <FlatList
+              data={featuredCafes}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => `featured-${item.id}`}
+              renderItem={renderCafeCard}
+              style={{ marginTop: 3, marginBottom: 14 }}
+            />
+          ) : (
+            <Text style={styles.emptyText}>No featured cafés yet.</Text>
+          )}
+        </View>
 
         <Text style={styles.labelText}>Discover More</Text>
-        {cafesLoading ? (
-          <ActivityIndicator color="#A97C4E" style={{ marginVertical: 16 }} />
-        ) : discoverCafes.length > 0 ? (
-          <FlatList
-            data={discoverCafes}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => `discover-${item.id}`}
-            renderItem={renderCafeCard}
-            style={{ marginTop: 3, marginBottom: 14 }}
-          />
-        ) : (
-          <Text style={styles.emptyText}>No cafés to discover yet.</Text>
-        )}
+        <View style={{ marginTop: 3 }}>
+          {cafesLoading ? (
+            <ActivityIndicator color="#A97C4E" style={{ marginVertical: 16 }} />
+          ) : discoverCafes.length > 0 ? (
+            <FlatList
+              data={discoverCafes}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => `discover-${item.id}`}
+              renderItem={renderCafeCard}
+              style={{ marginTop: 3, marginBottom: 14 }}
+            />
+          ) : (
+            <Text style={styles.emptyText}>No cafés to discover yet.</Text>
+          )}
+        </View>
       </ScrollView>
 
       {/* Location Modal */}
@@ -325,7 +341,16 @@ export default function CafeCard() {
 
 // --- Styles ---
 const styles = StyleSheet.create({
-  background: { flex: 1, width: "100%", height: "100%" },
+  container: {
+    flex: 1,
+    backgroundColor: "#F3E6CF",
+  },
+
+  background: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  },
 
   rectangle3: {
     backgroundColor: "#E9D6B9",
@@ -336,7 +361,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  locText1: { fontSize: 9, color: "#4B2C11" },
+  locText1: {
+    fontSize: 9,
+    color: "#4B2C11",
+  },
+
   locText2: {
     fontSize: 12,
     color: "#4B2C11",
@@ -359,11 +388,27 @@ const styles = StyleSheet.create({
     elevation: 20,
     paddingHorizontal: 10,
   },
-  searchInput: { flex: 1, fontSize: 14, color: "#4B2C11", marginLeft: 8 },
-  filterTrigger: { justifyContent: "center", alignItems: "center", padding: 4 },
 
-  filterHolder: { marginTop: 15, paddingLeft: 10 },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#4B2C11",
+    marginLeft: 8,
+  },
+
+  filterTrigger: {
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 4,
+  },
+
+  filterHolder: {
+    marginTop: 15,
+    paddingLeft: 10,
+  },
+
   filter: {
+    backgroundColor: "#E9D6B9",
     borderRadius: 8,
     paddingHorizontal: 20,
     justifyContent: "center",
@@ -371,7 +416,12 @@ const styles = StyleSheet.create({
     marginRight: 10,
     height: 31,
   },
-  filterText: { fontWeight: "500", fontSize: 11 },
+
+  filterText: {
+    color: "#C8AA7A",
+    fontWeight: "500",
+    fontSize: 11,
+  },
 
   promo: {
     width: "90%",
@@ -381,8 +431,10 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     alignSelf: "center",
     marginTop: 15,
+    position: "relative", // make container relative
     padding: 10,
   },
+
   promoText: {
     position: "absolute",
     color: "#E9D6B9",
@@ -396,10 +448,10 @@ const styles = StyleSheet.create({
     color: "#4B2C11",
     fontWeight: "bold",
     fontSize: 18,
-    marginLeft: 5,
-    marginBottom: 4,
-    marginTop: 6,
+    marginLeft: 15,
+    top: 5,
   },
+
   emptyText: {
     color: "#A97C4E",
     fontSize: 12,
@@ -420,17 +472,44 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 20,
   },
+
   cafeText: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
     width: "100%",
   },
-  locationRow: { flexDirection: "row", alignItems: "center", marginTop: 2 },
-  cafeName: { fontSize: 11, color: "#4B2C11", fontWeight: "600" },
-  cafeLocation: { fontSize: 7, color: "#E9D0A2", marginLeft: 2 },
-  cafeRating: { fontSize: 11, color: "#4B2C11", fontWeight: "500" },
 
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
+  },
+
+  cafeName: {
+    fontSize: 11,
+    color: "#4B2C11",
+    fontWeight: 600,
+    marginBottom: 0,
+  },
+
+  cafeLocation: {
+    fontSize: 7,
+    color: "#E9D0A2",
+    fontWeight: "400",
+    marginBottom: 0,
+    marginLeft: 2,
+  },
+
+  cafeRating: {
+    fontSize: 12,
+    color: "#4B2C11",
+    marginBottom: 0,
+    fontWeight: 400,
+  },
+  androidShadow: {
+    elevation: 15,
+  },
   modalOverlay: {
     position: "absolute",
     top: 0,

@@ -12,7 +12,9 @@ import LoginScreen from "./app/features/auth/screens/Login";
 import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
 import BusinessProfile from "./app/features/business/screens/BusinessProfile";
 import CafeCard from "./app/features/cafe/screens/CafeCard";
+import FilteredCafes from "./app/features/cafe/screens/DashboardFilter";
 import FilterScreen from "./app/features/cafe/screens/Filter";
+import SearchScreen from "./app/features/cafe/screens/Search";
 import ProfileScreen from "./app/features/profile/screens/Profile";
 import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";
 import SettingsScreen from "./app/features/settings/screens/Settings";
@@ -28,6 +30,8 @@ export type RootStackParamList = {
   ResetPassword: undefined;
   Dashboard: undefined;
   Filter: undefined;
+  Search: { query: string };
+  FilteredCafes: { filterType: string };
   ProfileBusi: undefined;
 };
 
@@ -51,7 +55,7 @@ const PUBLIC_ROUTES: (keyof RootStackParamList)[] = [
 ];
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-  
+
 export default function App() {
   const navigationRef =
     useRef<NavigationContainerRef<RootStackParamList>>(null);
@@ -120,6 +124,8 @@ export default function App() {
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         <Stack.Screen name="Dashboard" component={CafeCard} />
         <Stack.Screen name="Filter" component={FilterScreen} />
+        <Stack.Screen name="Search" component={SearchScreen} />
+        <Stack.Screen name="FilteredCafes" component={FilteredCafes} />
         <Stack.Screen name="ProfileBusi" component={BusinessProfile} />
       </Stack.Navigator>
     </NavigationContainer>
