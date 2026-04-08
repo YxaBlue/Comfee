@@ -97,11 +97,19 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-function ReviewCard({ review }: { review: Review }) {
+function ReviewCard({
+  review,
+  openMenuId,
+  setOpenMenuId,
+}: {
+  review: Review;
+  openMenuId: string | null;
+  setOpenMenuId: (id: string | null) => void;
+}) {
   const [isLiked, setIsLiked] = useState(false);
   const hasImages = review.imageCount > 0;
   const displayedLikes = review.likes + (isLiked ? 1 : 0);
-  const [showMenu, setShowMenu] = useState<boolean>(false);
+  const showMenu = openMenuId === review.id;
 
   return (
     <View style={styles.reviewCard}>
@@ -132,7 +140,8 @@ function ReviewCard({ review }: { review: Review }) {
 
         <TouchableOpacity
           style={styles.reviewMoreButton}
-          onPress={() => setShowMenu((prev) => !prev)}
+          //onPress={() => setShowMenu((prev) => !prev)}
+          onPress={() => setOpenMenuId(showMenu ? null : review.id)}
         >
           <MaterialIcons name="more-vert" size={22} color="#6B4F2E" />
         </TouchableOpacity>
@@ -218,6 +227,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editFields, setEditFields] = useState<EditableFields>({
     username: "",
     first_name: "",
@@ -506,19 +516,32 @@ export default function ProfileScreen({ navigation }: Props) {
           <View style={styles.tabContent}>
             {/* REVIEWS */}
             {activeTab === "reviews" && (
-              <View>
-                {MOCK_REVIEWS.length === 0 ? (
-                  <View style={styles.emptyState}>
-                    <MaterialIcons name="menu-book" size={44} color="#D2BA94" />
-                    <Text style={styles.emptyText}>No reviews yet</Text>
-                    <Text style={styles.emptySubText}>
-                      Start exploring cafés and share your thoughts!
-                    </Text>
-                  </View>
-                ) : (
-                  MOCK_REVIEWS.map((r) => <ReviewCard key={r.id} review={r} />)
-                )}
-              </View>
+              <Pressable onPress={() => setOpenMenuId(null)}>
+                <View>
+                  {MOCK_REVIEWS.length === 0 ? (
+                    <View style={styles.emptyState}>
+                      <MaterialIcons
+                        name="menu-book"
+                        size={44}
+                        color="#D2BA94"
+                      />
+                      <Text style={styles.emptyText}>No reviews yet</Text>
+                      <Text style={styles.emptySubText}>
+                        Start exploring cafés and share your thoughts!
+                      </Text>
+                    </View>
+                  ) : (
+                    MOCK_REVIEWS.map((r) => (
+                      <ReviewCard
+                        key={r.id}
+                        review={r}
+                        openMenuId={openMenuId}
+                        setOpenMenuId={setOpenMenuId}
+                      />
+                    ))
+                  )}
+                </View>
+              </Pressable>
             )}
 
             {/* INFO */}
