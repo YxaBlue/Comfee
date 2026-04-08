@@ -364,6 +364,7 @@ const styles = StyleSheet.create({
   locText1: {
     fontSize: 9,
     color: "#4B2C11",
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   locText2: {
@@ -371,6 +372,7 @@ const styles = StyleSheet.create({
     color: "#4B2C11",
     fontWeight: "bold",
     marginTop: 2,
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   searchBar: {
@@ -394,6 +396,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#4B2C11",
     marginLeft: 8,
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   filterTrigger: {
@@ -421,6 +424,7 @@ const styles = StyleSheet.create({
     color: "#C8AA7A",
     fontWeight: "500",
     fontSize: 11,
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   promo: {
@@ -442,6 +446,7 @@ const styles = StyleSheet.create({
     bottom: 10,
     fontSize: 15,
     left: 15,
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   labelText: {
@@ -450,6 +455,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     marginLeft: 15,
     top: 5,
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   emptyText: {
@@ -478,6 +484,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-end",
     width: "100%",
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   locationRow: {
