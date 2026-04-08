@@ -416,4 +416,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     fontWeight: 400,
   },
+  androidShadow: {
+    elevation: 15,
+  },
 });
