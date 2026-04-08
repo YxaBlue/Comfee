@@ -101,9 +101,24 @@ function ReviewCard({ review }: { review: Review }) {
   const [isLiked, setIsLiked] = useState(false);
   const hasImages = review.imageCount > 0;
   const displayedLikes = review.likes + (isLiked ? 1 : 0);
+  const [showMenu, setShowMenu] = useState<boolean>(false);
 
   return (
     <View style={styles.reviewCard}>
+      {showMenu && (
+        <View style={styles.menuContainer}>
+          <TouchableOpacity style={styles.menuItem}>
+            <MaterialIcons name="edit" size={18} color="#6B4F2E" />
+            <Text style={styles.menuText}>Edit</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem}>
+            <MaterialIcons name="delete" size={18} color="#C0392B" />
+            <Text style={[styles.menuText, { color: "#C0392B" }]}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={styles.reviewCardHeader}>
         <View style={styles.reviewMainInfo}>
           <View style={styles.cafeAvatarSmall} />
@@ -115,7 +130,10 @@ function ReviewCard({ review }: { review: Review }) {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.reviewMoreButton}>
+        <TouchableOpacity
+          style={styles.reviewMoreButton}
+          onPress={() => setShowMenu((prev) => !prev)}
+        >
           <MaterialIcons name="more-vert" size={22} color="#6B4F2E" />
         </TouchableOpacity>
       </View>
@@ -759,6 +777,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#3B2A1A",
     flexShrink: 1,
+    fontFamily: "SourceSerifPro-Regular",
   },
   usernameInput: {
     flex: 1,
@@ -772,12 +791,14 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     borderBottomWidth: 1,
     borderBottomColor: "#C8A97A",
+    fontFamily: "SourceSerifPro-Regular",
   },
   joinedDate: {
     fontSize: 12,
     color: "#8C6D4F",
     marginTop: 2,
     paddingRight: 8,
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   /* Divider */
@@ -863,11 +884,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#8C6D4F",
     marginBottom: 1,
+    fontFamily: "SourceSerifPro-Regular",
   },
   reviewCafeName: {
     fontSize: 16,
     fontWeight: "700",
     color: "#3B2A1A",
+    fontFamily: "SourceSerifPro-Regular",
   },
   starsRow: {
     flexDirection: "row",
@@ -878,6 +901,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#A08060",
     marginTop: 1,
+    fontFamily: "SourceSerifPro-Regular",
   },
   // reviewMoreButton: {
   //   paddingTop: 1,
@@ -940,6 +964,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#8C6D4F",
     fontWeight: "500",
+    fontFamily: "SourceSerifPro-Regular",
   },
   likesCountActive: {
     color: "#6B4F2E",
@@ -952,6 +977,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#A97C4E",
     marginBottom: 4,
+    fontFamily: "SourceSerifPro-Regular",
   },
   infoRow: {
     flexDirection: "row",
@@ -977,12 +1003,14 @@ const styles = StyleSheet.create({
     color: "#3B2A1A",
     borderWidth: 1.5,
     borderColor: "#C8A97A",
+    fontFamily: "SourceSerifPro-Regular",
   },
   errorText: {
     fontSize: 11,
     color: "#C0392B",
     marginTop: 2,
     paddingHorizontal: 4,
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   /* Edit action buttons */
@@ -1032,6 +1060,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#8C6D4F",
     marginTop: 10,
+    fontFamily: "SourceSerifPro-Regular",
   },
   emptySubText: {
     fontSize: 12,
@@ -1039,6 +1068,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 4,
     lineHeight: 17,
+    fontFamily: "SourceSerifPro-Regular",
   },
   profileNavAvatar: {
     width: 36,
@@ -1053,5 +1083,35 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "100%",
     height: "100%",
+  },
+  menuContainer: {
+    position: "absolute",
+    top: 40,
+    right: 10,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    paddingVertical: 6,
+    width: 120,
+
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 5,
+
+    zIndex: 100,
+  },
+
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+
+  menuText: {
+    fontSize: 14,
+    color: "#3B2A1A",
+    fontFamily: "SourceSerifPro-Regular",
   },
 });
