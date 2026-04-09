@@ -28,7 +28,7 @@ type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Profile">;
 };
 
-type Tab = "info" | "reviews";
+type Tab = "info" | "favorites" | "reviews";
 
 type Review = {
   id: string;
@@ -46,6 +46,12 @@ type EditableFields = {
   last_name: string;
   birth_date: string;
   bio: string;
+};
+
+type FaveCafe = {
+  id: string;
+  name: string;
+  location: string;
 };
 
 const AVATAR_SIZE = 106;
@@ -80,6 +86,12 @@ const MOCK_REVIEWS: Review[] = [
     likes: 41,
     imageCount: 2,
   },
+];
+
+const MOCK_FAVORITES: FaveCafe[] = [
+  { id: "1", name: "Ilya Rozy Cafe", location: "Cebu City" },
+  { id: "2", name: "Hollander Hubb", location: "IT Park" },
+  { id: "3", name: "Hollanove Cafe", location: "Lahug" },
 ];
 
 function StarRating({ rating }: { rating: number }) {
@@ -218,6 +230,24 @@ function ProfileSkeleton() {
   );
 }
 
+function FaveCard({ cafe }: { cafe: FaveCafe }) {
+  return (
+    <View style={styles.favoriteCard}>
+      <View style={styles.favoriteImagePlaceholder} />
+
+      <View style={styles.favoriteInfo}>
+        <Text style={styles.favoriteName}>{cafe.name}</Text>
+        <View style={styles.locationRow}>
+          <MaterialIcons name="location-on" size={12} color="#E9D0A2" />
+          <Text style={styles.favoriteLocation}>{cafe.location}</Text>
+        </View>
+      </View>
+
+      <MaterialIcons name="favorite" size={20} color="#6B4F2E" />
+    </View>
+  );
+}
+
 export default function ProfileScreen({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("reviews");
   const [userId, setUserId] = useState<string | null>(null);
@@ -238,6 +268,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: "info", icon: "info-outline" },
+    { key: "favorites", icon: "favorite-border" },
     { key: "reviews", icon: "rate-review" },
   ];
   const trimmedUsername = editFields.username.trim();
@@ -542,6 +573,22 @@ export default function ProfileScreen({ navigation }: Props) {
                   )}
                 </View>
               </Pressable>
+            )}
+
+            {/*Favorites*/}
+            {activeTab === "favorites" && (
+              <View>
+                {MOCK_FAVORITES.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <MaterialIcons name="favorite" size={44} color="#D2BA94" />
+                    <Text style={styles.emptyText}>No favorites yet</Text>
+                  </View>
+                ) : (
+                  MOCK_FAVORITES.map((cafe) => (
+                    <FaveCard key={cafe.id} cafe={cafe} />
+                  ))
+                )}
+              </View>
             )}
 
             {/* INFO */}
@@ -1136,5 +1183,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#3B2A1A",
     fontFamily: "SourceSerifPro-Regular",
+  },
+
+  //favorites tab
+  favoriteCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFAF3",
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    elevation: 2, // Android shadow
+    height: 100,
+  },
+
+  favoriteImagePlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: "#E5D3B3",
+    marginRight: 12,
+  },
+
+  favoriteInfo: {
+    flex: 1,
+  },
+
+  favoriteName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4E342E",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+
+  favoriteLocation: {
+    fontSize: 12,
+    color: "#8C6D4F",
+    marginTop: 2,
+    marginLeft: 2,
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
   },
 });
