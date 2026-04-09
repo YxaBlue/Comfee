@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   FlatList,
   ImageBackground,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,19 +19,13 @@ import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import * as Location from "expo-location";
-import {
-  Cafe,
-  getDiscoverCafes,
-  getFeaturedCafes,
-} from "./services/cafeService";
+import { Cafe, getCafesByCity } from "./services/cafeService";
 
 type NavProps = NativeStackNavigationProp<RootStackParamList, "Dashboard">;
 
-function fakeRating(id: number): string {
-  const rand = ((id * 9301 + 49297) % 233280) / 233280;
-  return (3.5 + rand * 1.5).toFixed(1);
-}
+const PAGE_SIZE = 10;
+
+const CEBU_CITIES = ["Cebu", "Mandaue", "Lapu-Lapu", "Talisay"];
 
 export default function CafeCard() {
   const navigation = useNavigation<NavProps>();
@@ -40,18 +35,16 @@ export default function CafeCard() {
   const [profile, setProfile] = useState<any>(null);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  const [locationLabel, setLocationLabel] = useState("Detecting...");
+  const [city, setCity] = useState("Cebu");
   const [locationModalVisible, setLocationModalVisible] = useState(false);
-  const [locationSearch, setLocationSearch] = useState("");
-  const [suggestions, setSuggestions] = useState<any[]>([]);
 
-  const [featuredCafes, setFeaturedCafes] = useState<Cafe[]>([]);
-  const [discoverCafes, setDiscoverCafes] = useState<Cafe[]>([]);
-  const [cafesLoading, setCafesLoading] = useState(true);
-  const [userCoords, setUserCoords] = useState<{
-    latitude: number;
-    longitude: number;
-  }>();
+  const [allCafes, setAllCafes] = useState<Cafe[]>([]);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [cafesLoading, setCafesLoading] = useState(false);
+
+  const featuredCafes = allCafes.filter((c) => c.featured);
+  const discoverCafes = allCafes.filter((c) => !c.featured);
 
   const filterOptions = [
     "Near Me",
@@ -61,33 +54,6 @@ export default function CafeCard() {
     "Service",
     "Affordable",
   ];
-
-  // --- Effects ---
-  useEffect(() => {
-    (async () => {
-      try {
-        const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") throw new Error("Permission Denied");
-
-        const loc = await Location.getCurrentPositionAsync({});
-        const coords = {
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-        };
-        setUserCoords(coords);
-
-        const [place] = await Location.reverseGeocodeAsync(coords);
-        setLocationLabel(
-          place?.city
-            ? `${place.city}, ${place.region ?? ""}`
-            : "Cebu City, Philippines",
-        );
-      } catch {
-        setLocationLabel("Cebu City, Philippines");
-        setUserCoords({ latitude: 10.3157, longitude: 123.8854 });
-      }
-    })();
-  }, []);
 
   useEffect(() => {
     (async () => {
@@ -105,25 +71,26 @@ export default function CafeCard() {
   }, []);
 
   useEffect(() => {
-    if (!userCoords) return;
-    loadCafes();
-  }, [userCoords]);
+    fetchCafes(0, true);
+  }, [city]);
 
   // --- Functions ---
-  async function loadCafes() {
+  async function fetchCafes(pageNum: number, reset = false) {
     setCafesLoading(true);
     try {
-      const [featured, discover] = await Promise.all([
-        getFeaturedCafes(userCoords!, 10),
-        getDiscoverCafes(userCoords!, 10),
-      ]);
-      setFeaturedCafes(featured ?? []);
-      setDiscoverCafes(discover ?? []);
+      const data = await getCafesByCity(city, pageNum);
+      setAllCafes((prev) => (reset ? data : [...prev, ...data]));
+      setHasMore(data.length === PAGE_SIZE);
+      setPage(pageNum);
     } catch (err) {
       console.error("Failed to load cafes:", err);
     } finally {
       setCafesLoading(false);
     }
+  }
+
+  function handleLoadMore() {
+    if (!cafesLoading && hasMore) fetchCafes(page + 1);
   }
 
   const renderCafeCard = ({ item }: { item: Cafe }) => (
@@ -141,7 +108,7 @@ export default function CafeCard() {
             </Text>
           </View>
         </View>
-        <Text style={styles.cafeRating}>{fakeRating(item.id)}</Text>
+        <Text style={styles.cafeRating}>{item.average_rating}</Text>
       </View>
     </View>
   );
@@ -164,7 +131,7 @@ export default function CafeCard() {
           onPress={() => setLocationModalVisible(true)}
           style={{ flexDirection: "row", alignItems: "center" }}
         >
-          <Text style={styles.locText2}>{locationLabel}</Text>
+          <Text style={styles.locText2}>{city} City, Cebu, Philippines</Text>
           <MaterialIcons
             name="keyboard-arrow-down"
             size={18}
@@ -284,57 +251,54 @@ export default function CafeCard() {
         </View>
       </ScrollView>
 
-      {/* Location Modal */}
-      {locationModalVisible && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.bottomSheet}>
-            <Text style={styles.modalTitle}>Select Location</Text>
-            <View style={styles.modalSearchBar}>
-              <MaterialIcons name="search" size={20} color="#A97C4E" />
-              <TextInput
-                placeholder="Search address"
-                placeholderTextColor="#C8AA7A"
-                value={locationSearch}
-                onChangeText={setLocationSearch}
-                style={{ flex: 1, marginLeft: 8 }}
-              />
-            </View>
-
+      {/* City Picker Modal */}
+      <Modal
+        visible={locationModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setLocationModalVisible(false)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setLocationModalVisible(false)}
+        >
+          {/* stopPropagation so tapping inside sheet doesn't close it */}
+          <Pressable style={styles.bottomSheet} onPress={() => {}}>
+            <Text style={styles.modalTitle}>Select City</Text>
             <FlatList
-              data={suggestions}
-              keyExtractor={(_, i) => i.toString()}
+              data={CEBU_CITIES}
+              keyExtractor={(item) => item}
+              showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
                 <Pressable
-                  style={styles.suggestionItem}
+                  style={styles.cityItem}
                   onPress={() => {
-                    const coords = {
-                      latitude: item.latitude,
-                      longitude: item.longitude,
-                    };
-                    setUserCoords(coords);
-                    setLocationLabel(item.description);
+                    setCity(item);
                     setLocationModalVisible(false);
-                    setSuggestions([]);
-                    setLocationSearch("");
                   }}
                 >
                   <MaterialIcons name="location-on" size={16} color="#A97C4E" />
-                  <Text style={styles.suggestionText}>
-                    {item.latitude.toFixed(3)}, {item.longitude.toFixed(3)}
-                  </Text>
+                  <Text style={styles.cityText}>{item}</Text>
+                  {city === item && (
+                    <MaterialIcons
+                      name="check"
+                      size={16}
+                      color="#A97C4E"
+                      style={{ marginLeft: "auto" }}
+                    />
+                  )}
                 </Pressable>
               )}
             />
-
             <Pressable
               onPress={() => setLocationModalVisible(false)}
               style={styles.closeButton}
             >
-              <Text style={{ color: "#FFF" }}>Close</Text>
+              <Text style={{ color: "#FFF", fontWeight: "600" }}>Close</Text>
             </Pressable>
-          </View>
-        </View>
-      )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ImageBackground>
   );
 }
@@ -455,8 +419,9 @@ const styles = StyleSheet.create({
   emptyText: {
     color: "#A97C4E",
     fontSize: 12,
-    marginLeft: 5,
-    marginBottom: 10,
+    textAlign: "center",
+    marginTop: 30,
+    marginBottom: 40,
   },
 
   cafeHolder: {
@@ -511,11 +476,7 @@ const styles = StyleSheet.create({
     elevation: 15,
   },
   modalOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    flex: 1,
     backgroundColor: "rgba(0,0,0,0.3)",
     justifyContent: "flex-end",
   },
@@ -523,33 +484,28 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFAF3",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 16,
+    padding: 20,
     maxHeight: "70%",
+    paddingBottom: 36,
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    marginBottom: 10,
+    marginBottom: 12,
     color: "#4B2C11",
   },
-  modalSearchBar: {
+  cityItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F3E6CF",
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 10,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E9D6B9",
   },
-  suggestionItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-  },
-  suggestionText: { marginLeft: 8, color: "#4B2C11" },
+  cityText: { marginLeft: 8, color: "#4B2C11", fontSize: 14, flex: 1 },
   closeButton: {
-    marginTop: 10,
+    marginTop: 16,
     backgroundColor: "#A97C4E",
-    padding: 10,
+    padding: 12,
     borderRadius: 10,
     alignItems: "center",
   },
