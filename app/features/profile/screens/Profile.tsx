@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  ImageBackground,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,7 +28,7 @@ type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Profile">;
 };
 
-type Tab = "info" | "reviews";
+type Tab = "info" | "favorites" | "reviews";
 
 type Review = {
   id: string;
@@ -45,6 +46,12 @@ type EditableFields = {
   last_name: string;
   birth_date: string;
   bio: string;
+};
+
+type FaveCafe = {
+  id: string;
+  name: string;
+  location: string;
 };
 
 const AVATAR_SIZE = 106;
@@ -81,6 +88,12 @@ const MOCK_REVIEWS: Review[] = [
   },
 ];
 
+const MOCK_FAVORITES: FaveCafe[] = [
+  { id: "1", name: "Ilya Rozy Cafe", location: "Cebu City" },
+  { id: "2", name: "Hollander Hubb", location: "IT Park" },
+  { id: "3", name: "Hollanove Cafe", location: "Lahug" },
+];
+
 function StarRating({ rating }: { rating: number }) {
   return (
     <View style={styles.starsRow}>
@@ -96,13 +109,36 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-function ReviewCard({ review }: { review: Review }) {
+function ReviewCard({
+  review,
+  openMenuId,
+  setOpenMenuId,
+}: {
+  review: Review;
+  openMenuId: string | null;
+  setOpenMenuId: (id: string | null) => void;
+}) {
   const [isLiked, setIsLiked] = useState(false);
   const hasImages = review.imageCount > 0;
   const displayedLikes = review.likes + (isLiked ? 1 : 0);
+  const showMenu = openMenuId === review.id;
 
   return (
     <View style={styles.reviewCard}>
+      {showMenu && (
+        <View style={styles.menuContainer}>
+          <TouchableOpacity style={styles.menuItem}>
+            <MaterialIcons name="edit" size={18} color="#6B4F2E" />
+            <Text style={styles.menuText}>Edit</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem}>
+            <MaterialIcons name="delete" size={18} color="#C0392B" />
+            <Text style={[styles.menuText, { color: "#C0392B" }]}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={styles.reviewCardHeader}>
         <View style={styles.reviewMainInfo}>
           <View style={styles.cafeAvatarSmall} />
@@ -114,7 +150,11 @@ function ReviewCard({ review }: { review: Review }) {
           </View>
         </View>
 
-        <TouchableOpacity style={styles.reviewMoreButton}>
+        <TouchableOpacity
+          style={styles.reviewMoreButton}
+          //onPress={() => setShowMenu((prev) => !prev)}
+          onPress={() => setOpenMenuId(showMenu ? null : review.id)}
+        >
           <MaterialIcons name="more-vert" size={22} color="#6B4F2E" />
         </TouchableOpacity>
       </View>
@@ -190,6 +230,24 @@ function ProfileSkeleton() {
   );
 }
 
+function FaveCard({ cafe }: { cafe: FaveCafe }) {
+  return (
+    <View style={styles.favoriteCard}>
+      <View style={styles.favoriteImagePlaceholder} />
+
+      <View style={styles.favoriteInfo}>
+        <Text style={styles.favoriteName}>{cafe.name}</Text>
+        <View style={styles.locationRow}>
+          <MaterialIcons name="location-on" size={12} color="#E9D0A2" />
+          <Text style={styles.favoriteLocation}>{cafe.location}</Text>
+        </View>
+      </View>
+
+      <MaterialIcons name="favorite" size={20} color="#6B4F2E" />
+    </View>
+  );
+}
+
 export default function ProfileScreen({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("reviews");
   const [userId, setUserId] = useState<string | null>(null);
@@ -199,6 +257,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [editFields, setEditFields] = useState<EditableFields>({
     username: "",
     first_name: "",
@@ -209,6 +268,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: "info", icon: "info-outline" },
+    { key: "favorites", icon: "favorite-border" },
     { key: "reviews", icon: "rate-review" },
   ];
   const trimmedUsername = editFields.username.trim();
@@ -360,309 +420,355 @@ export default function ProfileScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={styles.wrapper}>
-      <TopBar
-        navigation={navigation}
-        profilePicture={profile?.profile_picture}
-      />
+    <ImageBackground
+      source={require("../../../../assets/images/bg1.png")}
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <View style={styles.wrapper}>
+        <TopBar
+          navigation={navigation}
+          profilePicture={profile?.profile_picture}
+        />
 
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── Header band ── */}
-        <View style={styles.headerBand}>
-          <View style={styles.avatarWrapper}>
-            <TouchableOpacity
-              style={styles.avatarTouchTarget}
-              onPress={isEditing ? handlePickAvatar : undefined}
-              activeOpacity={isEditing ? 0.7 : 1}
-            >
-              <View style={styles.avatarCircle}>
-                {profile?.profile_picture ? (
-                  <Image
-                    key={profile.profile_picture}
-                    source={{ uri: profile.profile_picture }}
-                    style={{ width: "100%", height: "100%", borderRadius: 53 }}
-                  />
-                ) : (
-                  <MaterialIcons name="person" size={52} color="#C8A97A" />
-                )}
-              </View>
-              {isEditing && (
-                <View style={styles.cameraBadge}>
-                  <MaterialIcons name="photo-camera" size={12} color="#fff" />
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* ── Header band ── */}
 
-        {/* ── User info ── */}
-        <View style={styles.userInfoSection}>
-          <View style={styles.nameEditRow}>
-            {isEditing ? (
-              <TextInput
-                style={styles.usernameInput}
-                value={editFields.username}
-                onChangeText={(v) => {
-                  setEditFields((p) => ({ ...p, username: v }));
-                  setFieldErrors((prev) => {
-                    if (!prev.username) return prev;
-                    const next = { ...prev };
-                    delete next.username;
-                    return next;
-                  });
-                }}
-                placeholder={profile?.username}
-                placeholderTextColor="#B09070"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            ) : (
-              <Text style={styles.userName}>{profile?.username}</Text>
-            )}
-            {!isEditing && (
-              <TouchableOpacity onPress={handleEditPress}>
-                <MaterialIcons name="edit" size={16} color="#8C6D4F" />
-              </TouchableOpacity>
-            )}
-          </View>
-          {(fieldErrors.username || usernameError) && (
-            <Text style={styles.errorText}>
-              {fieldErrors.username || usernameError}
-            </Text>
-          )}
-          <Text style={styles.joinedDate}>
-            Joined since{" "}
-            {profile?.joined_at
-              ? format(parseISO(profile.joined_at), "MMMM dd, yyyy")
-              : "Not available"}
-          </Text>
-        </View>
-
-        {/* ── Divider ── */}
-        <View style={styles.divider} />
-
-        {/* ── Icon tab bar ── */}
-        <View style={styles.tabBar}>
-          {TAB_ICONS.map(({ key, icon }) => {
-            const isLocked = isEditing && key === "reviews";
-            return (
+          <View style={styles.headerBand}>
+            <View style={styles.avatarWrapper}>
               <TouchableOpacity
-                key={key}
-                style={styles.tabBtn}
-                onPress={() => handleTabPress(key)}
-                disabled={isLocked}
+                style={styles.avatarTouchTarget}
+                onPress={isEditing ? handlePickAvatar : undefined}
+                activeOpacity={isEditing ? 0.7 : 1}
               >
-                <MaterialIcons
-                  name={icon}
-                  size={24}
-                  color={
-                    isLocked
-                      ? "#D9C4AA"
-                      : activeTab === key
-                        ? "#6B4F2E"
-                        : "#C4A882"
-                  }
-                />
-                {activeTab === key && !isLocked && (
-                  <View style={styles.tabUnderline} />
+                <View style={styles.avatarCircle}>
+                  {profile?.profile_picture ? (
+                    <Image
+                      key={profile.profile_picture}
+                      source={{ uri: profile.profile_picture }}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        borderRadius: 53,
+                      }}
+                    />
+                  ) : (
+                    <MaterialIcons name="person" size={52} color="#C8A97A" />
+                  )}
+                </View>
+                {isEditing && (
+                  <View style={styles.cameraBadge}>
+                    <MaterialIcons name="photo-camera" size={12} color="#fff" />
+                  </View>
                 )}
               </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* ── Tab content ── */}
-        <View style={styles.tabContent}>
-          {/* REVIEWS */}
-          {activeTab === "reviews" && (
-            <View>
-              {MOCK_REVIEWS.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <MaterialIcons name="menu-book" size={44} color="#D2BA94" />
-                  <Text style={styles.emptyText}>No reviews yet</Text>
-                  <Text style={styles.emptySubText}>
-                    Start exploring cafés and share your thoughts!
-                  </Text>
-                </View>
-              ) : (
-                MOCK_REVIEWS.map((r) => <ReviewCard key={r.id} review={r} />)
-              )}
             </View>
-          )}
+          </View>
 
-          {/* INFO */}
-          {activeTab === "info" && (
-            <View style={styles.infoSection}>
-              <View style={styles.infoRow}>
-                <View style={styles.infoField}>
-                  <Text style={styles.infoLabel}>First Name</Text>
-                  {isEditing ? (
-                    <TextInput
-                      style={styles.infoInput}
-                      value={editFields.first_name}
-                      onChangeText={(v) => {
-                        setEditFields((p) => ({ ...p, first_name: v }));
-                        setFieldErrors((prev) => {
-                          if (!prev.firstName) return prev;
-                          const next = { ...prev };
-                          delete next.firstName;
-                          return next;
-                        });
-                      }}
-                      placeholder="First name"
-                      placeholderTextColor="#B09070"
-                    />
-                  ) : (
-                    <View style={styles.infoValueBox}>
-                      <Text style={styles.infoValue}>
-                        {profile?.first_name}
-                      </Text>
-                    </View>
-                  )}
-                  {(fieldErrors.firstName || firstNameError) && (
-                    <Text style={styles.errorText}>
-                      {fieldErrors.firstName || firstNameError}
-                    </Text>
-                  )}
-                </View>
-                <View style={styles.infoField}>
-                  <Text style={styles.infoLabel}>Last Name</Text>
-                  {isEditing ? (
-                    <TextInput
-                      style={styles.infoInput}
-                      value={editFields.last_name}
-                      onChangeText={(v) => {
-                        setEditFields((p) => ({ ...p, last_name: v }));
-                        setFieldErrors((prev) => {
-                          if (!prev.lastName) return prev;
-                          const next = { ...prev };
-                          delete next.lastName;
-                          return next;
-                        });
-                      }}
-                      placeholder="Last name"
-                      placeholderTextColor="#B09070"
-                    />
-                  ) : (
-                    <View style={styles.infoValueBox}>
-                      <Text style={styles.infoValue}>{profile?.last_name}</Text>
-                    </View>
-                  )}
-                  {(fieldErrors.lastName || lastNameError) && (
-                    <Text style={styles.errorText}>
-                      {fieldErrors.lastName || lastNameError}
-                    </Text>
-                  )}
-                </View>
-              </View>
-
-              <View style={styles.infoRow}>
-                <View style={styles.infoField}>
-                  <Text style={styles.infoLabel}>Age</Text>
-                  <View style={styles.infoValueBox}>
-                    <Text style={styles.infoValue}>{profile?.age}</Text>
-                  </View>
-                </View>
-                <View style={styles.infoField}>
-                  <Text style={styles.infoLabel}>Birth Date</Text>
-                  {isEditing ? (
-                    <TextInput
-                      style={styles.infoInput}
-                      value={editFields.birth_date}
-                      onChangeText={(v) => {
-                        setEditFields((p) => ({ ...p, birth_date: v }));
-                        setFieldErrors((prev) => {
-                          if (!prev.birthDate) return prev;
-                          const next = { ...prev };
-                          delete next.birthDate;
-                          return next;
-                        });
-                      }}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#B09070"
-                    />
-                  ) : (
-                    <View style={styles.infoValueBox}>
-                      <Text style={styles.infoValue}>
-                        {profile?.birth_date
-                          ? format(
-                              parseISO(profile.birth_date),
-                              "MMMM dd, yyyy",
-                            )
-                          : "Not available"}
-                      </Text>
-                    </View>
-                  )}
-                  {(fieldErrors.birthDate || birthDateError) && (
-                    <Text style={styles.errorText}>
-                      {fieldErrors.birthDate || birthDateError}
-                    </Text>
-                  )}
-                </View>
-              </View>
-
-              <View style={styles.infoField}>
-                <Text style={styles.infoLabel}>Bio</Text>
+          {/* ── User info ── */}
+          <View style={styles.container}>
+            <View style={styles.userInfoSection}>
+              <View style={styles.nameEditRow}>
                 {isEditing ? (
                   <TextInput
-                    style={[
-                      styles.infoInput,
-                      { minHeight: 80, textAlignVertical: "top" },
-                    ]}
-                    value={editFields.bio}
-                    onChangeText={(v) =>
-                      setEditFields((p) => ({ ...p, bio: v }))
-                    }
-                    placeholder="Tell us about yourself..."
+                    style={styles.usernameInput}
+                    value={editFields.username}
+                    onChangeText={(v) => {
+                      setEditFields((p) => ({ ...p, username: v }));
+                      setFieldErrors((prev) => {
+                        if (!prev.username) return prev;
+                        const next = { ...prev };
+                        delete next.username;
+                        return next;
+                      });
+                    }}
+                    placeholder={profile?.username}
                     placeholderTextColor="#B09070"
-                    multiline
+                    autoCapitalize="none"
+                    autoCorrect={false}
                   />
                 ) : (
-                  <View style={[styles.infoValueBox, { minHeight: 80 }]}>
-                    <Text style={styles.infoValue}>{profile?.bio || ""}</Text>
+                  <Text style={styles.userName}>{profile?.username}</Text>
+                )}
+                {!isEditing && (
+                  <TouchableOpacity onPress={handleEditPress}>
+                    <MaterialIcons name="edit" size={16} color="#8C6D4F" />
+                  </TouchableOpacity>
+                )}
+              </View>
+              {(fieldErrors.username || usernameError) && (
+                <Text style={styles.errorText}>
+                  {fieldErrors.username || usernameError}
+                </Text>
+              )}
+              <Text style={styles.joinedDate}>
+                Joined since{" "}
+                {profile?.joined_at
+                  ? format(parseISO(profile.joined_at), "MMMM dd, yyyy")
+                  : "Not available"}
+              </Text>
+            </View>
+          </View>
+
+          {/* ── Divider ── */}
+          <View style={styles.divider} />
+
+          {/* ── Icon tab bar ── */}
+          <View style={styles.tabBar}>
+            {TAB_ICONS.map(({ key, icon }) => {
+              const isLocked = isEditing && key === "reviews";
+              return (
+                <TouchableOpacity
+                  key={key}
+                  style={styles.tabBtn}
+                  onPress={() => handleTabPress(key)}
+                  disabled={isLocked}
+                >
+                  <MaterialIcons
+                    name={icon}
+                    size={24}
+                    color={
+                      isLocked
+                        ? "#D9C4AA"
+                        : activeTab === key
+                          ? "#6B4F2E"
+                          : "#C4A882"
+                    }
+                  />
+                  {activeTab === key && !isLocked && (
+                    <View style={styles.tabUnderline} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* ── Tab content ── */}
+          <View style={styles.tabContent}>
+            {/* REVIEWS */}
+            {activeTab === "reviews" && (
+              <Pressable onPress={() => setOpenMenuId(null)}>
+                <View>
+                  {MOCK_REVIEWS.length === 0 ? (
+                    <View style={styles.emptyState}>
+                      <MaterialIcons
+                        name="menu-book"
+                        size={44}
+                        color="#D2BA94"
+                      />
+                      <Text style={styles.emptyText}>No reviews yet</Text>
+                      <Text style={styles.emptySubText}>
+                        Start exploring cafés and share your thoughts!
+                      </Text>
+                    </View>
+                  ) : (
+                    MOCK_REVIEWS.map((r) => (
+                      <ReviewCard
+                        key={r.id}
+                        review={r}
+                        openMenuId={openMenuId}
+                        setOpenMenuId={setOpenMenuId}
+                      />
+                    ))
+                  )}
+                </View>
+              </Pressable>
+            )}
+
+            {/*Favorites*/}
+            {activeTab === "favorites" && (
+              <View>
+                {MOCK_FAVORITES.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <MaterialIcons name="favorite" size={44} color="#D2BA94" />
+                    <Text style={styles.emptyText}>No favorites yet</Text>
+                  </View>
+                ) : (
+                  MOCK_FAVORITES.map((cafe) => (
+                    <FaveCard key={cafe.id} cafe={cafe} />
+                  ))
+                )}
+              </View>
+            )}
+
+            {/* INFO */}
+            {activeTab === "info" && (
+              <View style={styles.infoSection}>
+                <View style={styles.infoRow}>
+                  <View style={styles.infoField}>
+                    <Text style={styles.infoLabel}>First Name</Text>
+                    {isEditing ? (
+                      <TextInput
+                        style={styles.infoInput}
+                        value={editFields.first_name}
+                        onChangeText={(v) => {
+                          setEditFields((p) => ({ ...p, first_name: v }));
+                          setFieldErrors((prev) => {
+                            if (!prev.firstName) return prev;
+                            const next = { ...prev };
+                            delete next.firstName;
+                            return next;
+                          });
+                        }}
+                        placeholder="First name"
+                        placeholderTextColor="#B09070"
+                      />
+                    ) : (
+                      <View style={styles.infoValueBox}>
+                        <Text style={styles.infoValue}>
+                          {profile?.first_name}
+                        </Text>
+                      </View>
+                    )}
+                    {(fieldErrors.firstName || firstNameError) && (
+                      <Text style={styles.errorText}>
+                        {fieldErrors.firstName || firstNameError}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.infoField}>
+                    <Text style={styles.infoLabel}>Last Name</Text>
+                    {isEditing ? (
+                      <TextInput
+                        style={styles.infoInput}
+                        value={editFields.last_name}
+                        onChangeText={(v) => {
+                          setEditFields((p) => ({ ...p, last_name: v }));
+                          setFieldErrors((prev) => {
+                            if (!prev.lastName) return prev;
+                            const next = { ...prev };
+                            delete next.lastName;
+                            return next;
+                          });
+                        }}
+                        placeholder="Last name"
+                        placeholderTextColor="#B09070"
+                      />
+                    ) : (
+                      <View style={styles.infoValueBox}>
+                        <Text style={styles.infoValue}>
+                          {profile?.last_name}
+                        </Text>
+                      </View>
+                    )}
+                    {(fieldErrors.lastName || lastNameError) && (
+                      <Text style={styles.errorText}>
+                        {fieldErrors.lastName || lastNameError}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.infoRow}>
+                  <View style={styles.infoField}>
+                    <Text style={styles.infoLabel}>Age</Text>
+                    <View style={styles.infoValueBox}>
+                      <Text style={styles.infoValue}>{profile?.age}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.infoField}>
+                    <Text style={styles.infoLabel}>Birth Date</Text>
+                    {isEditing ? (
+                      <TextInput
+                        style={styles.infoInput}
+                        value={editFields.birth_date}
+                        onChangeText={(v) => {
+                          setEditFields((p) => ({ ...p, birth_date: v }));
+                          setFieldErrors((prev) => {
+                            if (!prev.birthDate) return prev;
+                            const next = { ...prev };
+                            delete next.birthDate;
+                            return next;
+                          });
+                        }}
+                        placeholder="YYYY-MM-DD"
+                        placeholderTextColor="#B09070"
+                      />
+                    ) : (
+                      <View style={styles.infoValueBox}>
+                        <Text style={styles.infoValue}>
+                          {profile?.birth_date
+                            ? format(
+                                parseISO(profile.birth_date),
+                                "MMMM dd, yyyy",
+                              )
+                            : "Not available"}
+                        </Text>
+                      </View>
+                    )}
+                    {(fieldErrors.birthDate || birthDateError) && (
+                      <Text style={styles.errorText}>
+                        {fieldErrors.birthDate || birthDateError}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.infoField}>
+                  <Text style={styles.infoLabel}>Bio</Text>
+                  {isEditing ? (
+                    <TextInput
+                      style={[
+                        styles.infoInput,
+                        { minHeight: 80, textAlignVertical: "top" },
+                      ]}
+                      value={editFields.bio}
+                      onChangeText={(v) =>
+                        setEditFields((p) => ({ ...p, bio: v }))
+                      }
+                      placeholder="Tell us about yourself..."
+                      placeholderTextColor="#B09070"
+                      multiline
+                    />
+                  ) : (
+                    <View style={[styles.infoValueBox, { minHeight: 80 }]}>
+                      <Text style={styles.infoValue}>{profile?.bio || ""}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {isEditing && (
+                  <View style={styles.editActionsRow}>
+                    <TouchableOpacity
+                      style={styles.cancelBtn}
+                      onPress={handleCancel}
+                      disabled={isSaving}
+                    >
+                      <Text style={styles.cancelBtnText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.saveBtn,
+                        isSaveDisabled && styles.saveBtnDisabled,
+                      ]}
+                      onPress={handleSave}
+                      disabled={isSaveDisabled}
+                    >
+                      <Text style={styles.saveBtnText}>
+                        {isSaving ? "Saving..." : "Save"}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 )}
               </View>
+            )}
+          </View>
 
-              {isEditing && (
-                <View style={styles.editActionsRow}>
-                  <TouchableOpacity
-                    style={styles.cancelBtn}
-                    onPress={handleCancel}
-                    disabled={isSaving}
-                  >
-                    <Text style={styles.cancelBtnText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.saveBtn,
-                      isSaveDisabled && styles.saveBtnDisabled,
-                    ]}
-                    onPress={handleSave}
-                    disabled={isSaveDisabled}
-                  >
-                    <Text style={styles.saveBtnText}>
-                      {isSaving ? "Saving..." : "Save"}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-          )}
-        </View>
-
-        <View style={{ height: 90 }} />
-      </ScrollView>
-    </View>
+          <View style={{ height: 90 }} />
+        </ScrollView>
+      </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: { flex: 1, backgroundColor: "#EDDEC7" },
-  container: { flexGrow: 1, backgroundColor: "#EDDEC7" },
+  wrapper: { flex: 1, backgroundColor: "#FFEFD5" },
+  container: {
+    height: 100,
+    backgroundColor: "#E9D0A2",
+    overflow: "visible",
+    zIndex: 1,
+  },
 
   // PERF: Skeleton pulse lines shown while profile loads.
   skeletonLine: {
@@ -675,14 +781,22 @@ const styles = StyleSheet.create({
   /* Header */
   headerBand: {
     height: 150,
-    backgroundColor: "#D4B896",
+    backgroundColor: "#FAF2E6",
     alignItems: "center",
     justifyContent: "flex-end",
+    position: "relative",
+    overflow: "visible",
+    zIndex: 10, // ← add this
+    elevation: 10,
   },
   avatarWrapper: {
-    marginBottom: -46,
+    //marginBottom: -46,
     alignSelf: "flex-end",
     marginRight: 30,
+    bottom: -60,
+    zIndex: 20,
+    position: "absolute",
+    elevation: 10,
   },
   avatarTouchTarget: {
     position: "relative",
@@ -698,6 +812,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
+    position: "relative",
   },
   cameraBadge: {
     position: "absolute",
@@ -732,6 +847,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#3B2A1A",
     flexShrink: 1,
+    fontFamily: "SourceSerifPro-Regular",
   },
   usernameInput: {
     flex: 1,
@@ -745,12 +861,14 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     borderBottomWidth: 1,
     borderBottomColor: "#C8A97A",
+    fontFamily: "SourceSerifPro-Regular",
   },
   joinedDate: {
     fontSize: 12,
     color: "#8C6D4F",
     marginTop: 2,
     paddingRight: 8,
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   /* Divider */
@@ -759,6 +877,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#D2BA94",
     marginHorizontal: 20,
     marginTop: -10,
+    zIndex: 5,
   },
 
   /* Tab bar */
@@ -766,7 +885,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     paddingHorizontal: 20,
-    backgroundColor: "#EDDEC7",
+    backgroundColor: "#E9D0A2",
   },
   tabBtn: {
     flex: 1,
@@ -835,11 +954,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#8C6D4F",
     marginBottom: 1,
+    fontFamily: "SourceSerifPro-Regular",
   },
   reviewCafeName: {
     fontSize: 16,
     fontWeight: "700",
     color: "#3B2A1A",
+    fontFamily: "SourceSerifPro-Regular",
   },
   starsRow: {
     flexDirection: "row",
@@ -850,6 +971,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#A08060",
     marginTop: 1,
+    fontFamily: "SourceSerifPro-Regular",
   },
   // reviewMoreButton: {
   //   paddingTop: 1,
@@ -912,6 +1034,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#8C6D4F",
     fontWeight: "500",
+    fontFamily: "SourceSerifPro-Regular",
   },
   likesCountActive: {
     color: "#6B4F2E",
@@ -924,6 +1047,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#A97C4E",
     marginBottom: 4,
+    fontFamily: "SourceSerifPro-Regular",
   },
   infoRow: {
     flexDirection: "row",
@@ -949,12 +1073,14 @@ const styles = StyleSheet.create({
     color: "#3B2A1A",
     borderWidth: 1.5,
     borderColor: "#C8A97A",
+    fontFamily: "SourceSerifPro-Regular",
   },
   errorText: {
     fontSize: 11,
     color: "#C0392B",
     marginTop: 2,
     paddingHorizontal: 4,
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   /* Edit action buttons */
@@ -1004,6 +1130,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#8C6D4F",
     marginTop: 10,
+    fontFamily: "SourceSerifPro-Regular",
   },
   emptySubText: {
     fontSize: 12,
@@ -1011,6 +1138,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 4,
     lineHeight: 17,
+    fontFamily: "SourceSerifPro-Regular",
   },
   profileNavAvatar: {
     width: 36,
@@ -1020,5 +1148,85 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
+  },
+  background: {
+    flex: 1,
+    width: "100%",
+    height: "100%",
+  },
+  menuContainer: {
+    position: "absolute",
+    top: 40,
+    right: 10,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    paddingVertical: 6,
+    width: 120,
+
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 5,
+
+    zIndex: 100,
+  },
+
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+
+  menuText: {
+    fontSize: 14,
+    color: "#3B2A1A",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+
+  //favorites tab
+  favoriteCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFAF3",
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 12,
+    borderRadius: 12,
+    elevation: 2, // Android shadow
+    height: 100,
+  },
+
+  favoriteImagePlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: "#E5D3B3",
+    marginRight: 12,
+  },
+
+  favoriteInfo: {
+    flex: 1,
+  },
+
+  favoriteName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#4E342E",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+
+  favoriteLocation: {
+    fontSize: 12,
+    color: "#8C6D4F",
+    marginTop: 2,
+    marginLeft: 2,
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
   },
 });
