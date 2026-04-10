@@ -15,6 +15,7 @@ import CafeCard from "./app/features/cafe/screens/CafeCard";
 import FilteredCafes from "./app/features/cafe/screens/DashboardFilter";
 import FilterScreen from "./app/features/cafe/screens/Filter";
 import SearchScreen from "./app/features/cafe/screens/Search";
+import { FilterSelectionState } from "./app/features/cafe/screens/filtering";
 import ProfileScreen from "./app/features/profile/screens/Profile";
 import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";
 import SettingsScreen from "./app/features/settings/screens/Settings";
@@ -29,8 +30,18 @@ export type RootStackParamList = {
   ForgotPassword: undefined;
   ResetPassword: undefined;
   Dashboard: undefined;
-  Filter: undefined;
-  Search: { query: string };
+  Filter:
+    | {
+        query?: string;
+        city?: string;
+        selectedFilters?: FilterSelectionState;
+      }
+    | undefined;
+  Search: {
+    query?: string;
+    city?: string;
+    selectedFilters?: FilterSelectionState;
+  };
   FilteredCafes: { filterType: string };
   ProfileBusi: undefined;
 };

@@ -2,8 +2,9 @@ import { RootStackParamList } from "@/App";
 import { MaterialIcons } from "@expo/vector-icons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   ImageBackground,
   Pressable,
@@ -14,58 +15,83 @@ import {
   View,
 } from "react-native";
 
+import {
+  cafeMatchesFilters,
+  normalizeFilterSelections,
+} from "./filtering";
+import {
+  CafeWithFeatures,
+  getCafesWithFeatures,
+} from "./services/cafeService";
+
 type NavProps = NativeStackNavigationProp<RootStackParamList>;
-
 type SearchScreenRouteProp = RouteProp<RootStackParamList, "Search">;
-
-type Props = {
-  route: SearchScreenRouteProp;
-};
-
-const cafes = [
-  {
-    id: "1",
-    name: "Ilya Rozy Cafe",
-    location: "Mactan, Lapu-Lapu City",
-    rating: 4.5,
-  },
-  {
-    id: "2",
-    name: "Hollander Cafe",
-    location: "Mactan, Lapu-Lapu City",
-    rating: 4.2,
-  },
-  {
-    id: "3",
-    name: "Ilya Rozy Cafe",
-    location: "Mactan, Lapu-Lapu City",
-    rating: 4.8,
-  },
-  {
-    id: "4",
-    name: "Ilya Rozy Cafe",
-    location: "Mactan, Lapu-Lapu City",
-    rating: 4.6,
-  },
-  {
-    id: "5",
-    name: "Ilya Rozy Cafe",
-    location: "Mactan, Lapu-Lapu City",
-    rating: 4.7,
-  },
-];
 
 export default function SearchScreen() {
   const navigation = useNavigation<NavProps>();
   const route = useRoute<SearchScreenRouteProp>();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(route.params?.query ?? "");
+  const [cafes, setCafes] = useState<CafeWithFeatures[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // Use optional chaining to be safe
-  const query = route.params?.query ?? ""; // default to empty string if undefined
+  const query = route.params?.query ?? "";
+  const selectedFilters = normalizeFilterSelections(route.params?.selectedFilters);
 
-  const filteredCafes = cafes.filter((cafe) =>
-    cafe.name.toLowerCase().includes(query.toLowerCase()),
-  );
+  useEffect(() => {
+    setSearch(query);
+  }, [query]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadCafes = async () => {
+      setLoading(true);
+      setErrorMessage("");
+
+      try {
+        const data = await getCafesWithFeatures();
+
+        if (isMounted) {
+          setCafes(data);
+        }
+      } catch (error) {
+        console.error("Failed to load searchable cafes:", error);
+
+        if (isMounted) {
+          setCafes([]);
+          if (error instanceof Error) {
+            setErrorMessage(error.message);
+          } else {
+            setErrorMessage("We couldn't load cafes right now.");
+          }
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadCafes();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const filteredCafes = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    return cafes.filter((cafe) => {
+      const matchesQuery =
+        normalizedQuery.length === 0 ||
+        cafe.name.toLowerCase().includes(normalizedQuery) ||
+        cafe.address.toLowerCase().includes(normalizedQuery);
+
+      return matchesQuery && cafeMatchesFilters(cafe, selectedFilters);
+    });
+  }, [cafes, query, selectedFilters]);
 
   return (
     <ImageBackground
@@ -94,14 +120,20 @@ export default function SearchScreen() {
           value={search}
           onChangeText={(text) => setSearch(text)}
           onSubmitEditing={() => {
-            if (search.length > 0) {
-              navigation.navigate("Search", { query: search });
-            }
+            navigation.navigate("Search", {
+              query: search,
+              selectedFilters,
+            });
           }}
         />
 
         <Pressable
-          onPress={() => navigation.navigate("Filter" as never)}
+          onPress={() =>
+            navigation.navigate("Filter", {
+              query: search,
+              selectedFilters,
+            })
+          }
           hitSlop={10}
           style={styles.filterTrigger}
         >
@@ -110,36 +142,50 @@ export default function SearchScreen() {
       </View>
 
       <View style={styles.container}>
-        <FlatList
-          data={filteredCafes}
-          keyExtractor={(item) => item.id}
-          numColumns={2}
-          columnWrapperStyle={{
-            justifyContent: "space-between",
-            marginBottom: 10,
-          }}
-          renderItem={({ item }) => (
-            <View style={styles.cafeHolder}>
-              <View style={{ flex: 1 }} />
-              <View style={styles.cafeText}>
-                <View>
-                  <Text style={styles.cafeName}>{item.name}</Text>
-                  <View style={styles.locationRow}>
-                    <MaterialIcons
-                      name="location-on"
-                      size={14}
-                      color="#E9D0A2"
-                    />
-                    <Text style={styles.location}>{item.location}</Text>
+        {loading ? (
+          <ActivityIndicator
+            color="#966A0C"
+            size="large"
+            style={styles.loadingIndicator}
+          />
+        ) : errorMessage ? (
+          <Text style={styles.noResult}>{errorMessage}</Text>
+        ) : (
+          <FlatList
+            data={filteredCafes}
+            keyExtractor={(item) => item.id.toString()}
+            numColumns={2}
+            columnWrapperStyle={styles.columnWrapper}
+            contentContainerStyle={styles.listContent}
+            renderItem={({ item }) => (
+              <View style={styles.cafeHolder}>
+                <View style={{ flex: 1 }} />
+                <View style={styles.cafeText}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cafeName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <View style={styles.locationRow}>
+                      <MaterialIcons
+                        name="location-on"
+                        size={14}
+                        color="#E9D0A2"
+                      />
+                      <Text style={styles.location} numberOfLines={1}>
+                        {item.address}
+                      </Text>
+                    </View>
                   </View>
+                  <Text style={styles.rating}>
+                    {item.average_rating?.toFixed(1) ?? "New"}
+                  </Text>
                 </View>
-                <Text style={styles.rating}>{item.rating}</Text>
               </View>
-            </View>
-          )}
-        />
-        {filteredCafes.length === 0 && (
-          <Text style={styles.noResult}>No cafes found.</Text>
+            )}
+            ListEmptyComponent={
+              <Text style={styles.noResult}>No cafes found.</Text>
+            }
+          />
         )}
       </View>
     </ImageBackground>
@@ -149,8 +195,17 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    flexDirection: "row",
     paddingTop: 50,
+  },
+
+  listContent: {
+    paddingHorizontal: 10,
+    paddingBottom: 24,
+  },
+
+  columnWrapper: {
+    justifyContent: "space-between",
+    marginBottom: 10,
   },
 
   cafeHolder: {
@@ -177,8 +232,8 @@ const styles = StyleSheet.create({
 
   locationRow: {
     flexDirection: "row",
-    alignItems: "center", // vertically centers icon & text
-    marginTop: 2, // optional spacing from name
+    alignItems: "center",
+    marginTop: 2,
   },
 
   cafeName: {
@@ -210,6 +265,10 @@ const styles = StyleSheet.create({
     color: "#4B2C11",
   },
 
+  loadingIndicator: {
+    marginTop: 48,
+  },
+
   background: {
     flex: 1,
     width: "100%",
@@ -223,7 +282,7 @@ const styles = StyleSheet.create({
     marginBottom: 1,
     width: "100%",
     height: 79,
-    shadowColor: "#0b0b0b",
+    shadowColor: "#0B0B0B",
     shadowOffset: { width: 0, height: 10 },
     shadowRadius: 5,
   },
@@ -272,6 +331,7 @@ const styles = StyleSheet.create({
     color: "#4B2C11",
     marginLeft: 8,
   },
+
   filterTrigger: {
     justifyContent: "center",
     alignItems: "center",

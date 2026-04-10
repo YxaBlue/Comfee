@@ -1,194 +1,32 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { RootStackParamList } from "@/App";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type FilterOption = {
-  id: string;
-  label: string;
-};
+import {
+  createInitialSelections,
+  FILTER_CATEGORIES,
+  FilterSelectionState,
+  normalizeFilterSelections,
+} from "./filtering";
 
-type FilterCategory = {
-  id: string;
-  title: string;
-  icon: keyof typeof MaterialIcons.glyphMap;
-  selectionMode?: "single" | "multiple";
-  options: FilterOption[];
-};
-
-const FILTER_CATEGORIES: FilterCategory[] = [
-  {
-    id: "price",
-    title: "Price",
-    icon: "payments",
-    selectionMode: "single",
-    options: [
-      { id: "low_price", label: "₱" },
-      { id: "medium_price", label: "₱₱" },
-      { id: "high_price", label: "₱₱₱" },
-    ],
-  },
-  {
-    id: "beanType",
-    title: "Bean Type",
-    icon: "coffee",
-    options: [
-      { id: "arabica", label: "Arabica" },
-      { id: "robusta", label: "Robusta" },
-      { id: "liberica", label: "Liberica (Barako)" },
-      { id: "excelsa", label: "Excelsa" },
-    ],
-  },
-  {
-    id: "brewMethod",
-    title: "Brew Method",
-    icon: "local-cafe",
-    options: [
-      { id: "espresso", label: "Espresso" },
-      { id: "drip", label: "Drip" },
-      { id: "french-press", label: "French Press" },
-      { id: "pour-over", label: "Pour Over" },
-      { id: "cold-brew", label: "Cold Brew" },
-    ],
-  },
-  {
-    id: "wifi",
-    title: "WiFi",
-    icon: "wifi",
-    selectionMode: "single",
-    options: [
-      { id: "slow", label: "Slow" },
-      { id: "moderate", label: "Moderate" },
-      { id: "fast", label: "Fast" },
-    ],
-  },
-  {
-    id: "sockets",
-    title: "Sockets",
-    icon: "power",
-    selectionMode: "single",
-    options: [
-      { id: "none", label: "None" },
-      { id: "some", label: "Some" },
-      { id: "many", label: "Many" },
-    ],
-  },
-  {
-    id: "parking",
-    title: "Parking",
-    icon: "local-parking",
-    selectionMode: "single",
-    options: [
-      { id: "none", label: "None" },
-      { id: "limited", label: "Limited" },
-      { id: "plenty", label: "Plenty" },
-    ],
-  },
-  {
-    id: "operating-time",
-    title: "Operating Time",
-    icon: "schedule",
-    selectionMode: "single",
-    options: [
-      { id: "24-hours", label: "24 hours" },
-      { id: "not-24-hours", label: "Not 24 hours" },
-    ],
-  },
-  {
-    id: "lighting",
-    title: "Lighting",
-    icon: "wb-incandescent",
-    options: [
-      { id: "dim", label: "Dim" },
-      { id: "balanced", label: "Balanced" },
-      { id: "bright", label: "Bright" },
-    ],
-  },
-  {
-    id: "seating",
-    title: "Seating",
-    icon: "weekend",
-    options: [
-      { id: "inside", label: "Inside" },
-      { id: "outside", label: "Outside" },
-    ],
-  },
-  {
-    id: "pet-friendly",
-    title: "Pet Friendly",
-    icon: "pets",
-    selectionMode: "single",
-    options: [
-      { id: "allowed", label: "Pet friendly" },
-      { id: "not-allowed", label: "Not pet friendly" },
-    ],
-  },
-  {
-    id: "tables",
-    title: "Tables",
-    icon: "table-bar",
-    options: [
-      { id: "bar-type", label: "Bar type" },
-      { id: "individual-tables", label: "Individual tables" },
-      { id: "large-tables", label: "Large tables (>6)" },
-    ],
-  },
-  {
-    id: "suitable-conditions",
-    title: "Suitable Conditions",
-    icon: "groups",
-    options: [
-      { id: "student", label: "Student" },
-      { id: "work", label: "Work" },
-      { id: "group", label: "Group" },
-      { id: "vibes", label: "Vibes" },
-    ],
-  },
-  {
-    id: "music",
-    title: "Music",
-    icon: "graphic-eq",
-    selectionMode: "single",
-    options: [
-      { id: "quiet", label: "Quiet" },
-      { id: "normal", label: "Normal" },
-      { id: "blaring", label: "Blaring" },
-    ],
-  },
-  {
-    id: "ratings",
-    title: "Ratings",
-    icon: "star-rate",
-    options: [
-      { id: "1", label: "1" },
-      { id: "2", label: "2" },
-      { id: "3", label: "3" },
-      { id: "4", label: "4" },
-      { id: "5", label: "5" },
-    ],
-  },
-];
-
-type FilterSelectionState = Record<string, string[]>;
-
-const createInitialSelections = (
-  categories: FilterCategory[],
-): FilterSelectionState =>
-  categories.reduce<FilterSelectionState>((accumulator, category) => {
-    accumulator[category.id] = [];
-    return accumulator;
-  }, {});
+type FilterRouteProp = RouteProp<RootStackParamList, "Filter">;
 
 export default function FilterScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<FilterRouteProp>();
   const [selectedFilters, setSelectedFilters] = useState<FilterSelectionState>(
-    () => createInitialSelections(FILTER_CATEGORIES),
+    () => normalizeFilterSelections(route.params?.selectedFilters),
   );
+
+  useEffect(() => {
+    setSelectedFilters(normalizeFilterSelections(route.params?.selectedFilters));
+  }, [route.params?.selectedFilters]);
 
   const selectedCount = useMemo(
     () =>
@@ -223,7 +61,7 @@ export default function FilterScreen() {
   };
 
   const resetFilters = () => {
-    setSelectedFilters(createInitialSelections(FILTER_CATEGORIES));
+    setSelectedFilters(createInitialSelections());
   };
 
   return (
@@ -328,7 +166,12 @@ export default function FilterScreen() {
         <View style={styles.footer}>
           <Pressable
             style={styles.applyButton}
-            onPress={() => navigation.goBack()}
+            onPress={() =>
+              navigation.navigate("Search", {
+                query: route.params?.query ?? "",
+                selectedFilters,
+              })
+            }
           >
             <Text style={styles.applyButtonText}>Apply Filters</Text>
           </Pressable>

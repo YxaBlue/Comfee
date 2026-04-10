@@ -151,13 +151,11 @@ export default function CafeCard() {
           value={search}
           onChangeText={(text) => setSearch(text)}
           onSubmitEditing={() => {
-            if (search.length > 0) {
-              navigation.navigate("Search", { query: search });
-            }
+            navigation.navigate("Search", { query: search, city });
           }}
         />
         <Pressable
-          onPress={() => navigation.navigate("Filter" as never)}
+          onPress={() => navigation.navigate("Filter", { query: search, city })}
           hitSlop={10}
           style={styles.filterTrigger}
         >
