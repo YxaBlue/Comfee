@@ -4,6 +4,7 @@ export type Cafe = {
   id: number;
   name: string;
   address: string;
+  city: string;
   main_photo_url: string | null;
   average_rating: number | null;
   featured: boolean;
@@ -42,7 +43,7 @@ export async function getCafesByCity(
 
   const { data, error } = await supabase
     .from("cafe")
-    .select("id, name, address, main_photo_url, average_rating, featured")
+    .select("id, name, address, city, main_photo_url, average_rating, featured")
     .eq("city", city)
     .neq("is_deleted", true)
     .range(from, to);
@@ -54,7 +55,7 @@ export async function getCafesByCity(
 export async function getCafesWithFeatures(): Promise<CafeWithFeatures[]> {
   const { data: cafes, error: cafeError } = await supabase
     .from("cafe")
-    .select("id, name, address, main_photo_url, average_rating, featured")
+    .select("id, name, address, city, main_photo_url, average_rating, featured")
     .neq("is_deleted", true);
 
   if (cafeError) throw cafeError;

@@ -8,24 +8,25 @@ import {
   FlatList,
   ImageBackground,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 
 import {
+  FILTER_CATEGORIES,
+  FilterSelectionState,
   cafeMatchesFilters,
   normalizeFilterSelections,
 } from "./filtering";
-import {
-  CafeWithFeatures,
-  getCafesWithFeatures,
-} from "./services/cafeService";
+import { CafeWithFeatures, getCafesWithFeatures } from "./services/cafeService";
 
 type NavProps = NativeStackNavigationProp<RootStackParamList>;
 type SearchScreenRouteProp = RouteProp<RootStackParamList, "Search">;
+
+const DEFAULT_NEAR_ME_ACTIVE = true;
 
 export default function SearchScreen() {
   const navigation = useNavigation<NavProps>();
@@ -34,13 +35,22 @@ export default function SearchScreen() {
   const [cafes, setCafes] = useState<CafeWithFeatures[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [nearMeActive, setNearMeActive] = useState(DEFAULT_NEAR_ME_ACTIVE);
+  const [selectedFilters, setSelectedFilters] = useState<FilterSelectionState>(
+    () => normalizeFilterSelections(route.params?.selectedFilters),
+  );
 
-  const query = route.params?.query ?? "";
-  const selectedFilters = normalizeFilterSelections(route.params?.selectedFilters);
+  const city = route.params?.city;
 
   useEffect(() => {
-    setSearch(query);
-  }, [query]);
+    setSearch(route.params?.query ?? "");
+  }, [route.params?.query]);
+
+  useEffect(() => {
+    setSelectedFilters(
+      normalizeFilterSelections(route.params?.selectedFilters),
+    );
+  }, [route.params?.selectedFilters]);
 
   useEffect(() => {
     let isMounted = true;
@@ -60,11 +70,7 @@ export default function SearchScreen() {
 
         if (isMounted) {
           setCafes([]);
-          if (error instanceof Error) {
-            setErrorMessage(error.message);
-          } else {
-            setErrorMessage("We couldn't load cafes right now.");
-          }
+          setErrorMessage("We couldn't load cafes right now.");
         }
       } finally {
         if (isMounted) {
@@ -80,8 +86,42 @@ export default function SearchScreen() {
     };
   }, []);
 
+  // removable chips; uses FILTER_CATEGORIES for labels
+  const activeFilterChips = useMemo(() => {
+    const chips: {
+      categoryId: string;
+      categoryTitle: string;
+      optionId: string;
+      optionLabel: string;
+    }[] = [];
+
+    for (const category of FILTER_CATEGORIES) {
+      const selectedOptionIds = selectedFilters[category.id];
+      if (!selectedOptionIds || selectedOptionIds.length === 0) continue;
+
+      for (const optionId of selectedOptionIds) {
+        const option = category.options.find((o) => o.id === optionId);
+        chips.push({
+          categoryId: category.id,
+          categoryTitle: category.title,
+          optionId,
+          optionLabel: option?.label ?? optionId,
+        });
+      }
+    }
+
+    return chips;
+  }, [selectedFilters]);
+
+  const removeFilterChip = (categoryId: string, optionId: string) => {
+    setSelectedFilters((prev) => ({
+      ...prev,
+      [categoryId]: (prev[categoryId] ?? []).filter((id) => id !== optionId),
+    }));
+  };
+
   const filteredCafes = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const normalizedQuery = search.trim().toLowerCase();
 
     return cafes.filter((cafe) => {
       const matchesQuery =
@@ -89,9 +129,19 @@ export default function SearchScreen() {
         cafe.name.toLowerCase().includes(normalizedQuery) ||
         cafe.address.toLowerCase().includes(normalizedQuery);
 
-      return matchesQuery && cafeMatchesFilters(cafe, selectedFilters);
+      const matchesNearMe = nearMeActive
+        ? city
+          ? cafe.city === city
+          : true
+        : true;
+
+      return (
+        matchesQuery &&
+        matchesNearMe &&
+        cafeMatchesFilters(cafe, selectedFilters)
+      );
     });
-  }, [cafes, query, selectedFilters]);
+  }, [cafes, city, nearMeActive, search, selectedFilters]);
 
   return (
     <ImageBackground
@@ -101,12 +151,17 @@ export default function SearchScreen() {
     >
       <View style={[styles.rectangle1, styles.shadow, styles.androidShadow]}>
         <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={{ padding: 8 }}
+          <Pressable
+            onPress={() => navigation.navigate("Dashboard")}
+            hitSlop={10}
+            style={styles.iconButton}
           >
-            <MaterialIcons name="arrow-back" size={20} color="#4B2C11" />
-          </TouchableOpacity>
+            <MaterialIcons
+              name="keyboard-arrow-left"
+              size={28}
+              color="#4B2C11"
+            />
+          </Pressable>
         </View>
       </View>
 
@@ -122,6 +177,7 @@ export default function SearchScreen() {
           onSubmitEditing={() => {
             navigation.navigate("Search", {
               query: search,
+              city,
               selectedFilters,
             });
           }}
@@ -131,6 +187,7 @@ export default function SearchScreen() {
           onPress={() =>
             navigation.navigate("Filter", {
               query: search,
+              city,
               selectedFilters,
             })
           }
@@ -139,6 +196,61 @@ export default function SearchScreen() {
         >
           <MaterialIcons name="tune" size={22} color="#C8AA7A" />
         </Pressable>
+      </View>
+
+      <View style={styles.quickFilterSection}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickFilterContent}
+        >
+          <Pressable
+            onPress={() => setNearMeActive((prev) => !prev)}
+            style={[
+              styles.quickFilterChip,
+              nearMeActive && styles.quickFilterChipActive,
+            ]}
+          >
+            {nearMeActive && (
+              <Pressable
+                onPress={() => setNearMeActive(false)}
+                hitSlop={6}
+                style={styles.chipRemove}
+              >
+                <MaterialIcons name="close" size={12} color="#FFFAF3" />
+              </Pressable>
+            )}
+            <Text
+              style={[
+                styles.quickFilterText,
+                nearMeActive && styles.quickFilterTextActive,
+              ]}
+            >
+              Near Me
+            </Text>
+          </Pressable>
+
+          {/* Dynamic; one per selected filter, grouped by category title */}
+          {activeFilterChips.map((chip) => (
+            <View
+              key={`${chip.categoryId}-${chip.optionId}`}
+              style={[styles.quickFilterChip, styles.quickFilterChipActive]}
+            >
+              <Pressable
+                onPress={() => removeFilterChip(chip.categoryId, chip.optionId)}
+                hitSlop={6}
+                style={styles.chipRemove}
+              >
+                <MaterialIcons name="close" size={12} color="#FFFAF3" />
+              </Pressable>
+              <Text
+                style={[styles.quickFilterText, styles.quickFilterTextActive]}
+              >
+                {chip.categoryTitle}: {chip.optionLabel}
+              </Text>
+            </View>
+          ))}
+        </ScrollView>
       </View>
 
       <View style={styles.container}>
@@ -195,7 +307,7 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 50,
+    paddingTop: 18,
   },
 
   listContent: {
@@ -239,7 +351,7 @@ const styles = StyleSheet.create({
   cafeName: {
     fontSize: 11,
     color: "#4B2C11",
-    fontWeight: 600,
+    fontWeight: "600",
     marginBottom: 0,
   },
 
@@ -255,7 +367,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#4B2C11",
     marginBottom: 0,
-    fontWeight: 400,
+    fontWeight: "400",
   },
 
   noResult: {
@@ -309,6 +421,17 @@ const styles = StyleSheet.create({
     height: 79,
   },
 
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingLeft: -1,
+    paddingRight: 4,
+    backgroundColor: "#e1c9a1",
+  },
+
   searchBar: {
     position: "absolute",
     backgroundColor: "#FFFAF3",
@@ -336,5 +459,44 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 4,
+  },
+
+  quickFilterSection: {
+    marginTop: 30,
+    paddingLeft: 12,
+  },
+
+  quickFilterContent: {
+    paddingRight: 12,
+  },
+
+  quickFilterChip: {
+    minHeight: 34,
+    paddingHorizontal: 12,
+    borderRadius: 17,
+    backgroundColor: "#E9D0A2",
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 10,
+  },
+
+  quickFilterChipActive: {
+    backgroundColor: "#A97C4E",
+  },
+
+  chipRemove: {
+    marginRight: 5,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  quickFilterText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#A97C4E",
+  },
+
+  quickFilterTextActive: {
+    color: "#FFFAF3",
   },
 });

@@ -33,7 +33,6 @@ export default function CafeCard() {
   // --- State ---
   const [search, setSearch] = useState("");
   const [profile, setProfile] = useState<any>(null);
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const [city, setCity] = useState("Cebu");
   const [locationModalVisible, setLocationModalVisible] = useState(false);
@@ -45,15 +44,6 @@ export default function CafeCard() {
 
   const featuredCafes = allCafes.filter((c) => c.featured);
   const discoverCafes = allCafes.filter((c) => !c.featured);
-
-  const filterOptions = [
-    "Near Me",
-    "Wifi",
-    "Ambiance",
-    "Quality",
-    "Service",
-    "Affordable",
-  ];
 
   useEffect(() => {
     (async () => {
@@ -163,44 +153,10 @@ export default function CafeCard() {
         </Pressable>
       </View>
 
-      {/* Filter Chips */}
-      <View style={styles.filterHolder}>
-        <FlatList
-          data={filterOptions}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(_, i) => i.toString()}
-          renderItem={({ item, index }) => (
-            <Pressable
-              onPress={() => {
-                console.log(
-                  "Nav state:",
-                  JSON.stringify(navigation.getState(), null, 2),
-                );
-                console.log(navigation.getState());
-                setSelectedIndex(index);
-                navigation.navigate("FilteredCafes", { filterType: item });
-              }}
-              style={[
-                styles.filter,
-                {
-                  backgroundColor:
-                    selectedIndex === index ? "#A97C4E" : "#E9D0A2",
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  { color: selectedIndex === index ? "#FFFAF3" : "#A97C4E" },
-                ]}
-              >
-                {item}
-              </Text>
-            </Pressable>
-          )}
-        />
-      </View>
+      {/* Scrollable body
+      <ScrollView
+        style={{ flex: 1 }}
+      </View> */}
 
       {/* Scrollable body */}
       <ScrollView
@@ -365,28 +321,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 4,
-  },
-
-  filterHolder: {
-    marginTop: 15,
-    paddingLeft: 10,
-  },
-
-  filter: {
-    backgroundColor: "#E9D6B9",
-    borderRadius: 8,
-    paddingHorizontal: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
-    height: 31,
-  },
-
-  filterText: {
-    color: "#C8AA7A",
-    fontWeight: "500",
-    fontSize: 11,
-    fontFamily: "SourceSerifPro-Regular",
   },
 
   promo: {
