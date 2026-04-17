@@ -50,6 +50,7 @@ type EditableFields = {
 
 type FaveCafe = {
   id: string;
+  cafeId: number | null;
   name: string;
   location: string;
 };
@@ -86,12 +87,6 @@ const MOCK_REVIEWS: Review[] = [
     likes: 41,
     imageCount: 2,
   },
-];
-
-const MOCK_FAVORITES: FaveCafe[] = [
-  { id: "1", name: "Ilya Rozy Cafe", location: "Cebu City" },
-  { id: "2", name: "Hollander Hubb", location: "IT Park" },
-  { id: "3", name: "Hollanove Cafe", location: "Lahug" },
 ];
 
 function StarRating({ rating }: { rating: number }) {
@@ -230,7 +225,15 @@ function ProfileSkeleton() {
   );
 }
 
-function FaveCard({ cafe }: { cafe: FaveCafe }) {
+function FaveCard({
+  cafe,
+  onRemove,
+  isRemoving,
+}: {
+  cafe: FaveCafe;
+  onRemove: (favoriteId: string) => void;
+  isRemoving: boolean;
+}) {
   return (
     <View style={styles.favoriteCard}>
       <View style={styles.favoriteImagePlaceholder} />
@@ -238,12 +241,23 @@ function FaveCard({ cafe }: { cafe: FaveCafe }) {
       <View style={styles.favoriteInfo}>
         <Text style={styles.favoriteName}>{cafe.name}</Text>
         <View style={styles.locationRow}>
-          <MaterialIcons name="location-on" size={12} color="#E9D0A2" />
+          <MaterialIcons name="location-on" size={16} color="#E9D0A2" />
           <Text style={styles.favoriteLocation}>{cafe.location}</Text>
         </View>
       </View>
 
-      <MaterialIcons name="favorite" size={20} color="#6B4F2E" />
+      <TouchableOpacity
+        onPress={() => onRemove(cafe.id)}
+        disabled={isRemoving}
+        accessibilityRole="button"
+        accessibilityLabel={`Remove ${cafe.name} from favorites`}
+      >
+        {isRemoving ? (
+          <ActivityIndicator size="small" color="#6B4F2E" />
+        ) : (
+          <MaterialIcons name="favorite" size={20} color="#6B4F2E" />
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
@@ -252,6 +266,11 @@ export default function ProfileScreen({ navigation }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("reviews");
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState<null | any>(null);
+  const [favoriteCafes, setFavoriteCafes] = useState<FaveCafe[]>([]);
+  const [favoritesLoading, setFavoritesLoading] = useState(true);
+  const [removingFavoriteId, setRemovingFavoriteId] = useState<string | null>(
+    null,
+  );
   // PERF: Track loading state so we show a skeleton instead of a blank screen.
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -297,6 +316,56 @@ export default function ProfileScreen({ navigation }: Props) {
     isSaving ||
     Boolean(usernameError || firstNameError || lastNameError || birthDateError);
 
+  const fetchFavoriteCafes = async (uid: string) => {
+    setFavoritesLoading(true);
+
+    try {
+      const { data, error } = await supabase
+        .from("favorite_cafes")
+        .select(
+          `
+            id,
+            cafe_id,
+            cafe:cafe_id (
+              id,
+              name,
+              address,
+              city
+            )
+          `,
+        )
+        .eq("user_id", uid)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const favorites =
+        data?.flatMap((favorite) => {
+          const cafe = Array.isArray(favorite.cafe)
+            ? favorite.cafe[0]
+            : favorite.cafe;
+
+          if (!cafe) return [];
+
+          return [
+            {
+              id: String(favorite.id),
+              cafeId: favorite.cafe_id,
+              name: cafe.name,
+              location: cafe.address || cafe.city || "Location unavailable",
+            },
+          ];
+        }) ?? [];
+
+      setFavoriteCafes(favorites);
+    } catch (err) {
+      console.error("Failed to fetch favorite cafes:", err);
+      setFavoriteCafes([]);
+    } finally {
+      setFavoritesLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -315,6 +384,7 @@ export default function ProfileScreen({ navigation }: Props) {
         const [data] = await Promise.all([
           getProfile(uid),
           supabase.auth.getUser(),
+          fetchFavoriteCafes(uid),
         ]);
 
         setProfile(data);
@@ -395,6 +465,27 @@ export default function ProfileScreen({ navigation }: Props) {
   const handleTabPress = (key: Tab) => {
     if (isEditing) return;
     setActiveTab(key);
+  };
+
+  const handleRemoveFavorite = async (favoriteId: string) => {
+    const previousFavorites = favoriteCafes;
+
+    setRemovingFavoriteId(favoriteId);
+    setFavoriteCafes((prev) => prev.filter((cafe) => cafe.id !== favoriteId));
+
+    try {
+      const { error } = await supabase
+        .from("favorite_cafes")
+        .delete()
+        .eq("id", Number(favoriteId));
+
+      if (error) throw error;
+    } catch (err) {
+      console.error("Failed to remove favorite cafe:", err);
+      setFavoriteCafes(previousFavorites);
+    } finally {
+      setRemovingFavoriteId(null);
+    }
   };
 
   const handlePickAvatar = async () => {
@@ -578,14 +669,25 @@ export default function ProfileScreen({ navigation }: Props) {
             {/*Favorites*/}
             {activeTab === "favorites" && (
               <View>
-                {MOCK_FAVORITES.length === 0 ? (
+                {favoritesLoading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color="#8C6D4F"
+                    style={{ marginTop: 12 }}
+                  />
+                ) : favoriteCafes.length === 0 ? (
                   <View style={styles.emptyState}>
                     <MaterialIcons name="favorite" size={44} color="#D2BA94" />
                     <Text style={styles.emptyText}>No favorites yet</Text>
                   </View>
                 ) : (
-                  MOCK_FAVORITES.map((cafe) => (
-                    <FaveCard key={cafe.id} cafe={cafe} />
+                  favoriteCafes.map((cafe) => (
+                    <FaveCard
+                      key={cafe.id}
+                      cafe={cafe}
+                      onRemove={handleRemoveFavorite}
+                      isRemoving={removingFavoriteId === cafe.id}
+                    />
                   ))
                 )}
               </View>
@@ -1126,7 +1228,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   emptyText: {
-    fontSize: 15,
+    fontSize: 18,
     fontWeight: "600",
     color: "#8C6D4F",
     marginTop: 10,
@@ -1190,17 +1292,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFAF3",
-    marginHorizontal: 20,
+    marginHorizontal: 10,
     marginBottom: 12,
     padding: 12,
     borderRadius: 12,
     elevation: 2, // Android shadow
-    height: 100,
+    height: 90,
   },
 
   favoriteImagePlaceholder: {
-    width: 50,
-    height: 50,
+    width: 60,
+    height: 60,
     borderRadius: 10,
     backgroundColor: "#E5D3B3",
     marginRight: 12,
@@ -1211,14 +1313,14 @@ const styles = StyleSheet.create({
   },
 
   favoriteName: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
     color: "#4E342E",
     fontFamily: "SourceSerifPro-Regular",
   },
 
   favoriteLocation: {
-    fontSize: 12,
+    fontSize: 14,
     color: "#8C6D4F",
     marginTop: 2,
     marginLeft: 2,
@@ -1226,7 +1328,6 @@ const styles = StyleSheet.create({
   },
   locationRow: {
     flexDirection: "row",
-    alignItems: "center",
-    marginTop: 2,
+    marginTop: 3,
   },
 });
