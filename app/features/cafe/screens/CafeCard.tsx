@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   ImageBackground,
   Modal,
   Pressable,
@@ -84,8 +85,21 @@ export default function CafeCard() {
   }
 
   const renderCafeCard = ({ item }: { item: Cafe }) => (
-    <View style={styles.cafeHolder}>
-      <View style={{ flex: 1 }} />
+    <Pressable
+      style={styles.cafeHolder}
+      onPress={() => console.log("Go to Cafe Profile")}
+    >
+      {item.main_photo_url ? (
+        <Image
+          source={{ uri: item.main_photo_url }}
+          style={styles.cafeImage}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={styles.cafeImageFallback}>
+          <MaterialIcons name="local-cafe" size={28} color="#C8AA7A" />
+        </View>
+      )}
       <View style={styles.cafeText}>
         <View style={{ flex: 1 }}>
           <Text style={styles.cafeName} numberOfLines={1}>
@@ -100,7 +114,7 @@ export default function CafeCard() {
         </View>
         <Text style={styles.cafeRating}>{item.average_rating}</Text>
       </View>
-    </View>
+    </Pressable>
   );
 
   return (
@@ -367,9 +381,9 @@ const styles = StyleSheet.create({
     height: 136,
     backgroundColor: "#FFFAF3",
     borderRadius: 10,
-    padding: 10,
     margin: 10,
     alignItems: "flex-start",
+    overflow: "hidden",
     shadowColor: "#A97C4E",
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 4,
@@ -382,6 +396,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     width: "100%",
     fontFamily: "SourceSerifPro-Regular",
+    padding: 10,
   },
 
   locationRow: {
@@ -446,6 +461,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#A97C4E",
     padding: 12,
     borderRadius: 10,
+    alignItems: "center",
+  },
+  cafeImage: {
+    width: "100%",
+    height: 80,
+    flex: 1,
+    margin: 0,
+    backgroundColor: "#E9D6B9",
+  },
+  cafeImageFallback: {
+    width: "100%",
+    flex: 1,
+    backgroundColor: "#E9D6B9",
+    justifyContent: "center",
     alignItems: "center",
   },
 });

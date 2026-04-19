@@ -2,6 +2,7 @@ import {
   editProfile,
   getProfile,
   uploadAvatar,
+  uploadCoverPhoto,
 } from "@/app/features/profile/services/profileService";
 import { supabase } from "@/app/shared/lib/supabaseClient";
 import TopBar from "@/components/TopBar";
@@ -126,7 +127,6 @@ function ReviewCard({
             <MaterialIcons name="edit" size={18} color="#6B4F2E" />
             <Text style={styles.menuText}>Edit</Text>
           </TouchableOpacity>
-
           <TouchableOpacity style={styles.menuItem}>
             <MaterialIcons name="delete" size={18} color="#C0392B" />
             <Text style={[styles.menuText, { color: "#C0392B" }]}>Delete</Text>
@@ -144,10 +144,8 @@ function ReviewCard({
             <Text style={styles.reviewDate}>{review.date}</Text>
           </View>
         </View>
-
         <TouchableOpacity
           style={styles.reviewMoreButton}
-          //onPress={() => setShowMenu((prev) => !prev)}
           onPress={() => setOpenMenuId(showMenu ? null : review.id)}
         >
           <MaterialIcons name="more-vert" size={22} color="#6B4F2E" />
@@ -193,7 +191,7 @@ function ReviewCard({
         <MaterialIcons
           name={isLiked ? "thumb-up" : "thumb-up-off-alt"}
           size={20}
-          color={isLiked ? "#6B4F2E" : "#6B4F2E"}
+          color="#6B4F2E"
         />
         <Text style={[styles.likesCount, isLiked && styles.likesCountActive]}>
           {displayedLikes}
@@ -203,7 +201,6 @@ function ReviewCard({
   );
 }
 
-// PERF: Skeleton shown while profile data is loading — prevents blank screen flash.
 function ProfileSkeleton() {
   return (
     <View style={styles.wrapper}>
@@ -237,7 +234,6 @@ function FaveCard({
   return (
     <View style={styles.favoriteCard}>
       <View style={styles.favoriteImagePlaceholder} />
-
       <View style={styles.favoriteInfo}>
         <Text style={styles.favoriteName}>{cafe.name}</Text>
         <View style={styles.locationRow}>
@@ -245,7 +241,6 @@ function FaveCard({
           <Text style={styles.favoriteLocation}>{cafe.location}</Text>
         </View>
       </View>
-
       <TouchableOpacity
         onPress={() => onRemove(cafe.id)}
         disabled={isRemoving}
@@ -271,7 +266,6 @@ export default function ProfileScreen({ navigation }: Props) {
   const [removingFavoriteId, setRemovingFavoriteId] = useState<string | null>(
     null,
   );
-  // PERF: Track loading state so we show a skeleton instead of a blank screen.
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -290,6 +284,7 @@ export default function ProfileScreen({ navigation }: Props) {
     { key: "favorites", icon: "favorite-border" },
     { key: "reviews", icon: "rate-review" },
   ];
+
   const trimmedUsername = editFields.username.trim();
   const trimmedFirstName = editFields.first_name.trim();
   const trimmedLastName = editFields.last_name.trim();
@@ -318,22 +313,10 @@ export default function ProfileScreen({ navigation }: Props) {
 
   const fetchFavoriteCafes = async (uid: string) => {
     setFavoritesLoading(true);
-
     try {
       const { data, error } = await supabase
         .from("favorite_cafes")
-        .select(
-          `
-            id,
-            cafe_id,
-            cafe:cafe_id (
-              id,
-              name,
-              address,
-              city
-            )
-          `,
-        )
+        .select(`id, cafe_id, cafe:cafe_id ( id, name, address, city )`)
         .eq("user_id", uid)
         .order("created_at", { ascending: false });
 
@@ -344,9 +327,7 @@ export default function ProfileScreen({ navigation }: Props) {
           const cafe = Array.isArray(favorite.cafe)
             ? favorite.cafe[0]
             : favorite.cafe;
-
           if (!cafe) return [];
-
           return [
             {
               id: String(favorite.id),
@@ -391,16 +372,13 @@ export default function ProfileScreen({ navigation }: Props) {
       } catch (err) {
         console.error("Failed to fetch profile:", err);
       } finally {
-        // PERF: Always clear loading whether fetch succeeded or failed.
         setIsLoading(false);
       }
     };
 
     fetchProfile();
-    // No auth listener here — that lives once in App.tsx.
   }, []);
 
-  // PERF: Show skeleton while loading instead of a half-rendered screen.
   if (isLoading) return <ProfileSkeleton />;
 
   const handleEditPress = () => {
@@ -425,7 +403,6 @@ export default function ProfileScreen({ navigation }: Props) {
       }));
       return;
     }
-
     setFieldErrors({});
     setIsSaving(true);
     try {
@@ -469,16 +446,13 @@ export default function ProfileScreen({ navigation }: Props) {
 
   const handleRemoveFavorite = async (favoriteId: string) => {
     const previousFavorites = favoriteCafes;
-
     setRemovingFavoriteId(favoriteId);
     setFavoriteCafes((prev) => prev.filter((cafe) => cafe.id !== favoriteId));
-
     try {
       const { error } = await supabase
         .from("favorite_cafes")
         .delete()
         .eq("id", Number(favoriteId));
-
       if (error) throw error;
     } catch (err) {
       console.error("Failed to remove favorite cafe:", err);
@@ -488,16 +462,18 @@ export default function ProfileScreen({ navigation }: Props) {
     }
   };
 
+  // ── Avatar picker (1:1 crop) ──
   const handlePickAvatar = async () => {
     if (!userId) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"] as any,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
+      selectionLimit: 1,
     });
 
     if (!result.canceled) {
@@ -506,6 +482,30 @@ export default function ProfileScreen({ navigation }: Props) {
         setProfile((prev: any) => ({ ...prev, profile_picture: url }));
       } catch (err) {
         console.error("Failed to upload avatar:", err);
+      }
+    }
+  };
+
+  // ── Cover photo picker (16:9 crop) ──
+  const handlePickCoverPhoto = async () => {
+    if (!userId) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"] as any,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.85,
+      selectionLimit: 1,
+    });
+
+    if (!result.canceled) {
+      try {
+        const url = await uploadCoverPhoto(userId, result.assets[0].uri);
+        setProfile((prev: any) => ({ ...prev, cover_photo: url }));
+      } catch (err) {
+        console.error("Failed to upload cover photo:", err);
       }
     }
   };
@@ -523,9 +523,37 @@ export default function ProfileScreen({ navigation }: Props) {
         />
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* ── Header band ── */}
-
+          {/* ── Header band (cover photo + avatar) ── */}
           <View style={styles.headerBand}>
+            {/* Cover photo */}
+            {profile?.cover_photo ? (
+              <Image
+                key={profile.cover_photo}
+                source={{ uri: profile.cover_photo, cache: "reload" }}
+                style={StyleSheet.absoluteFillObject}
+                resizeMode="cover"
+              />
+            ) : (
+              <View
+                style={[
+                  StyleSheet.absoluteFillObject,
+                  { backgroundColor: "#FAF2E6" },
+                ]}
+              />
+            )}
+
+            {/* Cover edit button — only in edit mode */}
+            {isEditing && (
+              <TouchableOpacity
+                style={styles.coverEditBtn}
+                onPress={handlePickCoverPhoto}
+              >
+                <MaterialIcons name="photo-camera" size={16} color="#fff" />
+                <Text style={styles.coverEditText}>Edit Cover</Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Avatar */}
             <View style={styles.avatarWrapper}>
               <TouchableOpacity
                 style={styles.avatarTouchTarget}
@@ -536,11 +564,11 @@ export default function ProfileScreen({ navigation }: Props) {
                   {profile?.profile_picture ? (
                     <Image
                       key={profile.profile_picture}
-                      source={{ uri: profile.profile_picture }}
+                      source={{ uri: profile.profile_picture, cache: "reload" }}
                       style={{
                         width: "100%",
                         height: "100%",
-                        borderRadius: 53,
+                        borderRadius: 63,
                       }}
                     />
                   ) : (
@@ -666,7 +694,7 @@ export default function ProfileScreen({ navigation }: Props) {
               </Pressable>
             )}
 
-            {/*Favorites*/}
+            {/* FAVORITES */}
             {activeTab === "favorites" && (
               <View>
                 {favoritesLoading ? (
@@ -871,8 +899,6 @@ const styles = StyleSheet.create({
     overflow: "visible",
     zIndex: 1,
   },
-
-  // PERF: Skeleton pulse lines shown while profile loads.
   skeletonLine: {
     height: 16,
     borderRadius: 8,
@@ -883,16 +909,32 @@ const styles = StyleSheet.create({
   /* Header */
   headerBand: {
     height: 150,
-    backgroundColor: "#FAF2E6",
     alignItems: "center",
     justifyContent: "flex-end",
     position: "relative",
     overflow: "visible",
-    zIndex: 10, // ← add this
+    zIndex: 10,
     elevation: 10,
   },
+  coverEditBtn: {
+    position: "absolute",
+    top: 10,
+    right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    zIndex: 30,
+  },
+  coverEditText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
   avatarWrapper: {
-    //marginBottom: -46,
     alignSelf: "flex-end",
     marginRight: 30,
     bottom: -60,
@@ -907,14 +949,13 @@ const styles = StyleSheet.create({
   avatarCircle: {
     width: 126,
     height: 126,
-    borderRadius: 73,
+    borderRadius: 63,
     backgroundColor: "#E6D6BE",
     borderWidth: 3,
     borderColor: "#EDDEC7",
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
-    position: "relative",
   },
   cameraBadge: {
     position: "absolute",
@@ -1027,18 +1068,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     paddingTop: 13,
   },
-
   reviewMainInfo: {
     flexDirection: "row",
     alignItems: "center",
     gap: 11,
     flex: 1,
   },
-
   reviewCardMeta: {
     justifyContent: "center",
   },
-
   cafeAvatarSmall: {
     width: 66,
     height: 66,
@@ -1047,11 +1085,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#EADAC6",
   },
-
   reviewMoreButton: {
     alignSelf: "flex-start",
   },
-
   reviewLabel: {
     fontSize: 12,
     color: "#8C6D4F",
@@ -1075,9 +1111,6 @@ const styles = StyleSheet.create({
     marginTop: 1,
     fontFamily: "SourceSerifPro-Regular",
   },
-  // reviewMoreButton: {
-  //   paddingTop: 1,
-  // },
   reviewComment: {
     fontSize: 14,
     color: "#5C3D1E",
@@ -1089,8 +1122,6 @@ const styles = StyleSheet.create({
   reviewCommentWithoutMedia: {
     marginBottom: 0,
   },
-
-  /* Image grid */
   reviewMediaSection: {
     marginBottom: 2,
   },
@@ -1115,8 +1146,6 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: "#FFF8ED",
   },
-
-  /* Likes */
   likesRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1184,8 +1213,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     fontFamily: "SourceSerifPro-Regular",
   },
-
-  /* Edit action buttons */
   editActionsRow: {
     flexDirection: "row",
     gap: 10,
@@ -1242,15 +1269,6 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontFamily: "SourceSerifPro-Regular",
   },
-  profileNavAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#A97C4E",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
   background: {
     flex: 1,
     width: "100%",
@@ -1264,15 +1282,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 6,
     width: 120,
-
     shadowColor: "#000",
     shadowOpacity: 0.1,
     shadowRadius: 6,
     elevation: 5,
-
     zIndex: 100,
   },
-
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -1280,14 +1295,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
   },
-
   menuText: {
     fontSize: 14,
     color: "#3B2A1A",
     fontFamily: "SourceSerifPro-Regular",
   },
 
-  //favorites tab
+  /* Favorites tab */
   favoriteCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -1296,10 +1310,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     padding: 12,
     borderRadius: 12,
-    elevation: 2, // Android shadow
+    elevation: 2,
     height: 90,
   },
-
   favoriteImagePlaceholder: {
     width: 60,
     height: 60,
@@ -1307,18 +1320,15 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5D3B3",
     marginRight: 12,
   },
-
   favoriteInfo: {
     flex: 1,
   },
-
   favoriteName: {
     fontSize: 16,
     fontWeight: "600",
     color: "#4E342E",
     fontFamily: "SourceSerifPro-Regular",
   },
-
   favoriteLocation: {
     fontSize: 14,
     color: "#8C6D4F",
@@ -1329,5 +1339,14 @@ const styles = StyleSheet.create({
   locationRow: {
     flexDirection: "row",
     marginTop: 3,
+  },
+  profileNavAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#A97C4E",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
 });
