@@ -1,6 +1,6 @@
 import { MaterialIcons } from "@expo/vector-icons";
 
-import type { CafeWithFeatures } from "./services/cafeService";
+import type { CafeWithFeatures } from "./cafeService";
 
 export type FilterOption = {
   id: string;

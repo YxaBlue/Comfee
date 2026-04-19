@@ -12,7 +12,7 @@ import {
   FILTER_CATEGORIES,
   FilterSelectionState,
   normalizeFilterSelections,
-} from "./filtering";
+} from "./services/filtering";
 
 type FilterRouteProp = RouteProp<RootStackParamList, "Filter">;
 
@@ -20,12 +20,16 @@ export default function FilterScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<FilterRouteProp>();
+  const userCoords = route.params?.userCoords;
+  const city = route.params?.city;
   const [selectedFilters, setSelectedFilters] = useState<FilterSelectionState>(
     () => normalizeFilterSelections(route.params?.selectedFilters),
   );
 
   useEffect(() => {
-    setSelectedFilters(normalizeFilterSelections(route.params?.selectedFilters));
+    setSelectedFilters(
+      normalizeFilterSelections(route.params?.selectedFilters),
+    );
   }, [route.params?.selectedFilters]);
 
   const selectedCount = useMemo(
@@ -170,6 +174,7 @@ export default function FilterScreen() {
               navigation.navigate("Search", {
                 query: route.params?.query ?? "",
                 selectedFilters,
+                userCoords: userCoords ?? undefined,
               })
             }
           >

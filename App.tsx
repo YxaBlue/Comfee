@@ -15,7 +15,7 @@ import CafeCard from "./app/features/cafe/screens/CafeCard";
 import FilteredCafes from "./app/features/cafe/screens/DashboardFilter";
 import FilterScreen from "./app/features/cafe/screens/Filter";
 import SearchScreen from "./app/features/cafe/screens/Search";
-import { FilterSelectionState } from "./app/features/cafe/screens/filtering";
+import { FilterSelectionState } from "./app/features/cafe/screens/services/filtering";
 import ProfileScreen from "./app/features/profile/screens/Profile";
 import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";
 import SettingsScreen from "./app/features/settings/screens/Settings";
@@ -35,12 +35,14 @@ export type RootStackParamList = {
         query?: string;
         city?: string;
         selectedFilters?: FilterSelectionState;
+        userCoords?: { latitude: number; longitude: number };
       }
     | undefined;
   Search: {
     query?: string;
     city?: string;
     selectedFilters?: FilterSelectionState;
+    userCoords?: { latitude: number; longitude: number };
   };
   FilteredCafes: { filterType: string };
   ProfileBusi: undefined;
@@ -73,6 +75,7 @@ export default function App() {
 
   useEffect(() => {
     let isMounted = true;
+    let initialRouteSynced = false;
 
     const syncInitialRoute = async () => {
       const {
@@ -80,6 +83,9 @@ export default function App() {
       } = await supabase.auth.getSession();
 
       if (!isMounted || !navigationRef.current) return;
+      if (initialRouteSynced) return;
+
+      initialRouteSynced = true;
 
       navigationRef.current.reset({
         index: 0,
@@ -92,11 +98,19 @@ export default function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "INITIAL_SESSION") return;
+
       if (event === "SIGNED_IN" && session) {
-        navigationRef.current?.reset({
-          index: 0,
-          routes: [{ name: "Dashboard" }],
-        });
+        const currentRoute = navigationRef.current?.getCurrentRoute()?.name as
+          | keyof RootStackParamList
+          | undefined;
+
+        if (currentRoute && PUBLIC_ROUTES.includes(currentRoute)) {
+          navigationRef.current?.reset({
+            index: 0,
+            routes: [{ name: "Dashboard" }],
+          });
+        }
         return;
       }
 

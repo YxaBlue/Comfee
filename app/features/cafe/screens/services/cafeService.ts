@@ -1,4 +1,5 @@
 import { supabase } from "@/app/shared/lib/supabaseClient";
+import * as Location from "expo-location";
 
 export type Cafe = {
   id: number;
@@ -33,6 +34,39 @@ export type CafeWithFeatures = Cafe & {
 };
 
 const PAGE_SIZE = 10;
+
+export async function getUserLocation(): Promise<{
+  latitude: number;
+  longitude: number;
+} | null> {
+  try {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") return null;
+
+    const location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
+    });
+
+    // REVERSE GEOCODING CITY STILL DOES NOT WORK
+    // const [geocode] = await Location.reverseGeocodeAsync({
+    //   latitude: location.coords.latitude,
+    //   longitude: location.coords.longitude,
+    // });
+
+    // // Map to your CEBU_CITIES list
+    // const CEBU_CITIES = ["Cebu", "Mandaue", "Lapu-Lapu", "Talisay"];
+    // const detectedCity = CEBU_CITIES.find(c =>
+    //   geocode.city?.toLowerCase().includes(c.toLowerCase())
+    // );
+
+    return {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export async function getCafesByCity(
   city: string,
@@ -88,4 +122,19 @@ export async function getCafesWithFeatures(): Promise<CafeWithFeatures[]> {
     ...cafe,
     features: featuresByCafeId.get(cafe.id) ?? null,
   }));
+}
+
+export async function getNearbyCafes(
+  latitude: number,
+  longitude: number,
+  radiusMeters: number = 5000,
+): Promise<Cafe[]> {
+  const { data, error } = await supabase.rpc("get_cafes_near", {
+    lat: latitude,
+    lng: longitude,
+    radius_meters: radiusMeters,
+  });
+
+  if (error) throw error;
+  return data ?? [];
 }

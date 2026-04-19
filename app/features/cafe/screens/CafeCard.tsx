@@ -20,7 +20,7 @@ import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Cafe, getCafesByCity } from "./services/cafeService";
+import { Cafe, getCafesByCity, getUserLocation } from "./services/cafeService";
 
 type NavProps = NativeStackNavigationProp<RootStackParamList, "Dashboard">;
 
@@ -57,6 +57,24 @@ export default function CafeCard() {
         setProfile(data);
       } catch (err) {
         console.error("Failed to load profile:", err);
+      }
+    })();
+  }, []);
+
+  const [userCoords, setUserCoords] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const result = await getUserLocation();
+      if (result) {
+        // setCity(result.city);
+        setUserCoords({
+          latitude: result.latitude,
+          longitude: result.longitude,
+        });
       }
     })();
   }, []);
@@ -150,16 +168,26 @@ export default function CafeCard() {
         <MaterialIcons name="search" size={24} color="#C8AA7A" />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search cafe"
+          placeholder="Search café"
           placeholderTextColor="#C8AA7A"
           value={search}
           onChangeText={(text) => setSearch(text)}
           onSubmitEditing={() => {
-            navigation.navigate("Search", { query: search, city });
+            navigation.navigate("Search", {
+              query: search,
+              city,
+              userCoords: userCoords ?? undefined,
+            });
           }}
         />
         <Pressable
-          onPress={() => navigation.navigate("Filter", { query: search, city })}
+          onPress={() =>
+            navigation.navigate("Filter", {
+              query: search,
+              city,
+              userCoords: userCoords ?? undefined,
+            })
+          }
           hitSlop={10}
           style={styles.filterTrigger}
         >

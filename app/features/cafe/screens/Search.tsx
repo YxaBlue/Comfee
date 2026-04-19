@@ -2,10 +2,12 @@ import { RootStackParamList } from "@/App";
 import { MaterialIcons } from "@expo/vector-icons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Image,
   ImageBackground,
   Pressable,
   ScrollView,
@@ -16,29 +18,42 @@ import {
 } from "react-native";
 
 import {
+  CafeWithFeatures,
+  getCafesWithFeatures,
+  getNearbyCafes,
+  getUserLocation,
+} from "./services/cafeService";
+import {
   FILTER_CATEGORIES,
   FilterSelectionState,
   cafeMatchesFilters,
   normalizeFilterSelections,
-} from "./filtering";
-import { CafeWithFeatures, getCafesWithFeatures } from "./services/cafeService";
+} from "./services/filtering";
 
 type NavProps = NativeStackNavigationProp<RootStackParamList>;
 type SearchScreenRouteProp = RouteProp<RootStackParamList, "Search">;
 
-const DEFAULT_NEAR_ME_ACTIVE = true;
-
 export default function SearchScreen() {
   const navigation = useNavigation<NavProps>();
   const route = useRoute<SearchScreenRouteProp>();
+
   const [search, setSearch] = useState(route.params?.query ?? "");
-  const [cafes, setCafes] = useState<CafeWithFeatures[]>([]);
+  const [allCafes, setAllCafes] = useState<CafeWithFeatures[]>([]);
+  const [nearbyCafes, setNearbyCafes] = useState<CafeWithFeatures[]>([]);
   const [loading, setLoading] = useState(true);
+  const [nearMeLoading, setNearMeLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [nearMeActive, setNearMeActive] = useState(DEFAULT_NEAR_ME_ACTIVE);
+  const [nearMeActive, setNearMeActive] = useState(false);
+  const [userCoords, setUserCoords] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(route.params?.userCoords ?? null);
   const [selectedFilters, setSelectedFilters] = useState<FilterSelectionState>(
     () => normalizeFilterSelections(route.params?.selectedFilters),
   );
+
+  // Ref to always access latest allCafes inside async callbacks
+  const allCafesRef = useRef<CafeWithFeatures[]>([]);
 
   const city = route.params?.city;
 
@@ -52,41 +67,123 @@ export default function SearchScreen() {
     );
   }, [route.params?.selectedFilters]);
 
+  // Load all cafes on mount, then auto-activate Near Me if coords available
   useEffect(() => {
     let isMounted = true;
 
     const loadCafes = async () => {
       setLoading(true);
       setErrorMessage("");
-
       try {
         const data = await getCafesWithFeatures();
+        if (!isMounted) return;
 
-        if (isMounted) {
-          setCafes(data);
+        setAllCafes(data);
+        allCafesRef.current = data; // ← keep ref in sync
+
+        // Auto-activate Near Me after cafes are loaded
+        if (route.params?.userCoords) {
+          const coords = route.params.userCoords;
+          setNearMeLoading(true);
+          try {
+            const nearby = await getNearbyCafes(
+              coords.latitude,
+              coords.longitude,
+            );
+            if (!isMounted) return;
+            const nearbyIds = new Set(nearby.map((c) => c.id));
+            setNearbyCafes(data.filter((c) => nearbyIds.has(c.id)));
+            setNearMeActive(true);
+          } catch (err) {
+            console.error("Failed to get nearby cafes:", err);
+          } finally {
+            if (isMounted) setNearMeLoading(false);
+          }
         }
       } catch (error) {
         console.error("Failed to load searchable cafes:", error);
-
         if (isMounted) {
-          setCafes([]);
+          setAllCafes([]);
           setErrorMessage("We couldn't load cafes right now.");
         }
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
 
     loadCafes();
-
     return () => {
       isMounted = false;
     };
   }, []);
 
-  // removable chips; uses FILTER_CATEGORIES for labels
+  // ── activateNearMe always uses ref so it has fresh data ──
+  const activateNearMe = async (coords: {
+    latitude: number;
+    longitude: number;
+  }) => {
+    if (nearMeLoading) return; // prevent double-tap
+    setNearMeLoading(true);
+    try {
+      const nearby = await getNearbyCafes(coords.latitude, coords.longitude);
+      const nearbyIds = new Set(nearby.map((c) => c.id));
+      // ← use ref instead of allCafes state to avoid stale closure
+      setNearbyCafes(allCafesRef.current.filter((c) => nearbyIds.has(c.id)));
+      setNearMeActive(true);
+    } catch (err) {
+      console.error("Failed to get nearby cafes:", err);
+    } finally {
+      setNearMeLoading(false);
+    }
+  };
+
+  const handleNearMePress = async () => {
+    if (nearMeLoading) return; // prevent double-tap while loading
+
+    if (nearMeActive) {
+      setNearMeActive(false);
+      setNearbyCafes([]);
+      return;
+    }
+
+    if (userCoords) {
+      // console.log("location: ", userCoords);
+      await activateNearMe(userCoords);
+      return;
+    }
+    window.alert("Location Permission Required");
+    Alert.alert("Location Access", "Allow Comfee to find cafés near you?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Allow",
+        onPress: async () => {
+          setNearMeLoading(true);
+          try {
+            const result = await getUserLocation();
+            if (result) {
+              const coords = {
+                latitude: result.latitude,
+                longitude: result.longitude,
+              };
+              setUserCoords(coords);
+              await activateNearMe(coords);
+            } else {
+              Alert.alert(
+                "Location Permission Required",
+                "Comfee needs access to your location to find nearby cafés. Please go to your device Settings and enable location permissions for Comfee.",
+              );
+            }
+          } catch {
+            Alert.alert("Error", "Failed to get location. Please try again.");
+          } finally {
+            setNearMeLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  // Removable chips
   const activeFilterChips = useMemo(() => {
     const chips: {
       categoryId: string;
@@ -98,7 +195,6 @@ export default function SearchScreen() {
     for (const category of FILTER_CATEGORIES) {
       const selectedOptionIds = selectedFilters[category.id];
       if (!selectedOptionIds || selectedOptionIds.length === 0) continue;
-
       for (const optionId of selectedOptionIds) {
         const option = category.options.find((o) => o.id === optionId);
         chips.push({
@@ -114,34 +210,34 @@ export default function SearchScreen() {
   }, [selectedFilters]);
 
   const removeFilterChip = (categoryId: string, optionId: string) => {
+    // ← state update triggers filteredCafes recompute automatically via useMemo
     setSelectedFilters((prev) => ({
       ...prev,
       [categoryId]: (prev[categoryId] ?? []).filter((id) => id !== optionId),
     }));
   };
 
+  const hasAnyFilter =
+    nearMeActive || activeFilterChips.length > 0 || search.trim().length > 0;
+
+  // Use nearby cafes as base pool when Near Me is active
   const filteredCafes = useMemo(() => {
+    const pool = nearMeActive ? nearbyCafes : allCafes;
     const normalizedQuery = search.trim().toLowerCase();
 
-    return cafes.filter((cafe) => {
+    return pool.filter((cafe) => {
       const matchesQuery =
         normalizedQuery.length === 0 ||
         cafe.name.toLowerCase().includes(normalizedQuery) ||
         cafe.address.toLowerCase().includes(normalizedQuery);
 
-      const matchesNearMe = nearMeActive
-        ? city
-          ? cafe.city === city
-          : true
-        : true;
+      const matchesCity = !nearMeActive && city ? cafe.city === city : true;
 
       return (
-        matchesQuery &&
-        matchesNearMe &&
-        cafeMatchesFilters(cafe, selectedFilters)
+        matchesQuery && matchesCity && cafeMatchesFilters(cafe, selectedFilters)
       );
     });
-  }, [cafes, city, nearMeActive, search, selectedFilters]);
+  }, [allCafes, nearbyCafes, nearMeActive, city, search, selectedFilters]);
 
   return (
     <ImageBackground
@@ -167,10 +263,9 @@ export default function SearchScreen() {
 
       <View style={[styles.searchBar, styles.androidShadow]}>
         <MaterialIcons name="search" size={24} color="#C8AA7A" />
-
         <TextInput
           style={styles.searchInput}
-          placeholder="Search cafe"
+          placeholder="Search café"
           placeholderTextColor="#C8AA7A"
           value={search}
           onChangeText={(text) => setSearch(text)}
@@ -179,16 +274,17 @@ export default function SearchScreen() {
               query: search,
               city,
               selectedFilters,
+              userCoords: userCoords ?? undefined,
             });
           }}
         />
-
         <Pressable
           onPress={() =>
             navigation.navigate("Filter", {
               query: search,
               city,
               selectedFilters,
+              userCoords: userCoords ?? undefined,
             })
           }
           hitSlop={10}
@@ -198,28 +294,39 @@ export default function SearchScreen() {
         </Pressable>
       </View>
 
+      {/* Filter chips */}
       <View style={styles.quickFilterSection}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.quickFilterContent}
         >
+          {/* Near Me chip */}
           <Pressable
-            onPress={() => setNearMeActive((prev) => !prev)}
+            onPress={handleNearMePress}
+            disabled={nearMeLoading}
             style={[
               styles.quickFilterChip,
               nearMeActive && styles.quickFilterChipActive,
             ]}
           >
-            {nearMeActive && (
-              <Pressable
-                onPress={() => setNearMeActive(false)}
-                hitSlop={6}
-                style={styles.chipRemove}
-              >
+            {nearMeLoading ? (
+              <ActivityIndicator
+                size={12}
+                color={nearMeActive ? "#FFFAF3" : "#A97C4E"}
+                style={{ marginRight: 5 }}
+              />
+            ) : nearMeActive ? (
+              <View style={styles.chipRemove}>
                 <MaterialIcons name="close" size={12} color="#FFFAF3" />
-              </Pressable>
-            )}
+              </View>
+            ) : null}
+            <MaterialIcons
+              name="my-location"
+              size={12}
+              color={nearMeActive ? "#FFFAF3" : "#A97C4E"}
+              style={{ marginRight: 4 }}
+            />
             <Text
               style={[
                 styles.quickFilterText,
@@ -230,7 +337,7 @@ export default function SearchScreen() {
             </Text>
           </Pressable>
 
-          {/* Dynamic; one per selected filter, grouped by category title */}
+          {/* Active filter chips */}
           {activeFilterChips.map((chip) => (
             <View
               key={`${chip.categoryId}-${chip.optionId}`}
@@ -253,6 +360,7 @@ export default function SearchScreen() {
         </ScrollView>
       </View>
 
+      {/* Cafe list */}
       <View style={styles.container}>
         {loading ? (
           <ActivityIndicator
@@ -262,6 +370,15 @@ export default function SearchScreen() {
           />
         ) : errorMessage ? (
           <Text style={styles.noResult}>{errorMessage}</Text>
+        ) : !hasAnyFilter ? (
+          // ← no filters selected state
+          <View style={styles.emptyState}>
+            <MaterialIcons name="manage-search" size={44} color="#D2BA94" />
+            <Text style={styles.emptyTitle}>Search or filter cafés</Text>
+            <Text style={styles.emptySubtitle}>
+              Use the search bar, tap Near Me, or apply filters to find cafés.
+            </Text>
+          </View>
         ) : (
           <FlatList
             data={filteredCafes}
@@ -271,31 +388,61 @@ export default function SearchScreen() {
             contentContainerStyle={styles.listContent}
             renderItem={({ item }) => (
               <View style={styles.cafeHolder}>
-                <View style={{ flex: 1 }} />
-                <View style={styles.cafeText}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cafeName} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <View style={styles.locationRow}>
-                      <MaterialIcons
-                        name="location-on"
-                        size={14}
-                        color="#E9D0A2"
-                      />
-                      <Text style={styles.location} numberOfLines={1}>
-                        {item.address}
-                      </Text>
-                    </View>
+                {item.main_photo_url ? (
+                  <Image
+                    source={{ uri: item.main_photo_url }}
+                    style={styles.cafeImage}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.cafeImageFallback}>
+                    <MaterialIcons
+                      name="local-cafe"
+                      size={28}
+                      color="#C8AA7A"
+                    />
                   </View>
-                  <Text style={styles.rating}>
-                    {item.average_rating?.toFixed(1) ?? "New"}
-                  </Text>
+                )}
+                <View style={styles.cafeTextWrapper}>
+                  <View style={styles.cafeText}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cafeName} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <View style={styles.locationRow}>
+                        <MaterialIcons
+                          name="location-on"
+                          size={14}
+                          color="#E9D0A2"
+                        />
+                        <Text style={styles.location} numberOfLines={1}>
+                          {item.address}
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.rating}>
+                      {item.average_rating?.toFixed(1) ?? "New"}
+                    </Text>
+                  </View>
                 </View>
               </View>
             )}
             ListEmptyComponent={
-              <Text style={styles.noResult}>No cafes found.</Text>
+              <View style={styles.emptyState}>
+                <MaterialIcons
+                  name={nearMeActive ? "location-off" : "search-off"}
+                  size={44}
+                  color="#D2BA94"
+                />
+                <Text style={styles.emptyTitle}>
+                  {nearMeActive ? "No nearby cafés" : "No cafés found"}
+                </Text>
+                <Text style={styles.emptySubtitle}>
+                  {nearMeActive
+                    ? "No cafés found within 5km of your location."
+                    : "Try a different search or adjust your filters."}
+                </Text>
+              </View>
             }
           />
         )}
@@ -309,110 +456,116 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 18,
   },
-
   listContent: {
     paddingHorizontal: 10,
     paddingBottom: 24,
   },
-
   columnWrapper: {
     justifyContent: "space-between",
     marginBottom: 10,
   },
-
   cafeHolder: {
-    width: 143,
+    flex: 1,
     height: 136,
     backgroundColor: "#FFFAF3",
     borderRadius: 10,
-    padding: 10,
-    margin: 10,
-    alignItems: "flex-start",
+    margin: 8,
+    overflow: "hidden",
     shadowColor: "#A97C4E",
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 4,
     elevation: 20,
-    flex: 1,
   },
-
+  cafeImage: {
+    width: "100%",
+    flex: 1,
+    backgroundColor: "#E9D6B9",
+  },
+  cafeImageFallback: {
+    width: "100%",
+    flex: 1,
+    backgroundColor: "#E9D6B9",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  cafeTextWrapper: {
+    paddingHorizontal: 8,
+    paddingBottom: 6,
+    paddingTop: 4,
+  },
   cafeText: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
-    width: "100%",
   },
-
   locationRow: {
     flexDirection: "row",
     alignItems: "center",
     marginTop: 2,
   },
-
   cafeName: {
     fontSize: 11,
     color: "#4B2C11",
     fontWeight: "600",
-    marginBottom: 0,
   },
-
   location: {
     fontSize: 7,
     color: "#E9D0A2",
-    fontWeight: "400",
-    marginBottom: 0,
     marginLeft: 2,
   },
-
   rating: {
     fontSize: 12,
     color: "#4B2C11",
-    marginBottom: 0,
-    fontWeight: "400",
   },
-
   noResult: {
     textAlign: "center",
     marginTop: 20,
     fontSize: 16,
     color: "#4B2C11",
   },
-
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#8C6D4F",
+    marginTop: 12,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: "#B09070",
+    textAlign: "center",
+    marginTop: 6,
+    lineHeight: 18,
+  },
   loadingIndicator: {
     marginTop: 48,
   },
-
   background: {
     flex: 1,
     width: "100%",
     height: "100%",
   },
-
   rectangle1: {
     backgroundColor: "#E9D6B9",
-    borderRadius: 0,
-    padding: 0,
-    marginBottom: 1,
     width: "100%",
     height: 79,
     shadowColor: "#0B0B0B",
     shadowOffset: { width: 0, height: 10 },
     shadowRadius: 5,
   },
-
   shadow: {
     shadowColor: "#00000040",
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.75,
     shadowRadius: 7,
   },
-
   androidShadow: {
     elevation: 15,
   },
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -420,7 +573,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     height: 79,
   },
-
   iconButton: {
     width: 36,
     height: 36,
@@ -431,7 +583,6 @@ const styles = StyleSheet.create({
     paddingRight: 4,
     backgroundColor: "#e1c9a1",
   },
-
   searchBar: {
     position: "absolute",
     backgroundColor: "#FFFAF3",
@@ -447,29 +598,24 @@ const styles = StyleSheet.create({
     elevation: 20,
     paddingHorizontal: 10,
   },
-
   searchInput: {
     flex: 1,
     fontSize: 14,
     color: "#4B2C11",
     marginLeft: 8,
   },
-
   filterTrigger: {
     justifyContent: "center",
     alignItems: "center",
     padding: 4,
   },
-
   quickFilterSection: {
     marginTop: 30,
     paddingLeft: 12,
   },
-
   quickFilterContent: {
     paddingRight: 12,
   },
-
   quickFilterChip: {
     minHeight: 34,
     paddingHorizontal: 12,
@@ -479,23 +625,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 10,
   },
-
   quickFilterChipActive: {
     backgroundColor: "#A97C4E",
   },
-
   chipRemove: {
     marginRight: 5,
     justifyContent: "center",
     alignItems: "center",
   },
-
   quickFilterText: {
     fontSize: 12,
     fontWeight: "600",
     color: "#A97C4E",
   },
-
   quickFilterTextActive: {
     color: "#FFFAF3",
   },
