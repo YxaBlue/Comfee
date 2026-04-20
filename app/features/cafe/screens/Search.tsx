@@ -428,20 +428,78 @@ export default function SearchScreen() {
               </View>
             )}
             ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <MaterialIcons
-                  name={nearMeActive ? "location-off" : "search-off"}
-                  size={44}
-                  color="#D2BA94"
-                />
-                <Text style={styles.emptyTitle}>
-                  {nearMeActive ? "No nearby cafés" : "No cafés found"}
-                </Text>
-                <Text style={styles.emptySubtitle}>
-                  {nearMeActive
-                    ? "No cafés found within 5km of your location."
-                    : "Try a different search or adjust your filters."}
-                </Text>
+              <View>
+                <View style={styles.emptyState}>
+                  <MaterialIcons
+                    name={nearMeActive ? "location-off" : "search-off"}
+                    size={44}
+                    color="#D2BA94"
+                  />
+                  <Text style={styles.emptyTitle}>
+                    {nearMeActive ? "No nearby cafés" : "No cafés found"}
+                  </Text>
+                  <Text style={styles.emptySubtitle}>
+                    {nearMeActive
+                      ? "No cafés found within 5km of your location."
+                      : "Try a different search or adjust your filters."}
+                  </Text>
+                </View>
+
+                {nearMeActive && allCafes.length > 0 && (
+                  <View style={styles.discoverSection}>
+                    <Text style={styles.discoverTitle}>Discover More</Text>
+
+                    <View style={styles.discoverGrid}>
+                      {allCafes.slice(0, 4).map((item) => (
+                        <View key={item.id} style={styles.cafeHolder}>
+                          {item.main_photo_url ? (
+                            <Image
+                              source={{ uri: item.main_photo_url }}
+                              style={styles.cafeImage}
+                              resizeMode="cover"
+                            />
+                          ) : (
+                            <View style={styles.cafeImageFallback}>
+                              <MaterialIcons
+                                name="local-cafe"
+                                size={28}
+                                color="#C8AA7A"
+                              />
+                            </View>
+                          )}
+
+                          <View style={styles.cafeTextWrapper}>
+                            <View style={styles.cafeText}>
+                              <View style={{ flex: 1 }}>
+                                <Text style={styles.cafeName} numberOfLines={1}>
+                                  {item.name}
+                                </Text>
+
+                                <View style={styles.locationRow}>
+                                  <MaterialIcons
+                                    name="location-on"
+                                    size={14}
+                                    color="#E9D0A2"
+                                  />
+                                  <Text
+                                    style={styles.location}
+                                    numberOfLines={1}
+                                  >
+                                    {item.address}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              <Text style={styles.rating}>
+                                {item.average_rating?.toFixed(1) ?? "New"}
+                              </Text>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
               </View>
             }
           />
@@ -640,5 +698,21 @@ const styles = StyleSheet.create({
   },
   quickFilterTextActive: {
     color: "#FFFAF3",
+  },
+
+  discoverSection: {
+    paddingHorizontal: 15,
+    paddingBottom: 30,
+  },
+  discoverTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 10,
+    color: "#4B2C11",
+  },
+  discoverGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
   },
 });
