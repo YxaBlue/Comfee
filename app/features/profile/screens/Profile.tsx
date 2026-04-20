@@ -266,6 +266,8 @@ export default function ProfileScreen({ navigation }: Props) {
   const [removingFavoriteId, setRemovingFavoriteId] = useState<string | null>(
     null,
   );
+  const [pendingAvatarUri, setPendingAvatarUri] = useState<string | null>(null);
+  const [pendingCoverUri, setPendingCoverUri] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -406,6 +408,17 @@ export default function ProfileScreen({ navigation }: Props) {
     setFieldErrors({});
     setIsSaving(true);
     try {
+      // Upload any pending images first
+      let newAvatarUrl = profile?.profile_picture ?? null;
+      let newCoverUrl = profile?.cover_photo ?? null;
+
+      if (pendingAvatarUri) {
+        newAvatarUrl = await uploadAvatar(userId, pendingAvatarUri);
+      }
+      if (pendingCoverUri) {
+        newCoverUrl = await uploadCoverPhoto(userId, pendingCoverUri);
+      }
+
       await editProfile(
         {
           userId,
@@ -417,11 +430,18 @@ export default function ProfileScreen({ navigation }: Props) {
         },
         profile?.username,
       );
+
       setProfile((prev: any) => ({
         ...prev,
         ...editFields,
         username: trimmedUsername,
+        profile_picture: newAvatarUrl,
+        cover_photo: newCoverUrl,
       }));
+
+      // clear pending URIs
+      setPendingAvatarUri(null);
+      setPendingCoverUri(null);
       setIsEditing(false);
     } catch (err: any) {
       if (err?.validationErrors) {
@@ -437,6 +457,8 @@ export default function ProfileScreen({ navigation }: Props) {
   const handleCancel = () => {
     setIsEditing(false);
     setFieldErrors({});
+    setPendingAvatarUri(null); // ← discard
+    setPendingCoverUri(null); // ← discard
   };
 
   const handleTabPress = (key: Tab) => {
@@ -464,7 +486,6 @@ export default function ProfileScreen({ navigation }: Props) {
 
   // ── Avatar picker (1:1 crop) ──
   const handlePickAvatar = async () => {
-    if (!userId) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
 
@@ -477,18 +498,12 @@ export default function ProfileScreen({ navigation }: Props) {
     });
 
     if (!result.canceled) {
-      try {
-        const url = await uploadAvatar(userId, result.assets[0].uri);
-        setProfile((prev: any) => ({ ...prev, profile_picture: url }));
-      } catch (err) {
-        console.error("Failed to upload avatar:", err);
-      }
+      setPendingAvatarUri(result.assets[0].uri); // ← local preview only
     }
   };
 
   // ── Cover photo picker (16:9 crop) ──
   const handlePickCoverPhoto = async () => {
-    if (!userId) return;
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
 
@@ -501,12 +516,7 @@ export default function ProfileScreen({ navigation }: Props) {
     });
 
     if (!result.canceled) {
-      try {
-        const url = await uploadCoverPhoto(userId, result.assets[0].uri);
-        setProfile((prev: any) => ({ ...prev, cover_photo: url }));
-      } catch (err) {
-        console.error("Failed to upload cover photo:", err);
-      }
+      setPendingCoverUri(result.assets[0].uri); // ← local preview only
     }
   };
 
@@ -519,7 +529,7 @@ export default function ProfileScreen({ navigation }: Props) {
       <View style={styles.wrapper}>
         <TopBar
           navigation={navigation}
-          profilePicture={profile?.profile_picture}
+          profilePicture={pendingAvatarUri ?? profile?.profile_picture}
         />
 
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -529,14 +539,17 @@ export default function ProfileScreen({ navigation }: Props) {
             {profile?.cover_photo ? (
               <Image
                 key={profile.cover_photo}
-                source={{ uri: profile.cover_photo, cache: "reload" }}
-                style={StyleSheet.absoluteFillObject}
+                source={{
+                  uri: pendingCoverUri ?? profile?.cover_photo,
+                  cache: "reload",
+                }}
+                style={StyleSheet.absoluteFill}
                 resizeMode="cover"
               />
             ) : (
               <View
                 style={[
-                  StyleSheet.absoluteFillObject,
+                  StyleSheet.absoluteFill,
                   { backgroundColor: "#FAF2E6" },
                 ]}
               />
@@ -564,7 +577,10 @@ export default function ProfileScreen({ navigation }: Props) {
                   {profile?.profile_picture ? (
                     <Image
                       key={profile.profile_picture}
-                      source={{ uri: profile.profile_picture, cache: "reload" }}
+                      source={{
+                        uri: pendingAvatarUri ?? profile?.profile_picture,
+                        cache: "reload",
+                      }}
                       style={{
                         width: "100%",
                         height: "100%",
@@ -1029,11 +1045,13 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     paddingHorizontal: 20,
     backgroundColor: "#E9D0A2",
+    zIndex: 1,
   },
   tabBtn: {
     flex: 1,
     alignItems: "center",
     paddingVertical: 10,
+    paddingHorizontal: 12,
     position: "relative",
   },
   tabUnderline: {

@@ -1,3 +1,5 @@
+import { format, parseISO } from "date-fns";
+
 const monthMap: { [key: string]: number } = {
   Jan: 0,
   Feb: 1,
@@ -49,3 +51,11 @@ export function calculateAge(birthDate: Date | string): number {
 
   return age;
 }
+
+const formatDate = (dateString: string) => {
+  try {
+    return format(parseISO(dateString), "MMM dd, yyyy · h:mm a");
+  } catch {
+    return dateString;
+  }
+};

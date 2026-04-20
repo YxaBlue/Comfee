@@ -7,7 +7,7 @@ export type Cafe = {
   address: string;
   city: string;
   main_photo_url: string | null;
-  average_rating: number | null;
+  average_rating: number;
   featured: boolean;
 };
 
@@ -77,28 +77,59 @@ export async function getCafesByCity(
 
   const { data, error } = await supabase
     .from("cafe")
-    .select("id, name, address, city, main_photo_url, average_rating, featured")
+    .select(
+      "id, name, address, city, main_photo_url, featured, review (rating)",
+    )
     .eq("city", city)
     .neq("is_deleted", true)
     .range(from, to);
 
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map((cafe) => {
+    const ratings = (cafe.review ?? []).map(
+      (r: { rating: number }) => r.rating,
+    );
+    const average_rating =
+      ratings.length > 0
+        ? Math.round(
+            (ratings.reduce((a: number, b: number) => a + b, 0) /
+              ratings.length) *
+              10,
+          ) / 10
+        : 0; // ← was null
+
+    return {
+      id: cafe.id,
+      name: cafe.name,
+      address: cafe.address,
+      city: cafe.city,
+      main_photo_url: cafe.main_photo_url,
+      featured: cafe.featured,
+      average_rating,
+    };
+  });
 }
 
 export async function getCafesWithFeatures(): Promise<CafeWithFeatures[]> {
   const { data: cafes, error: cafeError } = await supabase
     .from("cafe")
-    .select("id, name, address, city, main_photo_url, average_rating, featured")
+    .select(
+      `
+      id,
+      name,
+      address,
+      city,
+      main_photo_url,
+      featured,
+      review ( rating )
+    `,
+    )
     .neq("is_deleted", true);
 
   if (cafeError) throw cafeError;
 
   const cafeList = cafes ?? [];
-
-  if (cafeList.length === 0) {
-    return [];
-  }
+  if (cafeList.length === 0) return [];
 
   const { data: features, error: featureError } = await supabase
     .from("cafe_amenities")
@@ -113,15 +144,34 @@ export async function getCafesWithFeatures(): Promise<CafeWithFeatures[]> {
   if (featureError) throw featureError;
 
   const featuresByCafeId = new Map<number, CafeFeatures>();
-
   for (const feature of features ?? []) {
     featuresByCafeId.set(feature.cafe_id, feature);
   }
 
-  return cafeList.map((cafe) => ({
-    ...cafe,
-    features: featuresByCafeId.get(cafe.id) ?? null,
-  }));
+  return cafeList.map((cafe) => {
+    const ratings = (cafe.review ?? []).map(
+      (r: { rating: number }) => r.rating,
+    );
+    const average_rating =
+      ratings.length > 0
+        ? Math.round(
+            (ratings.reduce((a: number, b: number) => a + b, 0) /
+              ratings.length) *
+              10,
+          ) / 10
+        : 0; // ← 0 if no reviews
+
+    return {
+      id: cafe.id,
+      name: cafe.name,
+      address: cafe.address,
+      city: cafe.city,
+      main_photo_url: cafe.main_photo_url,
+      featured: cafe.featured,
+      average_rating,
+      features: featuresByCafeId.get(cafe.id) ?? null,
+    };
+  });
 }
 
 export async function getNearbyCafes(
