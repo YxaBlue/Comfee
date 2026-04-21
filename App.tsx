@@ -11,7 +11,8 @@ import ForgotPasswordScreen from "./app/features/auth/screens/ForgotPassword";
 import LoginScreen from "./app/features/auth/screens/Login";
 import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
 import ProfileBusi from "./app/features/business/screens/profile-busi";
-import CafeCard from "./app/features/cafe/screens/cafe-card-FE";
+import CafeCard from "./app/features/cafe/components/cafe-card-FE";
+import CafeProfileScreen from "./app/features/cafe/screens/CafeProfile2";
 import FilterScreen from "./app/features/cafe/screens/Filter-FE";
 import ProfileScreen from "./app/features/profile/screens/Profile";
 import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";
@@ -29,6 +30,7 @@ export type RootStackParamList = {
   Dashboard: undefined;
   Filter: undefined;
   ProfileBusi: undefined;
+  CafeProfile: undefined;
 };
 
 const linking = {
@@ -67,10 +69,12 @@ export default function App() {
 
         if (currentRoute && PUBLIC_ROUTES.includes(currentRoute)) return;
 
-        navigationRef.current?.reset({
-          index: 0,
-          routes: [{ name: "Login" }],
-        });
+        // NOTE: Auth redirect disabled while testing CafeProfile.
+        // Restore the block below when done testing:
+        // navigationRef.current?.reset({
+        //   index: 0,
+        //   routes: [{ name: "Login" }],
+        // });
       }
     });
 
@@ -80,7 +84,7 @@ export default function App() {
   return (
     <NavigationContainer linking={linking} ref={navigationRef}>
       <Stack.Navigator
-        initialRouteName="Login"
+        initialRouteName="CafeProfile"
         screenOptions={{ headerShown: false }}
       >
         <Stack.Screen name="Login" component={LoginScreen} />
@@ -93,6 +97,7 @@ export default function App() {
         <Stack.Screen name="Dashboard" component={CafeCard} />
         <Stack.Screen name="Filter" component={FilterScreen} />
         <Stack.Screen name="ProfileBusi" component={ProfileBusi} />
+        <Stack.Screen name="CafeProfile" component={CafeProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
