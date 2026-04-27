@@ -4,31 +4,31 @@ import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  ImageBackground,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Image,
+    ImageBackground,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from "react-native";
 
 import {
-  CafeWithFeatures,
-  getCafesWithFeatures,
-  getNearbyCafes,
-  getUserLocation,
-} from "./services/cafeService";
+    CafeWithFeatures,
+    getCafesWithFeatures,
+    getNearbyCafes,
+    getUserLocation,
+} from "../services/cafeService";
 import {
-  FILTER_CATEGORIES,
-  FilterSelectionState,
-  cafeMatchesFilters,
-  normalizeFilterSelections,
-} from "./services/filtering";
+    FILTER_CATEGORIES,
+    FilterSelectionState,
+    cafeMatchesFilters,
+    normalizeFilterSelections,
+} from "../services/filtering";
 
 type NavProps = NativeStackNavigationProp<RootStackParamList>;
 type SearchScreenRouteProp = RouteProp<RootStackParamList, "Search">;

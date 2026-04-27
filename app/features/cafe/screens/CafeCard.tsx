@@ -20,7 +20,7 @@ import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Cafe, getCafesByCity, getUserLocation } from "./services/cafeService";
+import { Cafe, getCafesByCity, getUserLocation } from "../services/cafeService";
 
 type NavProps = NativeStackNavigationProp<RootStackParamList, "Dashboard">;
 
@@ -105,7 +105,7 @@ export default function CafeCard() {
   const renderCafeCard = ({ item }: { item: Cafe }) => (
     <Pressable
       style={styles.cafeHolder}
-      onPress={() => console.log("Go to Cafe Profile")}
+      onPress={() => navigation.navigate("CafeProfile")}
     >
       {item.main_photo_url ? (
         <Image
@@ -258,7 +258,6 @@ export default function CafeCard() {
           style={styles.modalOverlay}
           onPress={() => setLocationModalVisible(false)}
         >
-          {/* stopPropagation so tapping inside sheet doesn't close it */}
           <Pressable style={styles.bottomSheet} onPress={() => {}}>
             <Text style={styles.modalTitle}>Select City</Text>
             <FlatList

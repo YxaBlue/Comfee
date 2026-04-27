@@ -12,10 +12,11 @@ import LoginScreen from "./app/features/auth/screens/Login";
 import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
 import BusinessProfile from "./app/features/business/screens/BusinessProfile";
 import CafeCard from "./app/features/cafe/screens/CafeCard";
+import CafeProfileScreen from "./app/features/cafe/screens/CafeProfile2";
 import FilteredCafes from "./app/features/cafe/screens/DashboardFilter";
 import FilterScreen from "./app/features/cafe/screens/Filter";
 import SearchScreen from "./app/features/cafe/screens/Search";
-import { FilterSelectionState } from "./app/features/cafe/screens/services/filtering";
+import { FilterSelectionState } from "./app/features/cafe/services/filtering";
 import ProfileScreen from "./app/features/profile/screens/Profile";
 import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";
 import SettingsScreen from "./app/features/settings/screens/Settings";
@@ -45,7 +46,8 @@ export type RootStackParamList = {
     userCoords?: { latitude: number; longitude: number };
   };
   FilteredCafes: { filterType: string };
-  ProfileBusi: undefined;
+  BusinessProfile: undefined;
+  CafeProfile: undefined;
 };
 
 const linking = {
@@ -137,7 +139,7 @@ export default function App() {
   return (
     <NavigationContainer linking={linking} ref={navigationRef}>
       <Stack.Navigator
-        initialRouteName="Login"
+        initialRouteName="CafeProfile"
         screenOptions={{ headerShown: false }}
       >
         <Stack.Screen name="Login" component={LoginScreen} />
@@ -151,7 +153,8 @@ export default function App() {
         <Stack.Screen name="Filter" component={FilterScreen} />
         <Stack.Screen name="Search" component={SearchScreen} />
         <Stack.Screen name="FilteredCafes" component={FilteredCafes} />
-        <Stack.Screen name="ProfileBusi" component={BusinessProfile} />
+        <Stack.Screen name="BusinessProfile" component={BusinessProfile} />
+        <Stack.Screen name="CafeProfile" component={CafeProfileScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
