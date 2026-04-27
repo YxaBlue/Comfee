@@ -16,7 +16,7 @@ import CafeProfileScreen from "./app/features/cafe/screens/CafeProfile2";
 import FilteredCafes from "./app/features/cafe/screens/DashboardFilter";
 import FilterScreen from "./app/features/cafe/screens/Filter";
 import SearchScreen from "./app/features/cafe/screens/Search";
-import { FilterSelectionState } from "./app/features/cafe/screens/services/filtering";
+import { FilterSelectionState } from "./app/features/cafe/services/filtering";
 import ProfileScreen from "./app/features/profile/screens/Profile";
 import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";
 import SettingsScreen from "./app/features/settings/screens/Settings";

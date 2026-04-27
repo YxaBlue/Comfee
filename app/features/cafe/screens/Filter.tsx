@@ -8,11 +8,11 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  createInitialSelections,
-  FILTER_CATEGORIES,
-  FilterSelectionState,
-  normalizeFilterSelections,
-} from "./services/filtering";
+    createInitialSelections,
+    FILTER_CATEGORIES,
+    FilterSelectionState,
+    normalizeFilterSelections,
+} from "../services/filtering";
 
 type FilterRouteProp = RouteProp<RootStackParamList, "Filter">;
 
