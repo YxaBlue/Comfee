@@ -4,34 +4,83 @@ import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Image,
-    ImageBackground,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  ImageBackground,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 
 import {
-    CafeWithFeatures,
-    getCafesWithFeatures,
-    getNearbyCafes,
-    getUserLocation,
+  CafeWithFeatures,
+  getCafesWithFeatures,
+  getNearbyCafes,
+  getUserLocation,
 } from "../services/cafeService";
 import {
-    FILTER_CATEGORIES,
-    FilterSelectionState,
-    cafeMatchesFilters,
-    normalizeFilterSelections,
+  FILTER_CATEGORIES,
+  FilterSelectionState,
+  cafeMatchesFilters,
+  normalizeFilterSelections,
 } from "../services/filtering";
 
 type NavProps = NativeStackNavigationProp<RootStackParamList>;
 type SearchScreenRouteProp = RouteProp<RootStackParamList, "Search">;
+
+function DiscoverMore({ allCafes }: { allCafes: CafeWithFeatures[] }) {
+  const navigation = useNavigation<NavProps>();
+  if (allCafes.length === 0) return null;
+  return (
+    <View style={styles.discoverSection}>
+      <Text style={styles.discoverTitle}>Discover More</Text>
+      <View style={styles.discoverGrid}>
+        {allCafes.slice(0, 4).map((item) => (
+          <View key={item.id} style={styles.cafeHolder}>
+            {item.main_photo_url ? (
+              <Image
+                source={{ uri: item.main_photo_url }}
+                style={styles.cafeImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.cafeImageFallback}>
+                <MaterialIcons name="local-cafe" size={28} color="#C8AA7A" />
+              </View>
+            )}
+            <View style={styles.cafeTextWrapper}>
+              <View style={styles.cafeText}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cafeName} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <View style={styles.locationRow}>
+                    <MaterialIcons
+                      name="location-on"
+                      size={14}
+                      color="#E9D0A2"
+                    />
+                    <Text style={styles.location} numberOfLines={1}>
+                      {item.address}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={styles.rating}>
+                  {item.average_rating?.toFixed(1) ?? "New"}
+                </Text>
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export default function SearchScreen() {
   const navigation = useNavigation<NavProps>();
@@ -372,13 +421,16 @@ export default function SearchScreen() {
           <Text style={styles.noResult}>{errorMessage}</Text>
         ) : !hasAnyFilter ? (
           // ← no filters selected state
-          <View style={styles.emptyState}>
-            <MaterialIcons name="manage-search" size={44} color="#D2BA94" />
-            <Text style={styles.emptyTitle}>Search or filter cafés</Text>
-            <Text style={styles.emptySubtitle}>
-              Use the search bar, tap Near Me, or apply filters to find cafés.
-            </Text>
-          </View>
+          <ScrollView>
+            <View style={styles.emptyState}>
+              <MaterialIcons name="manage-search" size={44} color="#D2BA94" />
+              <Text style={styles.emptyTitle}>Search or filter cafés</Text>
+              <Text style={styles.emptySubtitle}>
+                Use the search bar, tap Near Me, or apply filters to find cafés.
+              </Text>
+            </View>
+            <DiscoverMore allCafes={allCafes} />
+          </ScrollView>
         ) : (
           <FlatList
             data={filteredCafes}
@@ -386,6 +438,27 @@ export default function SearchScreen() {
             numColumns={2}
             columnWrapperStyle={styles.columnWrapper}
             contentContainerStyle={styles.listContent}
+            ListHeaderComponent={
+              !hasAnyFilter ? (
+                <View style={styles.emptyState}>
+                  <MaterialIcons
+                    name="manage-search"
+                    size={44}
+                    color="#D2BA94"
+                  />
+                  <Text style={styles.emptyTitle}>Search or filter cafés</Text>
+                  <Text style={styles.emptySubtitle}>
+                    Use the search bar, tap Near Me, or apply filters to find
+                    cafés.
+                  </Text>
+                </View>
+              ) : null
+            }
+            ListFooterComponent={
+              filteredCafes.length > 0 ? (
+                <DiscoverMore allCafes={allCafes} />
+              ) : null
+            }
             renderItem={({ item }) => (
               <View style={styles.cafeHolder}>
                 {item.main_photo_url ? (
@@ -445,61 +518,7 @@ export default function SearchScreen() {
                   </Text>
                 </View>
 
-                {nearMeActive && allCafes.length > 0 && (
-                  <View style={styles.discoverSection}>
-                    <Text style={styles.discoverTitle}>Discover More</Text>
-
-                    <View style={styles.discoverGrid}>
-                      {allCafes.slice(0, 4).map((item) => (
-                        <View key={item.id} style={styles.cafeHolder}>
-                          {item.main_photo_url ? (
-                            <Image
-                              source={{ uri: item.main_photo_url }}
-                              style={styles.cafeImage}
-                              resizeMode="cover"
-                            />
-                          ) : (
-                            <View style={styles.cafeImageFallback}>
-                              <MaterialIcons
-                                name="local-cafe"
-                                size={28}
-                                color="#C8AA7A"
-                              />
-                            </View>
-                          )}
-
-                          <View style={styles.cafeTextWrapper}>
-                            <View style={styles.cafeText}>
-                              <View style={{ flex: 1 }}>
-                                <Text style={styles.cafeName} numberOfLines={1}>
-                                  {item.name}
-                                </Text>
-
-                                <View style={styles.locationRow}>
-                                  <MaterialIcons
-                                    name="location-on"
-                                    size={14}
-                                    color="#E9D0A2"
-                                  />
-                                  <Text
-                                    style={styles.location}
-                                    numberOfLines={1}
-                                  >
-                                    {item.address}
-                                  </Text>
-                                </View>
-                              </View>
-
-                              <Text style={styles.rating}>
-                                {item.average_rating?.toFixed(1) ?? "New"}
-                              </Text>
-                            </View>
-                          </View>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
+                <DiscoverMore allCafes={allCafes} />
               </View>
             }
           />
