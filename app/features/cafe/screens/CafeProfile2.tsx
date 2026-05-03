@@ -718,7 +718,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={true}
       >
         {/* ── CAFE HEADER BLOCK ── */}
-        <View style={{ backgroundColor: "#EDDEC7" }}>
+        <View style={{ backgroundColor: "#E9D0A2" }}>
           {/* Cover Photo */}
           <View style={avatarStyles.headerBand}>
             {cafe.cover_photo_url ? (
@@ -815,7 +815,10 @@ export default function CafeProfileScreen({ navigation }: Props) {
             {/* REVIEWS */}
             {activeTab === "Cafe-Reviews" && (
               <View>
-                <WriteReviewCTA navigation={navigation} cafeName={MOCK_CAFE.name} />
+                <WriteReviewCTA
+                  navigation={navigation}
+                  cafeName={MOCK_CAFE.name}
+                />
                 {MOCK_REVIEWS.length === 0 ? (
                   <EmptyState
                     icon="rate-review"
@@ -988,7 +991,7 @@ const cafeProfileNavStyles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-around",
     paddingHorizontal: 20,
-    backgroundColor: "#EDDEC7",
+    backgroundColor: "#E9D0A2",
   },
 
   tabBtn: {
@@ -1004,7 +1007,7 @@ const cafeProfileNavStyles = StyleSheet.create({
     left: 8,
     right: 8,
     height: 2,
-    backgroundColor: "#6B4F2E",
+    backgroundColor: "#6D6D6D",
     borderRadius: 2,
   },
 
@@ -1030,6 +1033,7 @@ const cafeDetailsStyles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "700",
     color: "#3B2A1A",
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   metaRow: {
@@ -1043,13 +1047,14 @@ const cafeDetailsStyles = StyleSheet.create({
     fontSize: 12,
     color: "#8C6D4F",
     flexShrink: 1,
+    fontFamily: "SourceSerifPro-Regular",
   },
 });
 
 const avatarStyles = StyleSheet.create({
   headerBand: {
     height: 125,
-    backgroundColor: "#D4B896",
+    backgroundColor: "#FAF2E6",
     justifyContent: "flex-end",
     overflow: "visible",
   },
@@ -1066,7 +1071,7 @@ const avatarStyles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: "#E6D6BE",
+    backgroundColor: "#FAF2E6",
     borderWidth: 2,
     borderColor: "#EDDEC7",
     alignItems: "center",
@@ -1375,7 +1380,7 @@ const infoStyles = StyleSheet.create({
 
   statCard: {
     flex: 1,
-    backgroundColor: "#E6D6BE",
+    backgroundColor: "#FFF7ED",
     borderRadius: 10,
     padding: 10,
     alignItems: "center",
@@ -1385,12 +1390,14 @@ const infoStyles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     color: "#6B4F2E",
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   statLabel: {
     fontSize: 10,
     color: "#8C6D4F",
     marginTop: 2,
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   sectionLabel: {
@@ -1406,7 +1413,7 @@ const infoStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 8,
-    backgroundColor: "#E6D6BE",
+    backgroundColor: "#FFF7ED",
     borderRadius: 8,
     padding: 10,
     marginBottom: 5,
@@ -1414,8 +1421,9 @@ const infoStyles = StyleSheet.create({
 
   infoText: {
     fontSize: 13,
-    color: "#4A3220",
+    color: "#4B2C11",
     lineHeight: 18,
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   infoSubText: {
