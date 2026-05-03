@@ -652,7 +652,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
     { key: "Cafe-Info", icon: "info" },
     { key: "Cafe-Reviews", icon: "rate-review" },
     { key: "Cafe-Posts", icon: "view-compact" },
-    { key: "Cafe-Ammenities-Menu", icon: "info-outline" },
+    { key: "Cafe-Ammenities-Menu", icon: "list" },
   ];
 
   return (
