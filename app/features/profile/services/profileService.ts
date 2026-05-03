@@ -141,3 +141,23 @@ export async function uploadCoverPhoto(
 
   return bustUrl;
 }
+
+//----------Review Delete and Edit -------------------
+
+// Delete a review
+export const deleteReview = async (reviewId: string) => {
+  const { error } = await supabase.from("reviews").delete().eq("id", reviewId);
+  if (error) throw error;
+};
+
+// Update a review
+export const editReview = async (
+  reviewId: string,
+  updates: { rating: number; comment: string },
+) => {
+  const { error } = await supabase
+    .from("reviews")
+    .update(updates)
+    .eq("id", reviewId);
+  if (error) throw error;
+};
