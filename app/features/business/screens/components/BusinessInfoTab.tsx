@@ -30,7 +30,8 @@ export default function BusinessInfoTab({ profile, loading, error }: Props) {
       {/* Intro */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Intro</Text>
-        <Text style={styles.sectionBody}>{profile.info}</Text>{" "}
+        <View style={styles.line} />
+        <Text style={styles.sectionIntro}>{profile.info}</Text>{" "}
         {/* ✅ was profile.intro */}
       </View>
       <View style={styles.divider} />
@@ -38,6 +39,7 @@ export default function BusinessInfoTab({ profile, loading, error }: Props) {
       {/* Location */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Location</Text>
+        <View style={styles.line} />
         <View style={styles.row}>
           <MaterialIcons name="location-on" size={16} color="#8C6D4F" />
           <Text style={styles.sectionBody}>{profile.address}</Text>{" "}
@@ -54,6 +56,7 @@ export default function BusinessInfoTab({ profile, loading, error }: Props) {
       {/* Contact */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Contact</Text>
+        <View style={styles.line} />
         {profile.phone ? (
           <View style={styles.row}>
             <MaterialIcons name="smartphone" size={16} color="#8C6D4F" />
@@ -74,36 +77,59 @@ export default function BusinessInfoTab({ profile, loading, error }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: 16, paddingTop: 12 },
+  container: { paddingTop: 12 },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 40,
   },
-  section: { paddingVertical: 12 },
+  section: {
+    paddingVertical: 12,
+    backgroundColor: "#FFF7ED",
+    width: "100%",
+    height: "auto",
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: "700",
     color: "#3B2A1A",
-    marginBottom: 6,
+    marginBottom: 2,
+    marginLeft: 10,
     fontFamily: "SourceSerifPro-Regular",
+  },
+
+  sectionIntro: {
+    fontSize: 14,
+    color: "#3B2A1A",
+    marginLeft: 20,
+    fontFamily: "SourceSerifPro-Regular",
+    marginTop: 8,
   },
   sectionBody: {
     fontSize: 14,
     color: "#3B2A1A",
-    marginLeft: 4,
+    marginLeft: 5,
     fontFamily: "SourceSerifPro-Regular",
+    marginTop: 8,
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     marginBottom: 4,
+    marginLeft: 15,
   },
   divider: {
+    height: 10,
+    backgroundColor: "#FFEFD5",
+  },
+  line: {
     height: 1,
-    backgroundColor: "#D4B896",
+    backgroundColor: "#4b2c1148",
+    marginVertical: 4,
+    width: "98%",
+    alignSelf: "center",
   },
   errorText: { color: "red", fontSize: 14 },
 });
