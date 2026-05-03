@@ -2,7 +2,7 @@ import { RootStackParamList } from "@/App";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-
+import { useState } from "react";
 import {
   Image,
   ImageBackground,
@@ -13,10 +13,17 @@ import {
   View,
 } from "react-native";
 
+import { useBusinessProfile } from "../../../../hooks/useBusinessProfile";
+import BusinessInfoTab from "./components/BusinessInfoTab";
+
 type NavProps = NativeStackNavigationProp<RootStackParamList, "ProfileBusi">;
 
 export default function BusinessProfile() {
   const navigation = useNavigation<NavProps>();
+  const [activeTab, setActiveTab] = useState<"info" | "posts" | "reviews">(
+    "info",
+  );
+  const { profile, loading, error } = useBusinessProfile();
 
   return (
     <ImageBackground
@@ -44,43 +51,54 @@ export default function BusinessProfile() {
         </View>
       </View>
 
-      <ScrollView
-        contentContainerStyle={{}}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Content of the profile screen goes here */}
-        <View style={[styles.divider, styles.shadow, styles.androidShadow]}>
-          <Text style={styles.name}>Hollanov Montreal</Text>
-
-          <View style={styles.accessRow}>
-            <View style={styles.access}>
-              <Text style={styles.label}>Edit Profile</Text>
-            </View>
-            <View style={styles.access}>
-              <Text style={styles.label}>Reviews</Text>
+      <ScrollView>
+        <View style={styles.wrapper}>
+          <View style={styles.coverPhoto}></View>
+          <View style={styles.businessProf}></View>
+          <View style={styles.infoHolder}>
+            <Text style={styles.cafeName}>{profile?.name ?? "Loading..."}</Text>
+            <View style={styles.locRow}>
+              <MaterialIcons name="location-on" size={12} color="#8C6D4F" />
+              <Text style={styles.cafeLoc}>{profile?.city ?? ""}</Text>
             </View>
           </View>
-        </View>
+          <View style={styles.line}></View>
 
-        <View style={styles.coverPhoto} />
-
-        <View style={[styles.profPhoto, styles.shadow, styles.androidShadow]} />
-
-        <View style={styles.locationRow}>
-          <MaterialIcons name="location-on" size={12} color="#4B2C11" />
-          <Text style={styles.location}>Montreal, Canada</Text>
-        </View>
-
-        <View style={styles.postCont}>
-          <Text style={styles.postDate}>02/05/2026 11:30</Text>
-          <Text style={styles.postCap}>Promo post caption caption</Text>
-          <View style={styles.picCont}>
-            <View style={styles.postPic}></View>
-            <View style={styles.picCont2}>
-              <View style={styles.postPic2}></View>
-              <View style={styles.postPic2}></View>
-            </View>
+          <View style={styles.divider}></View>
+          <View style={styles.navRow}>
+            <TouchableOpacity onPress={() => setActiveTab("info")}>
+              <MaterialIcons
+                name="info"
+                size={25}
+                color={activeTab === "info" ? "#3B2A1A" : "#8C6D4F"}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setActiveTab("posts")}>
+              <MaterialIcons
+                name="article"
+                size={25}
+                color={activeTab === "posts" ? "#3B2A1A" : "#8C6D4F"}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setActiveTab("reviews")}>
+              <MaterialIcons
+                name="reviews"
+                size={25}
+                color={activeTab === "reviews" ? "#3B2A1A" : "#8C6D4F"}
+              />
+            </TouchableOpacity>
           </View>
+
+          {/* Tab content */}
+          {activeTab === "info" && (
+            <BusinessInfoTab
+              profile={profile}
+              loading={loading}
+              error={error}
+            />
+          )}
+          {activeTab === "posts" && <Text>Posts coming soon</Text>}
+          {activeTab === "reviews" && <Text>Reviews coming soon</Text>}
         </View>
       </ScrollView>
     </ImageBackground>
@@ -138,136 +156,85 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
   },
+
+  wrapper: {
+    position: "relative",
+  },
+
   coverPhoto: {
     height: 150,
     backgroundColor: "#FAF2E6",
     alignItems: "center",
     justifyContent: "flex-end",
     width: "100%",
-    borderRadius: 15,
-    top: -110,
-    position: "relative",
+    borderBottomLeftRadius: 15,
+    borderBottomRightRadius: 15,
+
+    position: "absolute",
+    top: 0,
+    zIndex: 2,
   },
 
   divider: {
-    height: 100,
+    height: 110,
     backgroundColor: "#E9D0A2",
-    alignItems: "center",
-    justifyContent: "flex-end",
     width: "100%",
-    top: 115,
-    position: "relative",
+
+    marginTop: 5, // pushes it down so overlap is visible
+    zIndex: 1,
   },
 
-  profPhoto: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+  businessProf: {
+    top: 100,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: "#FAF2E6",
-    position: "absolute",
+    marginLeft: 30,
     borderColor: "#E9D0A2",
-    borderWidth: 2,
-    left: "5%",
-    top: "12%",
-    elevation: 5,
-    zIndex: 50,
+    borderWidth: 1,
+    zIndex: 3,
   },
 
-  name: {
-    top: -5,
-    fontSize: 24,
-    left: "1%",
-    fontWeight: "bold",
-    color: "#4B2C11",
-    fontFamily: "SanserifPro-Regular",
+  infoHolder: {
+    position: "relative",
+    zIndex: 4,
+    marginLeft: 140,
+    top: 60,
   },
-  locationRow: {
+
+  cafeName: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#3B2A1A",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  locRow: {
     flexDirection: "row",
-    alignItems: "center", // vertically centers icon & text
-    top: -70,
-    left: "32%", // optional spacing from name
   },
-  location: {
+  cafeLoc: {
     fontSize: 12,
-    color: "#4B2C11",
-    fontWeight: "400",
-    marginBottom: 0,
-    left: "1%",
-    fontFamily: "SanserifPro-Regular",
+    fontWeight: "700",
+    color: "#3B2A1A",
+    fontFamily: "SourceSerifPro-Regular",
   },
 
-  accessRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    left: 10,
-    top: 45,
-    gap: 5,
-  },
-  access: {
-    width: 210,
-    height: 35,
-    backgroundColor: "#E9D6B9",
-    borderRadius: 5,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  label: {
-    fontFamily: "SanserifPro-Regular",
-    fontSize: 15,
-    color: "#4B2C11",
-  },
-
-  postCont: {
-    width: "90%",
-    height: 248,
-    backgroundColor: "#FFFAF3",
-    borderRadius: 8,
+  line: {
+    height: 1,
+    backgroundColor: "#030200",
+    width: "96%",
     alignSelf: "center",
-    marginTop: 20,
-    marginLeft: 10,
-    marginRight: 10,
+    top: 75,
+    zIndex: 5,
   },
 
-  postDate: {
-    fontSize: 12,
-    fontFamily: "SanserifPro-Regular",
-    color: "#4B2C11",
-    fontWeight: 300,
-    marginTop: 15,
-    marginLeft: 20,
-  },
-
-  postCap: {
-    fontSize: 18,
-    fontFamily: "SanserifPro-Regular",
-    color: "#4B2C11",
-    fontWeight: 500,
-    marginTop: 15,
-    marginLeft: 20,
-  },
-
-  picCont: {
+  navRow: {
     flexDirection: "row",
-    gap: 15,
-  },
-  picCont2: {
-    flexDirection: "column",
-  },
-
-  postPic: {
-    backgroundColor: "#FAF2E6",
-    width: 210,
-    height: 140,
-    position: "relative",
-    marginTop: 15,
-    marginLeft: 20,
-  },
-  postPic2: {
-    backgroundColor: "#FAF2E6",
-    width: 180,
-    height: 63,
-    position: "relative",
-    marginTop: 15,
-    marginRight: 20,
+    zIndex: 6,
+    marginLeft: 15,
+    alignItems: "center",
+    alignSelf: "center",
+    gap: 150,
+    marginTop: -32,
   },
 });
