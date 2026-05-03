@@ -231,29 +231,30 @@ function ReviewCard({
         </View>
       )}
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.likesRow,
-          !hasImages && styles.likesRowWithoutMedia,
-          pressed && styles.likesRowPressed,
-        ]}
-        onPress={() => onToggleLike(review.id, review.isLiked)}
-        accessibilityRole="button"
-        accessibilityLabel={
-          review.isLiked ? "Remove like from review" : "Like this review"
-        }
+      <View
+        style={[styles.likesRow, !hasImages && styles.likesRowWithoutMedia]}
       >
-        <MaterialIcons
-          name={review.isLiked ? "thumb-up" : "thumb-up-off-alt"}
-          size={20}
-          color="#6B4F2E"
-        />
+        <Pressable
+          onPress={() => onToggleLike(review.id, review.isLiked)}
+          accessibilityRole="button"
+          accessibilityLabel={
+            review.isLiked ? "Remove like from review" : "Like this review"
+          }
+          style={({ pressed }) => [pressed && styles.likesRowPressed]}
+        >
+          <MaterialIcons
+            name={review.isLiked ? "thumb-up" : "thumb-up-off-alt"}
+            size={20}
+            color="#6B4F2E"
+          />
+        </Pressable>
+
         <Text
           style={[styles.likesCount, review.isLiked && styles.likesCountActive]}
         >
           {review.likes}
         </Text>
-      </Pressable>
+      </View>
     </View>
   );
 }
