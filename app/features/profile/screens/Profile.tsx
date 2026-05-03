@@ -109,10 +109,14 @@ function ReviewCard({
   review,
   openMenuId,
   setOpenMenuId,
+  onDelete,
+  onEdit,
 }: {
   review: Review;
   openMenuId: string | null;
   setOpenMenuId: (id: string | null) => void;
+  onDelete: (id: string) => void;
+  onEdit: (review: Review) => void;
 }) {
   const [isLiked, setIsLiked] = useState(false);
   const hasImages = review.imageCount > 0;
@@ -123,11 +127,20 @@ function ReviewCard({
     <View style={styles.reviewCard}>
       {showMenu && (
         <View style={styles.menuContainer}>
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              setOpenMenuId(null);
+              onEdit(review);
+            }}
+          >
             <MaterialIcons name="edit" size={18} color="#6B4F2E" />
             <Text style={styles.menuText}>Edit</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => onDelete(review.id)}
+          >
             <MaterialIcons name="delete" size={18} color="#C0392B" />
             <Text style={[styles.menuText, { color: "#C0392B" }]}>Delete</Text>
           </TouchableOpacity>
@@ -280,6 +293,13 @@ export default function ProfileScreen({ navigation }: Props) {
     birth_date: "",
     bio: "",
   });
+
+  // ── Review state ──
+  const [reviews, setReviews] = useState<Review[]>(MOCK_REVIEWS);
+  const [editingReview, setEditingReview] = useState<Review | null>(null);
+  const [editRating, setEditRating] = useState(0);
+  const [editComment, setEditComment] = useState("");
+  const [isReviewSaving, setIsReviewSaving] = useState(false);
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: "info", icon: "info-outline" },
@@ -519,6 +539,33 @@ export default function ProfileScreen({ navigation }: Props) {
       setPendingCoverUri(result.assets[0].uri); // ← local preview only
     }
   };
+  const handleDeleteReview = (reviewId: string) => {
+    const previous = reviews;
+    setReviews((prev) => prev.filter((r) => r.id !== reviewId));
+    setOpenMenuId(null);
+    // No DB call yet — mock only
+    // When ready: deleteReview(reviewId).catch(() => setReviews(previous));
+  };
+
+  const handleOpenEditReview = (review: Review) => {
+    setEditingReview(review);
+    setEditRating(review.rating);
+    setEditComment(review.comment);
+  };
+
+  const handleSaveReview = () => {
+    if (!editingReview) return;
+    setReviews((prev) =>
+      prev.map((r) =>
+        r.id === editingReview.id
+          ? { ...r, rating: editRating, comment: editComment }
+          : r,
+      ),
+    );
+    setEditingReview(null);
+    // No DB call yet — mock only
+    // When ready: editReview(editingReview.id, { rating: editRating, comment: editComment })
+  };
 
   return (
     <ImageBackground
@@ -703,6 +750,8 @@ export default function ProfileScreen({ navigation }: Props) {
                         review={r}
                         openMenuId={openMenuId}
                         setOpenMenuId={setOpenMenuId}
+                        onDelete={handleDeleteReview}
+                        onEdit={handleOpenEditReview}
                       />
                     ))
                   )}
@@ -902,6 +951,64 @@ export default function ProfileScreen({ navigation }: Props) {
 
           <View style={{ height: 90 }} />
         </ScrollView>
+        {/* ── Review Edit Modal ── */}
+        {editingReview && (
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>Edit Review</Text>
+              <Text style={styles.modalCafeName}>{editingReview.cafeName}</Text>
+
+              {/* Star picker */}
+              <View style={styles.starsRow}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <TouchableOpacity
+                    key={star}
+                    onPress={() => setEditRating(star)}
+                  >
+                    <MaterialIcons
+                      name={star <= editRating ? "star" : "star-border"}
+                      size={28}
+                      color="#6B4F2E"
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Comment input */}
+              <TextInput
+                style={[
+                  styles.infoInput,
+                  {
+                    minHeight: 80,
+                    textAlignVertical: "top",
+                    marginTop: 12,
+                  },
+                ]}
+                value={editComment}
+                onChangeText={setEditComment}
+                placeholder="Write your review..."
+                placeholderTextColor="#B09070"
+                multiline
+              />
+
+              {/* Actions */}
+              <View style={styles.editActionsRow}>
+                <TouchableOpacity
+                  style={styles.cancelBtn}
+                  onPress={() => setEditingReview(null)}
+                >
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.saveBtn}
+                  onPress={handleSaveReview}
+                >
+                  <Text style={styles.saveBtnText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
       </View>
     </ImageBackground>
   );
@@ -1366,5 +1473,40 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
+  },
+
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 200,
+  },
+  modalCard: {
+    backgroundColor: "#FDF6EC",
+    borderRadius: 16,
+    padding: 20,
+    width: "88%",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#3B2A1A",
+    marginBottom: 4,
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  modalCafeName: {
+    fontSize: 13,
+    color: "#8C6D4F",
+    marginBottom: 12,
+    fontFamily: "SourceSerifPro-Regular",
   },
 });
