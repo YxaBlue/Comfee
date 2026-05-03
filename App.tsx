@@ -47,7 +47,7 @@ export type RootStackParamList = {
   };
   FilteredCafes: { filterType: string };
   BusinessProfile: undefined;
-  CafeProfile: undefined;
+  CafeProfile: { cafeId: string };
 };
 
 const linking = {
@@ -139,7 +139,7 @@ export default function App() {
   return (
     <NavigationContainer linking={linking} ref={navigationRef}>
       <Stack.Navigator
-        initialRouteName="CafeProfile"
+        initialRouteName="Dashboard"
         screenOptions={{ headerShown: false }}
       >
         <Stack.Screen name="Login" component={LoginScreen} />

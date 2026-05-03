@@ -2,7 +2,7 @@ import { RootStackParamList } from "@/App";
 import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -13,6 +13,10 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+
+import { useRoute } from "@react-navigation/native";
+import { ActivityIndicator } from "react-native";
+import { CafeDetail, getCafeById } from "../services/cafeService";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "CafeProfile">;
@@ -646,6 +650,10 @@ function AmenitiesMenuTab({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function CafeProfileScreen({ navigation }: Props) {
+  const route = useRoute();
+  const params = route.params as { cafeId?: string } | undefined;
+  const cafeId = params?.cafeId ?? "";
+
   const [activeTab, setActiveTab] = useState<Tab>("Cafe-Info");
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
@@ -654,6 +662,53 @@ export default function CafeProfileScreen({ navigation }: Props) {
     { key: "Cafe-Posts", icon: "view-compact" },
     { key: "Cafe-Ammenities-Menu", icon: "list" },
   ];
+
+  // Replace MOCK_CAFE with real state
+  const [cafe, setCafe] = useState<CafeDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await getCafeById(cafeId);
+        setCafe(data);
+      } catch (err) {
+        console.error("Failed to load cafe:", err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [cafeId]);
+
+  if (loading) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#EDDEC7",
+        }}
+      >
+        <ActivityIndicator size="large" color="#8C6D4F" />
+      </View>
+    );
+  }
+
+  if (!cafe) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: "#EDDEC7",
+        }}
+      >
+        <Text style={{ color: "#8C6D4F" }}>Café not found.</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.wrapper}>
@@ -667,9 +722,9 @@ export default function CafeProfileScreen({ navigation }: Props) {
         <View style={{ backgroundColor: "#EDDEC7" }}>
           {/* Cover Photo */}
           <View style={avatarStyles.headerBand}>
-            {MOCK_CAFE.coverPhotoURL ? (
+            {cafe.cover_photo_url ? (
               <Image
-                source={{ uri: MOCK_CAFE.coverPhotoURL }}
+                source={{ uri: cafe.cover_photo_url }}
                 style={StyleSheet.absoluteFill}
                 resizeMode="cover"
               />
@@ -679,9 +734,9 @@ export default function CafeProfileScreen({ navigation }: Props) {
           {/* Avatar + Name Row */}
           <View style={avatarStyles.avatarWrapper}>
             <View style={avatarStyles.avatarCircle}>
-              {MOCK_CAFE.avatarURL ? (
+              {cafe.avatar_url ? (
                 <Image
-                  source={{ uri: MOCK_CAFE.avatarURL }}
+                  source={{ uri: cafe.avatar_url }}
                   style={{ width: "100%", height: "100%", borderRadius: 50 }}
                 />
               ) : (
@@ -695,7 +750,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
-                {MOCK_CAFE.name}
+                {cafe.name}
               </Text>
               <View style={cafeDetailsStyles.metaRow}>
                 <MaterialIcons name="place" size={13} color="#8C6D4F" />
@@ -704,7 +759,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
-                  {MOCK_CAFE.address}
+                  {cafe.address}
                 </Text>
               </View>
             </View>
@@ -738,7 +793,25 @@ export default function CafeProfileScreen({ navigation }: Props) {
         <View style={{ backgroundColor: "#FFEFD5" }}>
           <View style={cafeProfileNavStyles.tabContent}>
             {/* CAFE INFO */}
-            {activeTab === "Cafe-Info" && <CafeInfoTab cafe={MOCK_CAFE} />}
+            {activeTab === "Cafe-Info" && (
+              <CafeInfoTab
+                cafe={{
+                  name: cafe.name,
+                  address: cafe.address,
+                  email: cafe.email ?? "—",
+                  phone: cafe.phone ?? "—",
+                  avatarURL: cafe.avatar_url,
+                  coverPhotoURL: cafe.cover_photo_url,
+                  menuURLs: cafe.menu_urls,
+                  averageRating: cafe.average_rating,
+                  reviewCount: cafe.review_count,
+                  favoritesCount: cafe.favorites_count,
+                  openingTime: cafe.opening_time ?? "",
+                  closingTime: cafe.closing_time ?? "",
+                  openingDays: cafe.opening_days ?? [],
+                }}
+              />
+            )}
 
             {/* REVIEWS */}
             {activeTab === "Cafe-Reviews" && (
@@ -779,7 +852,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
             {activeTab === "Cafe-Ammenities-Menu" && (
               <AmenitiesMenuTab
                 amenities={MOCK_AMENITIES}
-                menuURLs={MOCK_CAFE.menuURLs}
+                menuURLs={cafe.menu_urls}
               />
             )}
           </View>

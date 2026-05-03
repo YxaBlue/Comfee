@@ -105,7 +105,10 @@ export default function CafeCard() {
   const renderCafeCard = ({ item }: { item: Cafe }) => (
     <Pressable
       style={styles.cafeHolder}
-      onPress={() => navigation.navigate("CafeProfile")}
+      onPress={() => {
+        console.log("cafeId being passed:", item.id);
+        navigation.navigate("CafeProfile", { cafeId: String(item.id) });
+      }}
     >
       {item.main_photo_url ? (
         <Image
