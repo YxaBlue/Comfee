@@ -1,10 +1,16 @@
 import {
+  deleteReview,
   editProfile,
+  editReview,
   getProfile,
+  getReviewsByUser,
+  toggleUpvote,
   uploadAvatar,
   uploadCoverPhoto,
+  type Review,
 } from "@/app/features/profile/services/profileService";
 import { supabase } from "@/app/shared/lib/supabaseClient";
+import { formatDate } from "@/app/shared/utils/dateUtils";
 import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -13,6 +19,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   Image,
   ImageBackground,
   Pressable,
@@ -30,16 +37,6 @@ type Props = {
 };
 
 type Tab = "info" | "favorites" | "reviews";
-
-type Review = {
-  id: string;
-  cafeName: string;
-  rating: number;
-  comment: string;
-  date: string;
-  likes: number;
-  imageCount: number;
-};
 
 type EditableFields = {
   username: string;
@@ -59,48 +56,23 @@ type FaveCafe = {
 const AVATAR_SIZE = 106;
 const AVATAR_RIGHT_OFFSET = 20;
 const USER_INFO_RIGHT_GUTTER = AVATAR_SIZE + AVATAR_RIGHT_OFFSET + 14;
-
-const MOCK_REVIEWS: Review[] = [
-  {
-    id: "1",
-    cafeName: "CafeName13",
-    rating: 2,
-    comment: "Something about their cafe...",
-    date: "07/03/2026 · 11AM",
-    likes: 25,
-    imageCount: 3,
-  },
-  {
-    id: "2",
-    cafeName: "CafeName123",
-    rating: 1,
-    comment: "Ew... just no. The service was terrible and the",
-    date: "07/01/2026 · 11AM",
-    likes: 8,
-    imageCount: 0,
-  },
-  {
-    id: "3",
-    cafeName: "Cloud Nine Café",
-    rating: 5,
-    comment: "Best cold brew I've ever had. The cozy interior is perfect!",
-    date: "06/28/2026 · 3PM",
-    likes: 41,
-    imageCount: 2,
-  },
-];
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const MAX_REVIEW_MEDIA_WIDTH = 420;
 
 function StarRating({ rating }: { rating: number }) {
   return (
     <View style={styles.starsRow}>
-      {[1, 2, 3, 4, 5].map((star) => (
-        <MaterialIcons
-          key={star}
-          name={star <= rating ? "star" : "star-border"}
-          size={18}
-          color="#6B4F2E"
-        />
-      ))}
+      {[1, 2, 3, 4, 5].map((star) => {
+        const iconName =
+          rating >= star
+            ? "star"
+            : rating >= star - 0.5
+              ? "star-half"
+              : "star-border";
+        return (
+          <MaterialIcons key={star} name={iconName} size={18} color="#6B4F2E" />
+        );
+      })}
     </View>
   );
 }
@@ -111,20 +83,35 @@ function ReviewCard({
   setOpenMenuId,
   onDelete,
   onEdit,
+  onToggleLike,
 }: {
   review: Review;
   openMenuId: string | null;
   setOpenMenuId: (id: string | null) => void;
   onDelete: (id: string) => void;
   onEdit: (review: Review) => void;
+  onToggleLike: (reviewId: string, currentlyLiked: boolean) => void;
 }) {
-  const [isLiked, setIsLiked] = useState(false);
-  const hasImages = review.imageCount > 0;
-  const displayedLikes = review.likes + (isLiked ? 1 : 0);
+  const [cardWidth, setCardWidth] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const hasImages = review.imageUrls.length > 0;
   const showMenu = openMenuId === review.id;
 
+  // Responsive: 1 column on phone (<480), 2 on tablet, 3 on wide
+  const columns = cardWidth < 480 ? 1 : cardWidth < 800 ? 2 : 3;
+  const gap = 6;
+  const imageWidth =
+    cardWidth > 0 ? Math.floor((cardWidth - gap * (columns - 1)) / columns) : 0;
+  const imageHeight = Math.round(imageWidth * 0.68);
+
+  // On narrow screens (phone): horizontal pager. On wider: wrap grid.
+  const isNarrow = columns === 1;
+
   return (
-    <View style={styles.reviewCard}>
+    <View
+      style={styles.reviewCard}
+      onLayout={(e) => setCardWidth(e.nativeEvent.layout.width)}
+    >
       {showMenu && (
         <View style={styles.menuContainer}>
           <TouchableOpacity
@@ -149,7 +136,17 @@ function ReviewCard({
 
       <View style={styles.reviewCardHeader}>
         <View style={styles.reviewMainInfo}>
-          <View style={styles.cafeAvatarSmall} />
+          <View style={styles.cafeAvatarSmall}>
+            {review.cafeAvatar ? (
+              <Image
+                source={{ uri: review.cafeAvatar }}
+                style={styles.cafeAvatarImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <MaterialIcons name="store" size={24} color="#C8A97A" />
+            )}
+          </View>
           <View style={styles.reviewCardMeta}>
             <Text style={styles.reviewLabel}>Review For</Text>
             <Text style={styles.reviewCafeName}>{review.cafeName}</Text>
@@ -174,16 +171,61 @@ function ReviewCard({
         {`"${review.comment}"`}
       </Text>
 
-      {hasImages && (
-        <View style={styles.reviewMediaSection}>
-          <View style={styles.reviewMediaPlaceholder} />
-          {review.imageCount > 1 && (
-            <View style={styles.reviewMediaDots}>
-              {Array.from({ length: Math.min(review.imageCount, 5) }).map(
-                (_, index) => (
-                  <View key={index} style={styles.reviewMediaDot} />
-                ),
+      {hasImages && cardWidth > 0 && (
+        <View style={styles.reviewMediaWrapper}>
+          {isNarrow ? (
+            // ── Phone: horizontal scroll pager ──
+            <>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={(e) => {
+                  const index = Math.round(
+                    e.nativeEvent.contentOffset.x / cardWidth,
+                  );
+                  setActiveIndex(index);
+                }}
+                scrollEventThrottle={16}
+              >
+                {review.imageUrls.map((uri, index) => (
+                  <Image
+                    key={index}
+                    source={{ uri }}
+                    style={{ width: cardWidth, height: imageHeight }}
+                    resizeMode="cover"
+                  />
+                ))}
+              </ScrollView>
+              {review.imageUrls.length > 1 && (
+                <View style={styles.dotsRow}>
+                  {review.imageUrls.map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.dot,
+                        i === activeIndex && styles.dotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
               )}
+            </>
+          ) : (
+            // ── Tablet/wide: wrapping grid ──
+            <View style={[styles.imageGrid, { gap }]}>
+              {review.imageUrls.map((uri, index) => (
+                <Image
+                  key={index}
+                  source={{ uri }}
+                  style={{
+                    width: imageWidth,
+                    height: imageHeight,
+                    borderRadius: 8,
+                  }}
+                  resizeMode="cover"
+                />
+              ))}
             </View>
           )}
         </View>
@@ -195,19 +237,21 @@ function ReviewCard({
           !hasImages && styles.likesRowWithoutMedia,
           pressed && styles.likesRowPressed,
         ]}
-        onPress={() => setIsLiked((prev) => !prev)}
+        onPress={() => onToggleLike(review.id, review.isLiked)}
         accessibilityRole="button"
         accessibilityLabel={
-          isLiked ? "Remove like from review" : "Like this review"
+          review.isLiked ? "Remove like from review" : "Like this review"
         }
       >
         <MaterialIcons
-          name={isLiked ? "thumb-up" : "thumb-up-off-alt"}
+          name={review.isLiked ? "thumb-up" : "thumb-up-off-alt"}
           size={20}
           color="#6B4F2E"
         />
-        <Text style={[styles.likesCount, isLiked && styles.likesCountActive]}>
-          {displayedLikes}
+        <Text
+          style={[styles.likesCount, review.isLiked && styles.likesCountActive]}
+        >
+          {review.likes}
         </Text>
       </Pressable>
     </View>
@@ -295,11 +339,13 @@ export default function ProfileScreen({ navigation }: Props) {
   });
 
   // ── Review state ──
-  const [reviews, setReviews] = useState<Review[]>(MOCK_REVIEWS);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [editRating, setEditRating] = useState(0);
   const [editComment, setEditComment] = useState("");
-  const [isReviewSaving, setIsReviewSaving] = useState(false);
+  const [editImages, setEditImages] = useState<string[]>([]);
+  const [pendingEditImages, setPendingEditImages] = useState<string[]>([]);
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: "info", icon: "info-outline" },
@@ -369,6 +415,18 @@ export default function ProfileScreen({ navigation }: Props) {
     }
   };
 
+  const fetchReviews = async (uid: string) => {
+    setReviewsLoading(true);
+    try {
+      const data = await getReviewsByUser(uid);
+      setReviews(data);
+    } catch (err) {
+      console.error("Failed to fetch reviews:", err);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -388,6 +446,7 @@ export default function ProfileScreen({ navigation }: Props) {
           getProfile(uid),
           supabase.auth.getUser(),
           fetchFavoriteCafes(uid),
+          fetchReviews(uid),
         ]);
 
         setProfile(data);
@@ -428,14 +487,26 @@ export default function ProfileScreen({ navigation }: Props) {
     setFieldErrors({});
     setIsSaving(true);
     try {
-      // Upload any pending images first
       let newAvatarUrl = profile?.profile_picture ?? null;
       let newCoverUrl = profile?.cover_photo ?? null;
 
-      if (pendingAvatarUri) {
+      // Handle avatar removal
+      if (pendingAvatarUri === null && profile?.profile_picture) {
+        // User removed avatar, delete from bucket
+        const avatarPath = `avatars/${userId}.${profile.profile_picture.split(".").pop()?.split("?")[0] || "jpg"}`;
+        await supabase.storage.from("profile").remove([avatarPath]);
+        newAvatarUrl = null;
+      } else if (pendingAvatarUri) {
         newAvatarUrl = await uploadAvatar(userId, pendingAvatarUri);
       }
-      if (pendingCoverUri) {
+
+      // Handle cover photo removal
+      if (pendingCoverUri === null && profile?.cover_photo) {
+        // User removed cover photo, delete from bucket
+        const coverPath = `cover_photos/${userId}.${profile.cover_photo.split(".").pop()?.split("?")[0] || "jpg"}`;
+        await supabase.storage.from("profile").remove([coverPath]);
+        newCoverUrl = null;
+      } else if (pendingCoverUri) {
         newCoverUrl = await uploadCoverPhoto(userId, pendingCoverUri);
       }
 
@@ -459,7 +530,6 @@ export default function ProfileScreen({ navigation }: Props) {
         cover_photo: newCoverUrl,
       }));
 
-      // clear pending URIs
       setPendingAvatarUri(null);
       setPendingCoverUri(null);
       setIsEditing(false);
@@ -477,8 +547,8 @@ export default function ProfileScreen({ navigation }: Props) {
   const handleCancel = () => {
     setIsEditing(false);
     setFieldErrors({});
-    setPendingAvatarUri(null); // ← discard
-    setPendingCoverUri(null); // ← discard
+    setPendingAvatarUri(null);
+    setPendingCoverUri(null);
   };
 
   const handleTabPress = (key: Tab) => {
@@ -504,7 +574,6 @@ export default function ProfileScreen({ navigation }: Props) {
     }
   };
 
-  // ── Avatar picker (1:1 crop) ──
   const handlePickAvatar = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
@@ -518,11 +587,10 @@ export default function ProfileScreen({ navigation }: Props) {
     });
 
     if (!result.canceled) {
-      setPendingAvatarUri(result.assets[0].uri); // ← local preview only
+      setPendingAvatarUri(result.assets[0].uri);
     }
   };
 
-  // ── Cover photo picker (16:9 crop) ──
   const handlePickCoverPhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
@@ -536,35 +604,163 @@ export default function ProfileScreen({ navigation }: Props) {
     });
 
     if (!result.canceled) {
-      setPendingCoverUri(result.assets[0].uri); // ← local preview only
+      setPendingCoverUri(result.assets[0].uri);
     }
   };
+
+  const handlePickEditImages = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return;
+
+    const remaining = 5 - pendingEditImages.length;
+    if (remaining <= 0) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"] as any,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+      selectionLimit: remaining,
+    });
+
+    if (!result.canceled) {
+      const newUris = result.assets.map((a) => a.uri);
+      setPendingEditImages((prev) => [...prev, ...newUris].slice(0, 5));
+    }
+  };
+
   const handleDeleteReview = (reviewId: string) => {
     const previous = reviews;
     setReviews((prev) => prev.filter((r) => r.id !== reviewId));
     setOpenMenuId(null);
-    // No DB call yet — mock only
-    // When ready: deleteReview(reviewId).catch(() => setReviews(previous));
+    deleteReview(reviewId).catch(() => setReviews(previous));
+  };
+
+  const handleToggleReviewLike = async (
+    reviewId: string,
+    currentlyLiked: boolean,
+  ) => {
+    if (!userId) return;
+
+    const previousReviews = reviews;
+    setReviews((prev) =>
+      prev.map((review) =>
+        review.id === reviewId
+          ? {
+              ...review,
+              isLiked: !currentlyLiked,
+              likes: review.likes + (currentlyLiked ? -1 : 1),
+            }
+          : review,
+      ),
+    );
+
+    try {
+      await toggleUpvote(reviewId, userId);
+    } catch (err) {
+      console.error("Failed to update review upvote:", err);
+      setReviews(previousReviews);
+    }
   };
 
   const handleOpenEditReview = (review: Review) => {
     setEditingReview(review);
     setEditRating(review.rating);
     setEditComment(review.comment);
+    setEditImages(review.imageUrls); // current saved images
+    setPendingEditImages(review.imageUrls); // working copy for preview
   };
 
-  const handleSaveReview = () => {
-    if (!editingReview) return;
+  const handleSaveReview = async () => {
+    if (!editingReview || !userId) return;
+
+    const previous = reviews;
+
+    const existingUrls = pendingEditImages.filter((uri) =>
+      uri.startsWith("http"),
+    );
+    const newLocalUris = pendingEditImages.filter(
+      (uri) => !uri.startsWith("http"),
+    );
+
+    // Find images that were removed (exist in original but not in pending)
+    const originalUrls = editingReview.imageUrls;
+    const removedUrls = originalUrls.filter(
+      (url) => !existingUrls.includes(url),
+    );
+
+    // Delete removed images from storage
+    if (removedUrls.length > 0) {
+      const deletePromises = removedUrls.map(async (url: string) => {
+        const urlParts = url.split("/");
+        const filename = urlParts[urlParts.length - 1]?.split("?")[0];
+        if (filename) {
+          const path = `reviews/${filename}`;
+          await supabase.storage.from("posts").remove([path]);
+        }
+      });
+      await Promise.all(deletePromises);
+    }
+
+    // Optimistic update using pending images for instant preview
     setReviews((prev) =>
       prev.map((r) =>
         r.id === editingReview.id
-          ? { ...r, rating: editRating, comment: editComment }
+          ? {
+              ...r,
+              rating: editRating,
+              comment: editComment,
+              imageUrls: pendingEditImages,
+              date: `${formatDate(new Date().toISOString())} (edited)`,
+            }
           : r,
       ),
     );
     setEditingReview(null);
-    // No DB call yet — mock only
-    // When ready: editReview(editingReview.id, { rating: editRating, comment: editComment })
+
+    try {
+      const uploadedUrls = await Promise.all(
+        newLocalUris.map(async (uri) => {
+          const ext = uri.split(".").pop()?.split("?")[0] ?? "jpg";
+          const filename = `${editingReview.id}_${Date.now()}_${Math.random()
+            .toString(36)
+            .slice(2)}.${ext}`;
+          const path = `reviews/${filename}`; // ← folder inside "posts" bucket
+
+          const response = await fetch(uri);
+          const blob = await response.blob();
+
+          const { error } = await supabase.storage
+            .from("posts") // ← correct bucket
+            .upload(path, blob, {
+              upsert: false,
+              contentType: `image/${ext}`,
+            });
+
+          if (error) throw error;
+
+          const { data } = supabase.storage.from("posts").getPublicUrl(path);
+          return `${data.publicUrl}?t=${Date.now()}`;
+        }),
+      );
+
+      const finalUrls = [...existingUrls, ...uploadedUrls];
+
+      await editReview(editingReview.id, {
+        rating: editRating,
+        comment: editComment,
+        images_url: finalUrls,
+      });
+
+      // Replace local URIs with real public URLs
+      setReviews((prev) =>
+        prev.map((r) =>
+          r.id === editingReview.id ? { ...r, imageUrls: finalUrls } : r,
+        ),
+      );
+    } catch (err) {
+      console.error("Failed to save review:", err);
+      setReviews(previous);
+    }
   };
 
   return (
@@ -580,9 +776,8 @@ export default function ProfileScreen({ navigation }: Props) {
         />
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* ── Header band (cover photo + avatar) ── */}
+          {/* ── Header band ── */}
           <View style={styles.headerBand}>
-            {/* Cover photo */}
             {profile?.cover_photo ? (
               <Image
                 key={profile.cover_photo}
@@ -602,18 +797,27 @@ export default function ProfileScreen({ navigation }: Props) {
               />
             )}
 
-            {/* Cover edit button — only in edit mode */}
             {isEditing && (
-              <TouchableOpacity
-                style={styles.coverEditBtn}
-                onPress={handlePickCoverPhoto}
-              >
-                <MaterialIcons name="photo-camera" size={16} color="#fff" />
-                <Text style={styles.coverEditText}>Edit Cover</Text>
-              </TouchableOpacity>
+              <View style={styles.coverEditRow}>
+                <TouchableOpacity
+                  style={styles.coverEditBtn}
+                  onPress={handlePickCoverPhoto}
+                >
+                  <MaterialIcons name="photo-camera" size={16} color="#fff" />
+                  <Text style={styles.coverEditText}>Edit Cover</Text>
+                </TouchableOpacity>
+                {(pendingCoverUri !== null || profile?.cover_photo) && (
+                  <TouchableOpacity
+                    style={[styles.coverEditBtn, styles.removeBtn]}
+                    onPress={() => setPendingCoverUri(null)}
+                  >
+                    <MaterialIcons name="delete" size={16} color="#fff" />
+                    <Text style={styles.coverEditText}>Remove</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
 
-            {/* Avatar */}
             <View style={styles.avatarWrapper}>
               <TouchableOpacity
                 style={styles.avatarTouchTarget}
@@ -628,19 +832,33 @@ export default function ProfileScreen({ navigation }: Props) {
                         uri: pendingAvatarUri ?? profile?.profile_picture,
                         cache: "reload",
                       }}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        borderRadius: 63,
-                      }}
+                      style={styles.avatarImage}
+                      resizeMode="cover"
                     />
                   ) : (
                     <MaterialIcons name="person" size={52} color="#C8A97A" />
                   )}
                 </View>
                 {isEditing && (
-                  <View style={styles.cameraBadge}>
-                    <MaterialIcons name="photo-camera" size={12} color="#fff" />
+                  <View style={styles.avatarEditRow}>
+                    <TouchableOpacity
+                      style={styles.avatarEditBtn}
+                      onPress={handlePickAvatar}
+                    >
+                      <MaterialIcons
+                        name="photo-camera"
+                        size={12}
+                        color="#fff"
+                      />
+                    </TouchableOpacity>
+                    {profile?.profile_picture && (
+                      <TouchableOpacity
+                        style={[styles.avatarEditBtn, styles.removeBtn]}
+                        onPress={() => setPendingAvatarUri(null)}
+                      >
+                        <MaterialIcons name="delete" size={12} color="#fff" />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 )}
               </TouchableOpacity>
@@ -695,7 +913,7 @@ export default function ProfileScreen({ navigation }: Props) {
           {/* ── Divider ── */}
           <View style={styles.divider} />
 
-          {/* ── Icon tab bar ── */}
+          {/* ── Tab bar ── */}
           <View style={styles.tabBar}>
             {TAB_ICONS.map(({ key, icon }) => {
               const isLocked = isEditing && key === "reviews";
@@ -731,7 +949,13 @@ export default function ProfileScreen({ navigation }: Props) {
             {activeTab === "reviews" && (
               <Pressable onPress={() => setOpenMenuId(null)}>
                 <View>
-                  {MOCK_REVIEWS.length === 0 ? (
+                  {reviewsLoading ? (
+                    <ActivityIndicator
+                      size="small"
+                      color="#8C6D4F"
+                      style={{ marginTop: 12 }}
+                    />
+                  ) : reviews.length === 0 ? (
                     <View style={styles.emptyState}>
                       <MaterialIcons
                         name="menu-book"
@@ -744,7 +968,7 @@ export default function ProfileScreen({ navigation }: Props) {
                       </Text>
                     </View>
                   ) : (
-                    MOCK_REVIEWS.map((r) => (
+                    reviews.map((r) => (
                       <ReviewCard
                         key={r.id}
                         review={r}
@@ -752,6 +976,7 @@ export default function ProfileScreen({ navigation }: Props) {
                         setOpenMenuId={setOpenMenuId}
                         onDelete={handleDeleteReview}
                         onEdit={handleOpenEditReview}
+                        onToggleLike={handleToggleReviewLike}
                       />
                     ))
                   )}
@@ -951,6 +1176,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
           <View style={{ height: 90 }} />
         </ScrollView>
+
         {/* ── Review Edit Modal ── */}
         {editingReview && (
           <View style={styles.modalOverlay}>
@@ -960,29 +1186,39 @@ export default function ProfileScreen({ navigation }: Props) {
 
               {/* Star picker */}
               <View style={styles.starsRow}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <TouchableOpacity
-                    key={star}
-                    onPress={() => setEditRating(star)}
-                  >
-                    <MaterialIcons
-                      name={star <= editRating ? "star" : "star-border"}
-                      size={28}
-                      color="#6B4F2E"
-                    />
-                  </TouchableOpacity>
-                ))}
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const iconName =
+                    editRating >= star
+                      ? "star"
+                      : editRating >= star - 0.5
+                        ? "star-half"
+                        : "star-border";
+
+                  return (
+                    <Pressable
+                      key={star}
+                      onPressIn={(event) => {
+                        const { locationX } = event.nativeEvent;
+                        const newRating = locationX < 14 ? star - 0.5 : star;
+                        setEditRating(newRating);
+                      }}
+                      style={styles.starPressable}
+                    >
+                      <MaterialIcons
+                        name={iconName}
+                        size={28}
+                        color="#6B4F2E"
+                      />
+                    </Pressable>
+                  );
+                })}
               </View>
 
               {/* Comment input */}
               <TextInput
                 style={[
                   styles.infoInput,
-                  {
-                    minHeight: 80,
-                    textAlignVertical: "top",
-                    marginTop: 12,
-                  },
+                  { minHeight: 80, textAlignVertical: "top", marginTop: 12 },
                 ]}
                 value={editComment}
                 onChangeText={setEditComment}
@@ -991,6 +1227,49 @@ export default function ProfileScreen({ navigation }: Props) {
                 multiline
               />
 
+              {/* Image editor */}
+              <Text
+                style={[styles.infoLabel, { marginTop: 14, marginBottom: 8 }]}
+              >
+                {`Photos (${pendingEditImages.length}/5)`}
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.editImagesRow}>
+                  {pendingEditImages.map((uri, index) => (
+                    <View key={index} style={styles.editImageThumb}>
+                      <Image
+                        source={{ uri }}
+                        style={styles.editImageThumbImg}
+                        resizeMode="cover"
+                      />
+                      <TouchableOpacity
+                        style={styles.editImageRemoveBtn}
+                        onPress={() =>
+                          setPendingEditImages((prev) =>
+                            prev.filter((_, i) => i !== index),
+                          )
+                        }
+                      >
+                        <MaterialIcons name="close" size={12} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+
+                  {pendingEditImages.length < 5 && (
+                    <TouchableOpacity
+                      style={styles.editImageAddBtn}
+                      onPress={handlePickEditImages}
+                    >
+                      <MaterialIcons
+                        name="add-photo-alternate"
+                        size={28}
+                        color="#A97C4E"
+                      />
+                      <Text style={styles.editImageAddText}>Add</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </ScrollView>
               {/* Actions */}
               <View style={styles.editActionsRow}>
                 <TouchableOpacity
@@ -1028,8 +1307,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#D4B896",
     width: "80%",
   },
-
-  /* Header */
   headerBand: {
     height: 150,
     alignItems: "center",
@@ -1039,10 +1316,15 @@ const styles = StyleSheet.create({
     zIndex: 10,
     elevation: 10,
   },
-  coverEditBtn: {
-    position: "absolute",
+  coverEditRow: {
+    position: "absolute", // the ROW is absolutely positioned, not individual buttons
     top: 10,
     right: 12,
+    flexDirection: "row",
+    gap: 8,
+    zIndex: 30,
+  },
+  coverEditBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
@@ -1050,12 +1332,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
-    zIndex: 30,
   },
-  coverEditText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
+  coverEditText: { color: "#fff", fontSize: 12, fontWeight: "600" },
+  removeBtn: {
+    backgroundColor: "rgba(192,57,43,0.8)",
   },
   avatarWrapper: {
     alignSelf: "flex-end",
@@ -1065,10 +1345,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     elevation: 10,
   },
-  avatarTouchTarget: {
-    position: "relative",
-    overflow: "visible",
-  },
+  avatarTouchTarget: { position: "relative", overflow: "visible" },
   avatarCircle: {
     width: 126,
     height: 126,
@@ -1079,6 +1356,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 63,
   },
   cameraBadge: {
     position: "absolute",
@@ -1092,8 +1374,22 @@ const styles = StyleSheet.create({
     zIndex: 1,
     elevation: 2,
   },
-
-  /* User info */
+  avatarEditRow: {
+    position: "absolute",
+    right: 2,
+    bottom: 2,
+    flexDirection: "row",
+    gap: 4,
+    zIndex: 1,
+    elevation: 2,
+  },
+  avatarEditBtn: {
+    backgroundColor: "#6B4F2E",
+    borderRadius: 15,
+    padding: 6,
+    borderWidth: 2,
+    borderColor: "#EDDEC7",
+  },
   userInfoSection: {
     marginTop: 20,
     paddingTop: 14,
@@ -1136,8 +1432,6 @@ const styles = StyleSheet.create({
     paddingRight: 8,
     fontFamily: "SourceSerifPro-Regular",
   },
-
-  /* Divider */
   divider: {
     height: 1,
     backgroundColor: "#D2BA94",
@@ -1145,8 +1439,6 @@ const styles = StyleSheet.create({
     marginTop: -10,
     zIndex: 5,
   },
-
-  /* Tab bar */
   tabBar: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -1170,14 +1462,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#6B4F2E",
     borderRadius: 2,
   },
-
-  /* Tab content */
-  tabContent: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-  },
-
-  /* Review card */
+  tabContent: { paddingHorizontal: 16, paddingTop: 14 },
   reviewCard: {
     backgroundColor: "#F6F0E8",
     borderRadius: 14,
@@ -1199,9 +1484,7 @@ const styles = StyleSheet.create({
     gap: 11,
     flex: 1,
   },
-  reviewCardMeta: {
-    justifyContent: "center",
-  },
+  reviewCardMeta: { justifyContent: "center" },
   cafeAvatarSmall: {
     width: 66,
     height: 66,
@@ -1210,9 +1493,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#EADAC6",
   },
-  reviewMoreButton: {
-    alignSelf: "flex-start",
+  cafeAvatarImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 33,
   },
+  reviewMoreButton: { alignSelf: "flex-start" },
   reviewLabel: {
     fontSize: 12,
     color: "#8C6D4F",
@@ -1225,11 +1511,7 @@ const styles = StyleSheet.create({
     color: "#3B2A1A",
     fontFamily: "SourceSerifPro-Regular",
   },
-  starsRow: {
-    flexDirection: "row",
-    marginTop: 3,
-    marginLeft: -2,
-  },
+  starsRow: { flexDirection: "row", marginTop: 3, marginLeft: -2 },
   reviewDate: {
     fontSize: 10,
     color: "#A08060",
@@ -1244,32 +1526,24 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     paddingHorizontal: 22,
   },
-  reviewCommentWithoutMedia: {
-    marginBottom: 0,
-  },
-  reviewMediaSection: {
-    marginBottom: 2,
-  },
-  reviewMediaPlaceholder: {
-    height: 184,
-    backgroundColor: "#F3EADA",
-    borderTopWidth: 1,
-    borderTopColor: "#F1E6D7",
-  },
+  reviewCommentWithoutMedia: { marginBottom: 0 },
   reviewMediaDots: {
-    position: "absolute",
-    bottom: 8,
-    left: 0,
-    right: 0,
     flexDirection: "row",
     justifyContent: "center",
     gap: 4,
+    paddingVertical: 6,
   },
   reviewMediaDot: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: "#FFF8ED",
+    backgroundColor: "#C8A97A",
+  },
+  reviewMediaDotActive: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#6B4F2E",
   },
   likesRow: {
     flexDirection: "row",
@@ -1280,23 +1554,15 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 13,
   },
-  likesRowWithoutMedia: {
-    paddingTop: 2,
-  },
-  likesRowPressed: {
-    opacity: 0.7,
-  },
+  likesRowWithoutMedia: { paddingTop: 2 },
+  likesRowPressed: { opacity: 0.7 },
   likesCount: {
     fontSize: 14,
     color: "#8C6D4F",
     fontWeight: "500",
     fontFamily: "SourceSerifPro-Regular",
   },
-  likesCountActive: {
-    color: "#6B4F2E",
-  },
-
-  /* Info tab */
+  likesCountActive: { color: "#6B4F2E" },
   infoSection: { gap: 12 },
   infoLabel: {
     fontSize: 14,
@@ -1305,10 +1571,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     fontFamily: "SourceSerifPro-Regular",
   },
-  infoRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
+  infoRow: { flexDirection: "row", gap: 10 },
   infoField: { flex: 1, gap: 4 },
   infoValueBox: {
     backgroundColor: "#E6D6BE",
@@ -1316,10 +1579,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  infoValue: {
-    fontSize: 13,
-    color: "#3B2A1A",
-  },
+  infoValue: { fontSize: 13, color: "#3B2A1A" },
   infoInput: {
     backgroundColor: "#FDF6EC",
     borderRadius: 8,
@@ -1338,11 +1598,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     fontFamily: "SourceSerifPro-Regular",
   },
-  editActionsRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 6,
-  },
+  editActionsRow: { flexDirection: "row", gap: 10, marginTop: 12 },
   cancelBtn: {
     flex: 1,
     paddingVertical: 11,
@@ -1352,11 +1608,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#C4A882",
   },
-  cancelBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#8C6D4F",
-  },
+  cancelBtnText: { fontSize: 14, fontWeight: "600", color: "#8C6D4F" },
   saveBtn: {
     flex: 1,
     paddingVertical: 11,
@@ -1364,16 +1616,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#6B4F2E",
     alignItems: "center",
   },
-  saveBtnDisabled: {
-    opacity: 0.6,
-  },
-  saveBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#FDF6EC",
-  },
-
-  /* Empty state */
+  saveBtnDisabled: { opacity: 0.6 },
+  saveBtnText: { fontSize: 14, fontWeight: "600", color: "#FDF6EC" },
   emptyState: {
     alignItems: "center",
     paddingVertical: 50,
@@ -1394,11 +1638,7 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontFamily: "SourceSerifPro-Regular",
   },
-  background: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
+  background: { flex: 1, width: "100%", height: "100%" },
   menuContainer: {
     position: "absolute",
     top: 40,
@@ -1425,8 +1665,6 @@ const styles = StyleSheet.create({
     color: "#3B2A1A",
     fontFamily: "SourceSerifPro-Regular",
   },
-
-  /* Favorites tab */
   favoriteCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -1445,9 +1683,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5D3B3",
     marginRight: 12,
   },
-  favoriteInfo: {
-    flex: 1,
-  },
+  favoriteInfo: { flex: 1 },
   favoriteName: {
     fontSize: 16,
     fontWeight: "600",
@@ -1461,10 +1697,7 @@ const styles = StyleSheet.create({
     marginLeft: 2,
     fontFamily: "SourceSerifPro-Regular",
   },
-  locationRow: {
-    flexDirection: "row",
-    marginTop: 3,
-  },
+  locationRow: { flexDirection: "row", marginTop: 3 },
   profileNavAvatar: {
     width: 36,
     height: 36,
@@ -1474,7 +1707,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
   },
-
   modalOverlay: {
     position: "absolute",
     top: 0,
@@ -1508,5 +1740,87 @@ const styles = StyleSheet.create({
     color: "#8C6D4F",
     marginBottom: 12,
     fontFamily: "SourceSerifPro-Regular",
+  },
+
+  // ── Edit image strip ──
+  editImagesRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingBottom: 4,
+  },
+  editImageThumbImg: {
+    width: "100%",
+    height: "100%",
+  },
+  editImageRemoveBtn: {
+    position: "absolute",
+    top: 3,
+    right: 3,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 10,
+    padding: 3,
+  },
+  editImageAddBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "#C8A97A",
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FDF6EC",
+    gap: 2,
+  },
+  editImageAddText: {
+    fontSize: 11,
+    color: "#A97C4E",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  // replace reviewMediaImage and add reviewMediaWrapper
+  reviewMediaWrapper: {
+    overflow: "hidden",
+    borderRadius: 0, // card clips it already
+  },
+  imageGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    padding: 8,
+  },
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 6,
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#C8A97A",
+  },
+  dotActive: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#6B4F2E",
+  },
+  reviewMediaImage: {
+    width: "100%",
+    height: MAX_REVIEW_MEDIA_WIDTH - 24, // account for horizontal margin
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  // update editImageThumb to also be rounder
+  editImageThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 12, // ← rounder
+    overflow: "hidden",
+    position: "relative",
+  },
+  // add starPressable if not already there
+  starPressable: {
+    padding: 2,
   },
 });
