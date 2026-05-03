@@ -13,6 +13,7 @@ import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
 import BusinessProfile from "./app/features/business/screens/BusinessProfile";
 import CafeCard from "./app/features/cafe/screens/CafeCard";
 import CafeProfileScreen from "./app/features/cafe/screens/CafeProfile2";
+import WriteReviewFEScreen from "./app/features/cafe/screens/write-review-FE";
 import FilteredCafes from "./app/features/cafe/screens/DashboardFilter";
 import FilterScreen from "./app/features/cafe/screens/Filter";
 import SearchScreen from "./app/features/cafe/screens/Search";
@@ -48,6 +49,14 @@ export type RootStackParamList = {
   FilteredCafes: { filterType: string };
   BusinessProfile: undefined;
   CafeProfile: undefined;
+  WriteReviewFE:
+    | {
+        cafeName?: string;
+        initialRating?: number;
+        username?: string;
+        avatarURL?: string;
+      }
+    | undefined;
 };
 
 const linking = {
@@ -155,6 +164,7 @@ export default function App() {
         <Stack.Screen name="FilteredCafes" component={FilteredCafes} />
         <Stack.Screen name="BusinessProfile" component={BusinessProfile} />
         <Stack.Screen name="CafeProfile" component={CafeProfileScreen} />
+        <Stack.Screen name="WriteReviewFE" component={WriteReviewFEScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

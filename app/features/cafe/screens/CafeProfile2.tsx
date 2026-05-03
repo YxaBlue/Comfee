@@ -4,7 +4,6 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
-  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -743,7 +742,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
             {/* REVIEWS */}
             {activeTab === "Cafe-Reviews" && (
               <View>
-                <WriteReviewCTA />
+                <WriteReviewCTA navigation={navigation} cafeName={MOCK_CAFE.name} />
                 {MOCK_REVIEWS.length === 0 ? (
                   <EmptyState
                     icon="rate-review"
@@ -791,8 +790,14 @@ export default function CafeProfileScreen({ navigation }: Props) {
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
-function WriteReviewCTA() {
-  const [rating, setRating] = useState<number>(4);
+function WriteReviewCTA({
+  navigation,
+  cafeName,
+}: {
+  navigation: NativeStackNavigationProp<RootStackParamList, "CafeProfile">;
+  cafeName: string;
+}) {
+  const [rating, setRating] = useState<number>(0);
 
   return (
     <View style={writeReviewStyles.container}>
@@ -802,10 +807,10 @@ function WriteReviewCTA() {
         activeOpacity={0.9}
         style={writeReviewStyles.button}
         onPress={() =>
-          Alert.alert(
-            "Write a review",
-            `Review creation coming soon.\n\nSelected rating: ${rating} stars`,
-          )
+          navigation.navigate("WriteReviewFE", {
+            cafeName,
+            initialRating: rating,
+          })
         }
       >
         <Text style={writeReviewStyles.buttonText}>Write a review</Text>
