@@ -188,3 +188,67 @@ export async function getNearbyCafes(
   if (error) throw error;
   return data ?? [];
 }
+
+export type CafeDetail = {
+  id: number;
+  name: string;
+  address: string;
+  email: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  cover_photo_url: string | null;
+  menu_urls: string[] | null;
+  average_rating: number;
+  review_count: number;
+  favorites_count: number;
+  opening_time: string | null;
+  closing_time: string | null;
+  opening_days: string[] | null;
+};
+
+export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
+  const { data, error } = await supabase
+    .from("cafe")
+    .select(
+      `
+      id, name, address, email, phone,
+      review ( rating )
+      
+    `,
+    )
+    .eq("id", Number(cafeId))
+    .single();
+
+  if (error) {
+    console.log("Supabase error:", JSON.stringify(error));
+    throw error;
+  }
+  if (!data) return null;
+
+  const ratings = (data.review ?? []).map((r: { rating: number }) => r.rating);
+  const average_rating =
+    ratings.length > 0
+      ? Math.round(
+          (ratings.reduce((a: number, b: number) => a + b, 0) /
+            ratings.length) *
+            10,
+        ) / 10
+      : 0;
+
+  return {
+    id: data.id,
+    name: data.name,
+    address: data.address,
+    email: null,
+    phone: null,
+    avatar_url: null,
+    cover_photo_url: null,
+    menu_urls: null,
+    average_rating,
+    review_count: ratings.length,
+    favorites_count: 0,
+    opening_time: null,
+    closing_time: null,
+    opening_days: null,
+  };
+}
