@@ -3,6 +3,7 @@ import {
   NavigationContainerRef,
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import * as Linking from "expo-linking";
 import { useEffect, useRef } from "react";
 
 import { supabase } from "@/app/shared/lib/supabaseClient";
@@ -52,15 +53,19 @@ export type RootStackParamList = {
   WriteReviewFE:
     | {
         cafeName?: string;
+        cafeId: number;
         initialRating?: number;
         username?: string;
         avatarURL?: string;
+        onReviewPosted?: () => void;
       }
     | undefined;
 };
 
 const linking = {
-  prefixes: ["yourapp://", "exp://"],
+  // comfeeproject:// → standalone/bare builds
+  // exp+ComfeeProject:// → Expo Go (slug is case-sensitive, matches app.json)
+  prefixes: ["comfeeproject://", "exp+ComfeeProject://"],
   config: {
     screens: {
       ResetPassword: "reset-password",
@@ -71,32 +76,62 @@ const linking = {
   },
 };
 
-const PUBLIC_ROUTES: (keyof RootStackParamList)[] = [
-  "Login",
-  "CreateAccount",
-  "ForgotPassword",
-  "ResetPassword",
-];
-
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+function isRecoveryUrl(url: string): boolean {
+  try {
+    const hash = url.split("#")[1] ?? "";
+    const hashParams = new URLSearchParams(hash);
+    if (hashParams.get("type") === "recovery") return true;
+
+    const query = url.split("?")[1]?.split("#")[0] ?? "";
+    const queryParams = new URLSearchParams(query);
+    if (queryParams.get("type") === "recovery") return true;
+  } catch {
+    // ignore malformed URLs
+  }
+  return false;
+}
 
 export default function App() {
   const navigationRef =
     useRef<NavigationContainerRef<RootStackParamList>>(null);
 
+  const isRecoveryFlow = useRef(false);
+
   useEffect(() => {
     let isMounted = true;
     let initialRouteSynced = false;
 
+    const bootstrapRecoveryFromUrl = async () => {
+      try {
+        const initialUrl = await Linking.getInitialURL();
+        if (initialUrl && isRecoveryUrl(initialUrl)) {
+          isRecoveryFlow.current = true;
+        }
+      } catch {
+        // not critical
+      }
+    };
+
     const syncInitialRoute = async () => {
+      await bootstrapRecoveryFromUrl();
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
       if (!isMounted || !navigationRef.current) return;
       if (initialRouteSynced) return;
-
       initialRouteSynced = true;
+
+      if (isRecoveryFlow.current) {
+        navigationRef.current.reset({
+          index: 0,
+          routes: [{ name: "ResetPassword" }],
+        });
+        return;
+      }
 
       navigationRef.current.reset({
         index: 0,
@@ -106,41 +141,65 @@ export default function App() {
 
     syncInitialRoute();
 
+    const linkingSub = Linking.addEventListener("url", ({ url }) => {
+      if (isRecoveryUrl(url)) {
+        isRecoveryFlow.current = true;
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "ResetPassword" }],
+        });
+      }
+    });
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
       if (event === "INITIAL_SESSION") return;
 
-      if (event === "SIGNED_IN" && session) {
-        const currentRoute = navigationRef.current?.getCurrentRoute()?.name as
-          | keyof RootStackParamList
-          | undefined;
+      const currentRoute = navigationRef.current?.getCurrentRoute()?.name;
 
-        if (currentRoute && PUBLIC_ROUTES.includes(currentRoute)) {
-          navigationRef.current?.reset({
-            index: 0,
-            routes: [{ name: "Dashboard" }],
-          });
-        }
+      if (event === "PASSWORD_RECOVERY") {
+        isRecoveryFlow.current = true;
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "ResetPassword" }],
+        });
         return;
       }
 
-      if (event !== "SIGNED_OUT" && session) return;
+      if (event === "SIGNED_IN" && session) {
+        if (isRecoveryFlow.current || currentRoute === "ResetPassword") {
+          return;
+        }
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "Dashboard" }],
+        });
+        return;
+      }
 
-      const currentRoute = navigationRef.current?.getCurrentRoute()?.name as
-        | keyof RootStackParamList
-        | undefined;
+      if (event === "USER_UPDATED") {
+        isRecoveryFlow.current = false;
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "Login" }],
+        });
+        return;
+      }
 
-      if (currentRoute && PUBLIC_ROUTES.includes(currentRoute)) return;
-
-      navigationRef.current?.reset({
-        index: 0,
-        routes: [{ name: "Login" }],
-      });
+      if (event === "SIGNED_OUT") {
+        isRecoveryFlow.current = false;
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "Login" }],
+        });
+      }
     });
 
     return () => {
       isMounted = false;
+      linkingSub.remove();
       subscription.unsubscribe();
     };
   }, []);

@@ -1,10 +1,6 @@
 import {
-  deleteReview,
   editProfile,
-  editReview,
   getProfile,
-  getReviewsByUser,
-  toggleUpvote,
   uploadAvatar,
   uploadCoverPhoto,
   type Review,
@@ -31,6 +27,12 @@ import {
   View,
 } from "react-native";
 import { RootStackParamList } from "../../../../App";
+import {
+  deleteReview,
+  editReview,
+  getReviewsByUser,
+  toggleUpvote,
+} from "../../cafe/services/reviewService";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Profile">;

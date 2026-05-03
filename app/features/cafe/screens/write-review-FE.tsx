@@ -1,8 +1,11 @@
 import { RootStackParamList } from "@/App";
+import { supabase } from "@/app/shared/lib/supabaseClient";
 import { MaterialIcons } from "@expo/vector-icons";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { useMemo, useState } from "react";
+import * as ImagePicker from "expo-image-picker";
+import { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Pressable,
@@ -14,63 +17,135 @@ import {
   View,
 } from "react-native";
 
-import { FILTER_CATEGORIES } from "../services/filtering";
+import { createReview, uploadReviewImage } from "../services/reviewService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "WriteReviewFE">;
 
 export default function WriteReviewFEScreen({ navigation, route }: Props) {
   const cafeName = route.params?.cafeName ?? "Cafe Name";
-  const username = route.params?.username ?? "Username";
-  const avatarURL = route.params?.avatarURL ?? "";
+  const cafeId = route.params?.cafeId;
+  const onReviewPosted = route.params?.onReviewPosted;
 
-  const [rating, setRating] = useState<number>(
-    route.params?.initialRating ?? 0,
-  );
+  // Store the pre-filled rating separately so we can detect actual user edits
+  const initialRating = route.params?.initialRating ?? 0;
+
+  const [rating, setRating] = useState<number>(initialRating);
   const [text, setText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [images, setImages] = useState<string[]>([]);
 
-  const [selectedByCategory, setSelectedByCategory] = useState<
-    Record<string, string[]>
-  >({});
+  // Profile state — loaded from Supabase
+  const [username, setUsername] = useState(route.params?.username ?? "");
+  const [avatarURL, setAvatarURL] = useState(route.params?.avatarURL ?? "");
+  const [profileLoading, setProfileLoading] = useState(!route.params?.username);
 
-  const TAG_CATEGORIES = useMemo(
-    () => FILTER_CATEGORIES.filter((c) => c.id !== "ratings"),
-    [],
-  );
+  // Load current user's profile if not passed via params
+  useEffect(() => {
+    if (route.params?.username) return;
+    (async () => {
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (!session?.user) return;
+
+        const { data, error } = await supabase
+          .from("profile")
+          .select("username, profile_picture")
+          .eq("id", session.user.id)
+          .single();
+
+        if (error) throw error;
+        if (data) {
+          setUsername(data.username ?? "");
+          setAvatarURL(data.profile_picture ?? "");
+        }
+      } catch (err) {
+        console.error("Failed to load profile:", err);
+      } finally {
+        setProfileLoading(false);
+      }
+    })();
+  }, []);
 
   const charCount = text.length;
 
-  const toggleChip = (categoryId: string, optionId: string) => {
-    setSelectedByCategory((prev) => {
-      const current = prev[categoryId] ?? [];
-      const category = TAG_CATEGORIES.find((c) => c.id === categoryId);
-      const selectionMode = category?.selectionMode ?? "multiple";
+  const canPost = useMemo(
+    () => rating > 0 && cafeId != null && !submitting,
+    [rating, cafeId, submitting],
+  );
 
-      const isSelected = current.includes(optionId);
-      if (selectionMode === "single") {
-        return {
-          ...prev,
-          [categoryId]: isSelected ? [] : [optionId],
-        };
-      }
+  // Only considered dirty if the user actually changed something inside this screen
+  const isDirty =
+    rating !== initialRating || text.trim().length > 0 || images.length > 0;
 
-      return {
-        ...prev,
-        [categoryId]: isSelected
-          ? current.filter((x) => x !== optionId)
-          : [...current, optionId],
-      };
+  const handleClose = () => navigation.goBack();
+
+  const handlePickImages = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return;
+
+    const remaining = 5 - images.length;
+    if (remaining <= 0) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"] as any,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+      selectionLimit: remaining,
     });
+
+    if (!result.canceled) {
+      const newUris = result.assets.map((a) => a.uri);
+      setImages((prev) => [...prev, ...newUris].slice(0, 5));
+    }
   };
 
-  const canPost = useMemo(() => rating > 0, [rating]);
+  const handleRemoveImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handlePost = async () => {
+    if (!canPost || cafeId == null) return;
+    setSubmitting(true);
+    try {
+      // Create the review first to get its id
+      const review = await createReview({
+        cafe_id: cafeId,
+        rating,
+        comment: text.trim(),
+      });
+
+      // Only upload images on actual post — never before
+      let uploadedUrls: string[] = [];
+      if (images.length > 0) {
+        uploadedUrls = await Promise.all(
+          images.map((uri) => uploadReviewImage(review.id, uri)),
+        );
+
+        // Patch the review with image URLs
+        await supabase
+          .from("review")
+          .update({ images_url: uploadedUrls })
+          .eq("id", review.id);
+      }
+
+      onReviewPosted?.();
+      navigation.goBack();
+    } catch (err: any) {
+      Alert.alert("Error", err?.message ?? "Failed to submit review.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <View style={styles.wrapper}>
-      {/* Header */}
+      {/* ── Header ── */}
       <View style={styles.headerRow}>
         <TouchableOpacity
           accessibilityRole="button"
-          onPress={() => navigation.goBack()}
+          onPress={handleClose}
           style={styles.headerIconBtn}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
@@ -81,20 +156,24 @@ export default function WriteReviewFEScreen({ navigation, route }: Props) {
           <Text style={styles.headerTitle} numberOfLines={1}>
             {cafeName}
           </Text>
-          <Text style={styles.headerSubtitle} numberOfLines={1}>
-            Rate this cafe
-          </Text>
+          <Text style={styles.headerSubtitle}>Rate this cafe</Text>
         </View>
 
         <TouchableOpacity
           accessibilityRole="button"
           disabled={!canPost}
-          onPress={() => Alert.alert("Post", "Submit review coming soon.")}
+          onPress={handlePost}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={[styles.postText, !canPost && styles.postTextDisabled]}>
-            Post
-          </Text>
+          {submitting ? (
+            <ActivityIndicator size="small" color="#3B2A1A" />
+          ) : (
+            <Text
+              style={[styles.postText, !canPost && styles.postTextDisabled]}
+            >
+              Post
+            </Text>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -102,28 +181,37 @@ export default function WriteReviewFEScreen({ navigation, route }: Props) {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* User Row */}
+        {/* ── User Row ── */}
         <View style={styles.userRow}>
           <View style={styles.avatarCircle}>
-            {avatarURL ? (
+            {profileLoading ? (
+              <ActivityIndicator size="small" color="#C8A97A" />
+            ) : avatarURL ? (
               <Image source={{ uri: avatarURL }} style={styles.avatarImg} />
-            ) : null}
+            ) : (
+              <MaterialIcons name="person" size={28} color="#C8A97A" />
+            )}
           </View>
           <View style={styles.userMeta}>
-            <Text style={styles.userName}>{username}</Text>
+            {profileLoading ? (
+              <View style={styles.skeletonName} />
+            ) : (
+              <Text style={styles.userName}>{username || "Anonymous"}</Text>
+            )}
             <Text style={styles.userHint}>
               Reviews are public and include your account info.
             </Text>
           </View>
         </View>
 
-        {/* Stars */}
+        {/* ── Stars ── */}
         <View style={styles.starsWrap}>
           <StarRatingInput value={rating} onChange={setRating} size={34} />
         </View>
 
-        {/* Review Text */}
+        {/* ── Review Text ── */}
         <View style={styles.inputCard}>
           <TextInput
             value={text}
@@ -139,51 +227,55 @@ export default function WriteReviewFEScreen({ navigation, route }: Props) {
           <Text style={styles.counterText}>{charCount}/500</Text>
         </View>
 
-        <Text style={styles.moreTitle}>Tell us more (optional)</Text>
-
-        {/* Tags */}
-        <View style={styles.tagsSection}>
-          {TAG_CATEGORIES.map((category) => {
-            const selected = selectedByCategory[category.id] ?? [];
-            return (
-              <View key={category.id} style={styles.categoryBlock}>
-                <Text style={styles.categoryTitle}>{category.title}</Text>
-                <View style={styles.chipsWrap}>
-                  {category.options.map((opt) => {
-                    const isSelected = selected.includes(opt.id);
-                    return (
-                      <Pressable
-                        key={opt.id}
-                        onPress={() => toggleChip(category.id, opt.id)}
-                        style={[
-                          styles.chip,
-                          isSelected
-                            ? styles.chipSelected
-                            : styles.chipUnselected,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.chipText,
-                            isSelected
-                              ? styles.chipTextSelected
-                              : styles.chipTextUnselected,
-                          ]}
-                        >
-                          {opt.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
+        {/* ── Photos ── */}
+        <View style={styles.photosSection}>
+          <Text style={styles.photosLabel}>
+            Photos ({images.length}/5) — optional
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.photosRow}
+          >
+            {images.map((uri, index) => (
+              <View key={index} style={styles.thumbWrap}>
+                <Image
+                  source={{ uri }}
+                  style={styles.thumbImg}
+                  resizeMode="cover"
+                />
+                <TouchableOpacity
+                  style={styles.thumbRemoveBtn}
+                  onPress={() => handleRemoveImage(index)}
+                  hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                >
+                  <MaterialIcons name="close" size={12} color="#fff" />
+                </TouchableOpacity>
               </View>
-            );
-          })}
+            ))}
+
+            {images.length < 5 && (
+              <TouchableOpacity
+                style={styles.addPhotoBtn}
+                onPress={handlePickImages}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons
+                  name="add-photo-alternate"
+                  size={28}
+                  color="#A97C4E"
+                />
+                <Text style={styles.addPhotoText}>Add</Text>
+              </TouchableOpacity>
+            )}
+          </ScrollView>
         </View>
       </ScrollView>
     </View>
   );
 }
+
+// ── Star Rating Input ─────────────────────────────────────────────────────────
 
 function StarRatingInput({
   value,
@@ -221,6 +313,8 @@ function StarRatingInput({
 
   return <View style={styles.starsRow}>{[1, 2, 3, 4, 5].map(renderStar)}</View>;
 }
+
+// ── Styles ────────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: "#FFEFD5" },
@@ -263,14 +357,15 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
     paddingTop: 14,
-    paddingBottom: 28,
+    paddingBottom: 40,
   },
 
+  // User row
   userRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 12,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   avatarCircle: {
     width: 54,
@@ -278,35 +373,48 @@ const styles = StyleSheet.create({
     borderRadius: 27,
     backgroundColor: "#D2BA94",
     overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
   },
   avatarImg: { width: "100%", height: "100%" },
-  userMeta: { flex: 1, paddingTop: 8, minWidth: 0 },
+  userMeta: { flex: 1, minWidth: 0 },
+  skeletonName: {
+    height: 14,
+    width: 100,
+    borderRadius: 7,
+    backgroundColor: "#D2BA94",
+    marginBottom: 6,
+  },
   userName: {
     fontSize: 16,
     fontWeight: "700",
     color: "#3B2A1A",
+    marginBottom: 2,
   },
   userHint: {
-    marginTop: 4,
     fontSize: 11,
     color: "#8C6D4F",
     lineHeight: 15,
   },
 
+  // Stars
   starsWrap: { marginBottom: 14 },
   starsRow: { flexDirection: "row", justifyContent: "center", gap: 10 },
 
+  // Text input
   inputCard: {
     backgroundColor: "#F7F0E2",
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#E3D3B7",
     padding: 12,
-    minHeight: 300,
+    minHeight: 200,
     shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
     elevation: 2,
+    marginBottom: 18,
   },
   textInput: {
     flex: 1,
@@ -321,40 +429,51 @@ const styles = StyleSheet.create({
     color: "#8C6D4F",
   },
 
-  moreTitle: {
-    marginTop: 18,
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#3B2A1A",
-  },
-
-  tagsSection: { marginTop: 10 },
-  categoryBlock: { marginTop: 12 },
-  categoryTitle: {
-    fontSize: 12,
+  // Photos
+  photosSection: { gap: 10 },
+  photosLabel: {
+    fontSize: 13,
     fontWeight: "700",
     color: "#6B4F2E",
-    marginBottom: 8,
   },
-  chipsWrap: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 18,
+  photosRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingBottom: 4,
   },
-  chipSelected: {
-    backgroundColor: "#A97C4E",
-    borderWidth: 1,
-    borderColor: "#A97C4E",
+  thumbWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 10,
+    overflow: "hidden",
+    position: "relative",
   },
-  chipUnselected: {
-    backgroundColor: "transparent",
-    borderWidth: 1,
-    borderColor: "#A97C4E",
+  thumbImg: { width: "100%", height: "100%" },
+  thumbRemoveBtn: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 10,
+    padding: 3,
   },
-  chipText: { fontSize: 13, fontWeight: "600" },
-  chipTextSelected: { color: "#2C1E13" },
-  chipTextUnselected: { color: "#2C1E13" },
+  addPhotoBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#C8A97A",
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F7F0E2",
+    gap: 2,
+  },
+  addPhotoText: {
+    fontSize: 11,
+    color: "#A97C4E",
+    fontWeight: "600",
+  },
 });
 
 const starStyles = StyleSheet.create({

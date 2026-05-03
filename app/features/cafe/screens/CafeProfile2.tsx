@@ -2,8 +2,9 @@ import { RootStackParamList } from "@/App";
 import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
@@ -13,27 +14,20 @@ import {
   View,
 } from "react-native";
 
+import { supabase } from "@/app/shared/lib/supabaseClient";
 import { useRoute } from "@react-navigation/native";
-import { ActivityIndicator } from "react-native";
 import { CafeDetail, getCafeById } from "../services/cafeService";
+import {
+  getReviewsByCafe,
+  ReviewWithMeta,
+  toggleCafeReviewUpvote,
+} from "../services/reviewService";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "CafeProfile">;
 };
 
 type Tab = "Cafe-Info" | "Cafe-Reviews" | "Cafe-Posts" | "Cafe-Ammenities-Menu";
-
-type Review = {
-  id: string;
-  userName: string;
-  avatarURL: string;
-  rating: number;
-  comment: string;
-  dateCreated: string;
-  imageURL: string[];
-  likes: number;
-  tags: string[];
-};
 
 type Post = {
   id: string;
@@ -51,7 +45,6 @@ type CafeProfileInformation = {
   avatarURL: any;
   coverPhotoURL: any;
   menuURLs: any;
-
   averageRating: number;
   reviewCount: number;
   favoritesCount: number;
@@ -71,129 +64,6 @@ type Amenities = {
   petFriendly: string;
   others: string[];
   imageURLs: [];
-};
-
-const MOCK_REVIEWS: Review[] = [
-  {
-    id: "1",
-    userName: "Juan de la Cruz",
-    avatarURL: "",
-    rating: 4,
-    comment: "Great ambiance and really good coffee. Perfect for studying!",
-    dateCreated: "2026-02-05",
-    imageURL: [],
-    likes: 25,
-    tags: ["Cozy", "Good Coffee", "Study Spot"],
-  },
-  {
-    id: "2",
-    userName: "Maria Santos",
-    avatarURL: "",
-    rating: 5,
-    comment: "Absolutely loved their pastries! Will definitely come back.",
-    dateCreated: "2026-02-03",
-    imageURL: [
-      "https://picsum.photos/200/200",
-      "https://picsum.photos/201/200",
-    ],
-    likes: 42,
-    tags: ["Pastries", "Desserts", "Favorite"],
-  },
-  {
-    id: "3",
-    userName: "Carlos Reyes",
-    avatarURL: "",
-    rating: 3,
-    comment: "Coffee was decent but service was a bit slow.",
-    dateCreated: "2026-01-30",
-    imageURL: [],
-    likes: 10,
-    tags: ["Slow Service"],
-  },
-  {
-    id: "4",
-    userName: "Angela Cruz",
-    avatarURL: "",
-    rating: 5,
-    comment: "Best cafe in Cebu! Love the vibe and music.",
-    dateCreated: "2026-01-28",
-    imageURL: ["https://picsum.photos/202/200"],
-    likes: 67,
-    tags: ["Music", "Vibes", "Top Rated"],
-  },
-  {
-    id: "5",
-    userName: "Mark Villanueva",
-    avatarURL: "",
-    rating: 4,
-    comment: "Nice place to hang out with friends. Spacious seating.",
-    dateCreated: "2026-01-25",
-    imageURL: [],
-    likes: 18,
-    tags: ["Spacious", "Friends"],
-  },
-  {
-    id: "6",
-    userName: "Sophia Lim",
-    avatarURL: "",
-    rating: 5,
-    comment: "Instagram-worthy place! Loved every corner.",
-    dateCreated: "2026-01-20",
-    imageURL: [
-      "https://picsum.photos/203/200",
-      "https://picsum.photos/204/200",
-      "https://picsum.photos/205/200",
-    ],
-    likes: 55,
-    tags: ["Instagrammable", "Aesthetic"],
-  },
-  {
-    id: "7",
-    userName: "David Tan",
-    avatarURL: "",
-    rating: 2,
-    comment: "Too crowded during peak hours. Hard to find seats.",
-    dateCreated: "2026-01-18",
-    imageURL: [],
-    likes: 5,
-    tags: ["Crowded"],
-  },
-  {
-    id: "8",
-    userName: "Ella Gomez",
-    avatarURL: "",
-    rating: 4,
-    comment: "Friendly staff and fast service. Coffee is solid.",
-    dateCreated: "2026-01-15",
-    imageURL: [],
-    likes: 22,
-    tags: ["Friendly Staff", "Fast Service"],
-  },
-];
-
-const MOCK_CAFE: CafeProfileInformation = {
-  name: "Cafe Coffee Friends Co.",
-  address:
-    "Unit 3, F. Ramos Street, Cogon Ramos, Camputhaw, Cebu City, Central Visayas, 6000, Philippines",
-  email: "support@goodcup.ph",
-  phone: "(032) 380 2362",
-  avatarURL: null,
-  coverPhotoURL: null,
-  menuURLs: null,
-
-  averageRating: 5.0,
-  reviewCount: 100,
-  favoritesCount: 67,
-  openingTime: "8:00 AM",
-  closingTime: "6:00 PM",
-  openingDays: [
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ],
 };
 
 const MOCK_AMENITIES: Amenities = {
@@ -251,51 +121,82 @@ const DAY_SHORT: Record<string, string> = {
   Sunday: "Sun",
 };
 
-// ─── Star Rating ──────────────────────────────────────────────────────────────
+// ─── Star Rating (display only) ───────────────────────────────────────────────
 
 function StarRating({ rating }: { rating: number }) {
   return (
     <View style={starStyles.row}>
-      {[1, 2, 3, 4, 5].map((star) => (
-        <MaterialIcons
-          key={star}
-          name={star <= rating ? "star" : "star-border"}
-          size={13}
-          color="#C8863A"
-        />
-      ))}
+      {[1, 2, 3, 4, 5].map((star) => {
+        const name =
+          rating >= star
+            ? "star"
+            : rating >= star - 0.5
+              ? "star-half"
+              : "star-border";
+        return (
+          <MaterialIcons key={star} name={name} size={13} color="#C8863A" />
+        );
+      })}
     </View>
   );
 }
 
-// ─── Review Card ─────────────────────────────────────────────────────────────
+// ─── Review Card ──────────────────────────────────────────────────────────────
 
-function ReviewCard({ review }: { review: Review }) {
-  const imageCount = review.imageURL.length;
+function ReviewCard({
+  review,
+  onToggleLike,
+}: {
+  review: ReviewWithMeta;
+  onToggleLike: (id: number, currentlyLiked: boolean) => void;
+}) {
+  const [cardWidth, setCardWidth] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const images = review.images_url ?? [];
+  const hasImages = images.length > 0;
+  const isEdited = review.updated_at !== null;
+
+  const columns = cardWidth < 480 ? 1 : cardWidth < 800 ? 2 : 3;
+  const gap = 6;
+  const imageWidth =
+    cardWidth > 0 ? Math.floor((cardWidth - gap * (columns - 1)) / columns) : 0;
+  const imageHeight = Math.round(imageWidth * 0.68);
+  const isNarrow = columns === 1;
+
+  const displayDate = new Date(
+    isEdited && review.updated_at ? review.updated_at : review.created_at,
+  ).toLocaleDateString("en-PH", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 
   return (
-    <View style={reviewCardStyles.container}>
+    <View
+      style={reviewCardStyles.container}
+      onLayout={(e) => setCardWidth(e.nativeEvent.layout.width)}
+    >
       {/* Header */}
       <View style={reviewCardStyles.header}>
         <View style={reviewCardStyles.avatar}>
-          {review.avatarURL ? (
+          {review.profile?.profile_picture ? (
             <Image
-              source={{ uri: review.avatarURL }}
+              source={{ uri: review.profile.profile_picture }}
               style={{ width: "100%", height: "100%", borderRadius: 17 }}
+              resizeMode="cover"
             />
           ) : (
             <MaterialIcons name="person" size={20} color="#C8A97A" />
           )}
         </View>
         <View style={reviewCardStyles.meta}>
-          <Text style={reviewCardStyles.userName}>{review.userName}</Text>
+          <Text style={reviewCardStyles.userName}>
+            {review.profile?.username ?? "Anonymous"}
+          </Text>
           <StarRating rating={review.rating} />
           <Text style={reviewCardStyles.date}>
-            {new Date(review.dateCreated).toLocaleDateString("en-PH", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
+            {displayDate}
+            {isEdited ? " (edited)" : ""}
           </Text>
         </View>
         <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -304,78 +205,93 @@ function ReviewCard({ review }: { review: Review }) {
       </View>
 
       {/* Comment */}
-      <Text style={reviewCardStyles.comment}>"{review.comment}"</Text>
+      {review.comment ? (
+        <Text style={reviewCardStyles.comment}>"{review.comment}"</Text>
+      ) : null}
 
-      {/* Image Grid */}
-      {imageCount === 1 && (
-        <Image
-          source={{ uri: review.imageURL[0] }}
-          style={reviewCardStyles.imageSingle}
-          resizeMode="cover"
-        />
-      )}
-      {imageCount === 2 && (
-        <View style={reviewCardStyles.imageRow}>
-          {review.imageURL.map((url, i) => (
-            <Image
-              key={i}
-              source={{ uri: url }}
-              style={reviewCardStyles.imageHalf}
-              resizeMode="cover"
-            />
-          ))}
-        </View>
-      )}
-      {imageCount >= 3 && (
-        <View style={reviewCardStyles.imageRow}>
-          <Image
-            source={{ uri: review.imageURL[0] }}
-            style={reviewCardStyles.imageMain}
-            resizeMode="cover"
-          />
-          <View style={reviewCardStyles.imageSubCol}>
-            <Image
-              source={{ uri: review.imageURL[1] }}
-              style={reviewCardStyles.imageSub}
-              resizeMode="cover"
-            />
-            <View style={{ position: "relative" }}>
-              <Image
-                source={{ uri: review.imageURL[2] }}
-                style={[
-                  reviewCardStyles.imageSub,
-                  imageCount > 3 && { opacity: 0.4 },
-                ]}
-                resizeMode="cover"
-              />
-              {imageCount > 3 && (
-                <View style={reviewCardStyles.moreOverlay}>
-                  <Text style={reviewCardStyles.moreText}>
-                    +{imageCount - 3}
-                  </Text>
+      {/* Images */}
+      {hasImages && cardWidth > 0 && (
+        <View style={reviewCardStyles.mediaWrapper}>
+          {isNarrow ? (
+            <>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={(e) => {
+                  const index = Math.round(
+                    e.nativeEvent.contentOffset.x / cardWidth,
+                  );
+                  setActiveIndex(index);
+                }}
+                scrollEventThrottle={16}
+              >
+                {images.map((uri, i) => (
+                  <Image
+                    key={i}
+                    source={{ uri }}
+                    style={{ width: cardWidth, height: imageHeight }}
+                    resizeMode="cover"
+                  />
+                ))}
+              </ScrollView>
+              {images.length > 1 && (
+                <View style={reviewCardStyles.dotsRow}>
+                  {images.map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        reviewCardStyles.dot,
+                        i === activeIndex && reviewCardStyles.dotActive,
+                      ]}
+                    />
+                  ))}
                 </View>
               )}
+            </>
+          ) : (
+            <View style={[reviewCardStyles.imageGrid, { gap }]}>
+              {images.map((uri, i) => (
+                <Image
+                  key={i}
+                  source={{ uri }}
+                  style={{
+                    width: imageWidth,
+                    height: imageHeight,
+                    borderRadius: 8,
+                  }}
+                  resizeMode="cover"
+                />
+              ))}
             </View>
-          </View>
-        </View>
-      )}
-
-      {/* Tags */}
-      {review.tags.length > 0 && (
-        <View style={reviewCardStyles.tagsRow}>
-          {review.tags.map((tag) => (
-            <View key={tag} style={reviewCardStyles.tag}>
-              <Text style={reviewCardStyles.tagText}>{tag}</Text>
-            </View>
-          ))}
+          )}
         </View>
       )}
 
       {/* Likes */}
-      <View style={reviewCardStyles.likesRow}>
-        <MaterialIcons name="thumb-up-off-alt" size={16} color="#8C6D4F" />
-        <Text style={reviewCardStyles.likesCount}>{review.likes}</Text>
-      </View>
+      <Pressable
+        style={({ pressed }) => [
+          reviewCardStyles.likesRow,
+          pressed && { opacity: 0.7 },
+        ]}
+        onPress={() => onToggleLike(review.id, review.isLiked)}
+        accessibilityRole="button"
+        accessibilityLabel={review.isLiked ? "Remove like" : "Like review"}
+      >
+        <MaterialIcons
+          name={review.isLiked ? "thumb-up" : "thumb-up-off-alt"}
+          size={16}
+          color="#6B4F2E"
+        />
+        <Text
+          style={[
+            reviewCardStyles.likesCount,
+            review.isLiked && reviewCardStyles.likesCountActive,
+          ]}
+        >
+          {review.likes}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -387,7 +303,6 @@ function PostCard({ post }: { post: Post }) {
 
   return (
     <View style={postCardStyles.container}>
-      {/* Image Grid */}
       {imageCount === 1 && (
         <Image
           source={{ uri: post.imageURL[0] }}
@@ -438,8 +353,6 @@ function PostCard({ post }: { post: Post }) {
           </View>
         </View>
       )}
-
-      {/* Body */}
       <View style={postCardStyles.body}>
         <Text style={postCardStyles.caption}>{post.caption}</Text>
         <View style={postCardStyles.footer}>
@@ -465,7 +378,6 @@ function PostCard({ post }: { post: Post }) {
 function CafeInfoTab({ cafe }: { cafe: CafeProfileInformation }) {
   return (
     <View>
-      {/* Stats Row */}
       <View style={infoStyles.statsRow}>
         <View style={infoStyles.statCard}>
           <Text style={infoStyles.statNum}>
@@ -483,7 +395,6 @@ function CafeInfoTab({ cafe }: { cafe: CafeProfileInformation }) {
         </View>
       </View>
 
-      {/* Hours */}
       <Text style={infoStyles.sectionLabel}>Hours</Text>
       <View style={infoStyles.infoRow}>
         <MaterialIcons name="access-time" size={15} color="#8C6D4F" />
@@ -517,7 +428,6 @@ function CafeInfoTab({ cafe }: { cafe: CafeProfileInformation }) {
         })}
       </View>
 
-      {/* Contact */}
       <Text style={[infoStyles.sectionLabel, { marginTop: 16 }]}>Contact</Text>
       <View style={infoStyles.infoRow}>
         <MaterialIcons name="phone" size={15} color="#8C6D4F" />
@@ -607,7 +517,6 @@ function AmenitiesMenuTab({
         ))}
       </View>
 
-      {/* Others */}
       {amenities.others.length > 0 && (
         <>
           <Text style={[amenityStyles.sectionLabel, { marginTop: 14 }]}>
@@ -623,7 +532,6 @@ function AmenitiesMenuTab({
         </>
       )}
 
-      {/* Menu */}
       <Text style={[amenityStyles.sectionLabel, { marginTop: 16 }]}>Menu</Text>
       {menuURLs && Array.isArray(menuURLs) && menuURLs.length > 0 ? (
         menuURLs.map((url: string, i: number) => (
@@ -646,6 +554,100 @@ function AmenitiesMenuTab({
   );
 }
 
+// ─── Write Review CTA ─────────────────────────────────────────────────────────
+
+function WriteReviewCTA({
+  navigation,
+  cafeName,
+  cafeId,
+  onReviewPosted,
+}: {
+  navigation: NativeStackNavigationProp<RootStackParamList, "CafeProfile">;
+  cafeName: string;
+  cafeId: string;
+  onReviewPosted: () => void;
+}) {
+  const [rating, setRating] = useState<number>(0);
+
+  return (
+    <View style={writeReviewStyles.container}>
+      <StarRatingInput value={rating} onChange={setRating} />
+      <TouchableOpacity
+        activeOpacity={0.9}
+        style={writeReviewStyles.button}
+        onPress={() =>
+          navigation.navigate("WriteReviewFE", {
+            cafeName,
+            cafeId: Number(cafeId), // cast string → number for createReview
+            initialRating: rating,
+            onReviewPosted,
+          })
+        }
+      >
+        <Text style={writeReviewStyles.buttonText}>Write a review</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+function StarRatingInput({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (next: number) => void;
+}) {
+  const renderStar = (index: number) => {
+    const full = value >= index;
+    const half = !full && value >= index - 0.5;
+    const name: keyof typeof MaterialIcons.glyphMap = full
+      ? "star"
+      : half
+        ? "star-half"
+        : "star-border";
+
+    return (
+      <View key={index} style={starInputStyles.starBox}>
+        <MaterialIcons name={name} size={30} color="#3B2A1A" />
+        <Pressable
+          style={starInputStyles.leftHalf}
+          onPress={() => onChange(Math.max(1, index - 0.5))}
+        />
+        <Pressable
+          style={starInputStyles.rightHalf}
+          onPress={() => onChange(index)}
+        />
+      </View>
+    );
+  };
+
+  return (
+    <View style={writeReviewStyles.starsRow}>
+      {[1, 2, 3, 4, 5].map(renderStar)}
+    </View>
+  );
+}
+
+// ─── Empty State ──────────────────────────────────────────────────────────────
+
+function EmptyState({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: keyof typeof MaterialIcons.glyphMap;
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <View style={styles.emptyState}>
+      <MaterialIcons name={icon} size={44} color="#D2BA94" />
+      <Text style={styles.emptyText}>{title}</Text>
+      <Text style={styles.emptySubText}>{subtitle}</Text>
+    </View>
+  );
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function CafeProfileScreen({ navigation }: Props) {
@@ -654,6 +656,12 @@ export default function CafeProfileScreen({ navigation }: Props) {
   const cafeId = params?.cafeId ?? "";
 
   const [activeTab, setActiveTab] = useState<Tab>("Cafe-Info");
+  const [cafe, setCafe] = useState<CafeDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [cafeReviews, setCafeReviews] = useState<ReviewWithMeta[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: "Cafe-Info", icon: "info" },
@@ -662,10 +670,14 @@ export default function CafeProfileScreen({ navigation }: Props) {
     { key: "Cafe-Ammenities-Menu", icon: "list" },
   ];
 
-  // Replace MOCK_CAFE with real state
-  const [cafe, setCafe] = useState<CafeDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Get current user session
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) setCurrentUserId(session.user.id);
+    });
+  }, []);
 
+  // Fetch cafe details
   useEffect(() => {
     (async () => {
       try {
@@ -679,16 +691,52 @@ export default function CafeProfileScreen({ navigation }: Props) {
     })();
   }, [cafeId]);
 
+  // Fetch reviews — extracted so it can be called again after posting
+  const fetchReviews = useCallback(async () => {
+    if (!cafeId || !currentUserId) return;
+    setReviewsLoading(true);
+    try {
+      const data = await getReviewsByCafe(Number(cafeId), currentUserId);
+      setCafeReviews(data);
+    } catch (err) {
+      console.error("Failed to load reviews:", err);
+    } finally {
+      setReviewsLoading(false);
+    }
+  }, [cafeId, currentUserId]);
+
+  useEffect(() => {
+    fetchReviews();
+  }, [fetchReviews]);
+
+  const handleToggleLike = async (
+    reviewId: number,
+    currentlyLiked: boolean,
+  ) => {
+    if (!currentUserId) return;
+    const previous = cafeReviews;
+    setCafeReviews((prev) =>
+      prev.map((r) =>
+        r.id === reviewId
+          ? {
+              ...r,
+              isLiked: !currentlyLiked,
+              likes: r.likes + (currentlyLiked ? -1 : 1),
+            }
+          : r,
+      ),
+    );
+    try {
+      await toggleCafeReviewUpvote(reviewId, currentUserId);
+    } catch (err) {
+      console.error("Failed to toggle upvote:", err);
+      setCafeReviews(previous);
+    }
+  };
+
   if (loading) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#EDDEC7",
-        }}
-      >
+      <View style={styles.centered}>
         <ActivityIndicator size="large" color="#8C6D4F" />
       </View>
     );
@@ -696,14 +744,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
 
   if (!cafe) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#EDDEC7",
-        }}
-      >
+      <View style={styles.centered}>
         <Text style={{ color: "#8C6D4F" }}>Café not found.</Text>
       </View>
     );
@@ -717,9 +758,8 @@ export default function CafeProfileScreen({ navigation }: Props) {
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={true}
       >
-        {/* ── CAFE HEADER BLOCK ── */}
+        {/* ── Header ── */}
         <View style={{ backgroundColor: "#E9D0A2" }}>
-          {/* Cover Photo */}
           <View style={avatarStyles.headerBand}>
             {cafe.cover_photo_url ? (
               <Image
@@ -730,7 +770,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
             ) : null}
           </View>
 
-          {/* Avatar + Name Row */}
           <View style={avatarStyles.avatarWrapper}>
             <View style={avatarStyles.avatarCircle}>
               {cafe.avatar_url ? (
@@ -742,7 +781,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
                 <MaterialIcons name="storefront" size={52} color="#C8A97A" />
               )}
             </View>
-
             <View style={cafeDetailsStyles.userInfoSection}>
               <Text
                 style={cafeDetailsStyles.userName}
@@ -764,10 +802,8 @@ export default function CafeProfileScreen({ navigation }: Props) {
             </View>
           </View>
 
-          {/* Divider */}
           <View style={styles.divider} />
 
-          {/* Tab Bar */}
           <View style={cafeProfileNavStyles.tabBar}>
             {TAB_ICONS.map(({ key, icon }) => (
               <TouchableOpacity
@@ -788,10 +824,9 @@ export default function CafeProfileScreen({ navigation }: Props) {
           </View>
         </View>
 
-        {/* ── TAB CONTENT ── */}
+        {/* ── Tab Content ── */}
         <View style={{ backgroundColor: "#FFEFD5" }}>
           <View style={cafeProfileNavStyles.tabContent}>
-            {/* CAFE INFO */}
             {activeTab === "Cafe-Info" && (
               <CafeInfoTab
                 cafe={{
@@ -812,28 +847,38 @@ export default function CafeProfileScreen({ navigation }: Props) {
               />
             )}
 
-            {/* REVIEWS */}
             {activeTab === "Cafe-Reviews" && (
               <View>
                 <WriteReviewCTA
                   navigation={navigation}
-                  cafeName={MOCK_CAFE.name}
+                  cafeName={cafe.name}
+                  cafeId={cafeId}
+                  onReviewPosted={fetchReviews} // ← re-fetch after posting
                 />
-                {MOCK_REVIEWS.length === 0 ? (
+                {reviewsLoading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color="#8C6D4F"
+                    style={{ marginTop: 20 }}
+                  />
+                ) : cafeReviews.length === 0 ? (
                   <EmptyState
                     icon="rate-review"
                     title="No reviews yet..."
                     subtitle="Be the first to leave a review for this café!"
                   />
                 ) : (
-                  MOCK_REVIEWS.map((review) => (
-                    <ReviewCard key={review.id} review={review} />
+                  cafeReviews.map((review) => (
+                    <ReviewCard
+                      key={review.id}
+                      review={review}
+                      onToggleLike={handleToggleLike}
+                    />
                   ))
                 )}
               </View>
             )}
 
-            {/* POSTS */}
             {activeTab === "Cafe-Posts" && (
               <View>
                 {MOCK_POSTS.length === 0 ? (
@@ -850,7 +895,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
               </View>
             )}
 
-            {/* AMENITIES & MENU */}
             {activeTab === "Cafe-Ammenities-Menu" && (
               <AmenitiesMenuTab
                 amenities={MOCK_AMENITIES}
@@ -864,104 +908,23 @@ export default function CafeProfileScreen({ navigation }: Props) {
   );
 }
 
-// ─── Empty State ──────────────────────────────────────────────────────────────
-
-function WriteReviewCTA({
-  navigation,
-  cafeName,
-}: {
-  navigation: NativeStackNavigationProp<RootStackParamList, "CafeProfile">;
-  cafeName: string;
-}) {
-  const [rating, setRating] = useState<number>(0);
-
-  return (
-    <View style={writeReviewStyles.container}>
-      <StarRatingInput value={rating} onChange={setRating} />
-
-      <TouchableOpacity
-        activeOpacity={0.9}
-        style={writeReviewStyles.button}
-        onPress={() =>
-          navigation.navigate("WriteReviewFE", {
-            cafeName,
-            initialRating: rating,
-          })
-        }
-      >
-        <Text style={writeReviewStyles.buttonText}>Write a review</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-function StarRatingInput({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (next: number) => void;
-}) {
-  const renderStar = (index: number) => {
-    const full = value >= index;
-    const half = !full && value >= index - 0.5;
-
-    const name: keyof typeof MaterialIcons.glyphMap = full
-      ? "star"
-      : half
-        ? "star-half"
-        : "star-border";
-
-    const setHalf = () => onChange(Math.max(1, Math.min(5, index - 0.5)));
-    const setFull = () => onChange(Math.max(1, Math.min(5, index)));
-
-    return (
-      <View key={index} style={starInputStyles.starBox}>
-        <MaterialIcons name={name} size={30} color="#3B2A1A" />
-        <Pressable style={starInputStyles.leftHalf} onPress={setHalf} />
-        <Pressable style={starInputStyles.rightHalf} onPress={setFull} />
-      </View>
-    );
-  };
-
-  return (
-    <View style={writeReviewStyles.starsRow}>
-      {[1, 2, 3, 4, 5].map(renderStar)}
-    </View>
-  );
-}
-
-function EmptyState({
-  icon,
-  title,
-  subtitle,
-}: {
-  icon: keyof typeof MaterialIcons.glyphMap;
-  title: string;
-  subtitle: string;
-}) {
-  return (
-    <View style={styles.emptyState}>
-      <MaterialIcons name={icon} size={44} color="#D2BA94" />
-      <Text style={styles.emptyText}>{title}</Text>
-      <Text style={styles.emptySubText}>{subtitle}</Text>
-    </View>
-  );
-}
-
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: "#EDDEC7" },
   container: { flexGrow: 1, backgroundColor: "#EDDEC7" },
-
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#EDDEC7",
+  },
   divider: {
     height: 1,
     backgroundColor: "#D2BA94",
     marginHorizontal: 20,
     marginTop: 14,
   },
-
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
@@ -969,14 +932,12 @@ const styles = StyleSheet.create({
     paddingTop: 70,
     paddingBottom: 120,
   },
-
   emptyText: {
     fontSize: 15,
     fontWeight: "600",
     color: "#8C6D4F",
     marginTop: 10,
   },
-
   emptySubText: {
     fontSize: 12,
     color: "#B09070",
@@ -993,24 +954,21 @@ const cafeProfileNavStyles = StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: "#E9D0A2",
   },
-
   tabBtn: {
     flex: 1,
     alignItems: "center",
     paddingVertical: 10,
     position: "relative",
   },
-
   tabUnderline: {
     position: "absolute",
     bottom: 0,
     left: 8,
     right: 8,
     height: 2,
-    backgroundColor: "#6D6D6D",
+    backgroundColor: "#6B4F2E",
     borderRadius: 2,
   },
-
   tabContent: {
     flex: 1,
     paddingHorizontal: 16,
@@ -1028,21 +986,18 @@ const cafeDetailsStyles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-
   userName: {
     fontSize: 22,
     fontWeight: "700",
     color: "#3B2A1A",
     fontFamily: "SourceSerifPro-Regular",
   },
-
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     flex: 1,
   },
-
   metaText: {
     fontSize: 12,
     color: "#8C6D4F",
@@ -1058,7 +1013,6 @@ const avatarStyles = StyleSheet.create({
     justifyContent: "flex-end",
     overflow: "visible",
   },
-
   avatarWrapper: {
     marginTop: -40,
     marginLeft: 10,
@@ -1066,7 +1020,6 @@ const avatarStyles = StyleSheet.create({
     alignItems: "flex-start",
     paddingRight: 16,
   },
-
   avatarCircle: {
     width: 100,
     height: 100,
@@ -1082,11 +1035,7 @@ const avatarStyles = StyleSheet.create({
 });
 
 const starStyles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    gap: 1,
-    marginTop: 1,
-  },
+  row: { flexDirection: "row", gap: 1, marginTop: 1 },
 });
 
 const writeReviewStyles = StyleSheet.create({
@@ -1146,17 +1095,16 @@ const reviewCardStyles = StyleSheet.create({
   container: {
     backgroundColor: "#E6D6BE",
     borderRadius: 12,
-    padding: 12,
     marginBottom: 10,
+    overflow: "hidden",
   },
-
   header: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: 8,
-    marginBottom: 8,
+    padding: 12,
+    paddingBottom: 4,
   },
-
   avatar: {
     width: 34,
     height: 34,
@@ -1167,116 +1115,52 @@ const reviewCardStyles = StyleSheet.create({
     flexShrink: 0,
     overflow: "hidden",
   },
-
-  meta: {
-    flex: 1,
-    gap: 1,
-  },
-
-  userName: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#3B2A1A",
-  },
-
-  date: {
-    fontSize: 11,
-    color: "#8C6D4F",
-    marginTop: 1,
-  },
-
+  meta: { flex: 1, gap: 1 },
+  userName: { fontSize: 13, fontWeight: "600", color: "#3B2A1A" },
+  date: { fontSize: 11, color: "#8C6D4F", marginTop: 1 },
   comment: {
     fontSize: 12,
     color: "#4A3220",
     lineHeight: 18,
     fontStyle: "italic",
-    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    paddingBottom: 8,
   },
-
-  imageSingle: {
-    width: "100%",
-    height: 150,
-    borderRadius: 8,
-    marginBottom: 8,
-    backgroundColor: "#D2BA94",
-  },
-
-  imageRow: {
-    flexDirection: "row",
-    gap: 5,
-    marginBottom: 8,
-  },
-
-  imageHalf: {
-    flex: 1,
-    height: 100,
-    borderRadius: 8,
-    backgroundColor: "#D2BA94",
-  },
-
-  imageMain: {
-    width: "48%",
-    height: 120,
-    borderRadius: 8,
-    backgroundColor: "#C8A97A",
-  },
-
-  imageSubCol: {
-    width: "48%",
-    gap: 5,
-  },
-
-  imageSub: {
-    height: 57,
-    borderRadius: 8,
-    backgroundColor: "#BFA080",
-  },
-
-  moreOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  moreText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-
-  tagsRow: {
+  mediaWrapper: { overflow: "hidden" },
+  imageGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
+    padding: 8,
+  },
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
     gap: 4,
-    marginBottom: 6,
+    paddingVertical: 6,
   },
-
-  tag: {
-    backgroundColor: "#D2BA94",
-    borderRadius: 20,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#C8A97A",
   },
-
-  tagText: {
-    fontSize: 10,
-    color: "#5A3E28",
-    fontWeight: "500",
+  dotActive: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#6B4F2E",
   },
-
   likesRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    marginTop: 4,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 10,
   },
-
-  likesCount: {
-    fontSize: 12,
-    color: "#8C6D4F",
-  },
+  likesCount: { fontSize: 12, color: "#8C6D4F" },
+  likesCountActive: { color: "#6B4F2E", fontWeight: "600" },
 });
 
 const postCardStyles = StyleSheet.create({
@@ -1286,98 +1170,34 @@ const postCardStyles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: 10,
   },
-
-  imageSingle: {
-    width: "100%",
-    height: 200,
-    backgroundColor: "#C8A97A",
-  },
-
-  imageRow: {
-    flexDirection: "row",
-  },
-
-  imageHalf: {
-    flex: 1,
-    height: 160,
-    backgroundColor: "#C8A97A",
-  },
-
-  imageGrid3: {
-    flexDirection: "row",
-    height: 180,
-  },
-
-  imageGrid3Main: {
-    flex: 2,
-    height: "100%",
-    backgroundColor: "#C8A97A",
-  },
-
-  imageGrid3Sub: {
-    flex: 1,
-    flexDirection: "column",
-  },
-
-  imageGrid3SubItem: {
-    flex: 1,
-    backgroundColor: "#BFA080",
-  },
-
+  imageSingle: { width: "100%", height: 200, backgroundColor: "#C8A97A" },
+  imageRow: { flexDirection: "row" },
+  imageHalf: { flex: 1, height: 160, backgroundColor: "#C8A97A" },
+  imageGrid3: { flexDirection: "row", height: 180 },
+  imageGrid3Main: { flex: 2, height: "100%", backgroundColor: "#C8A97A" },
+  imageGrid3Sub: { flex: 1, flexDirection: "column" },
+  imageGrid3SubItem: { flex: 1, backgroundColor: "#BFA080" },
   moreOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.45)",
     alignItems: "center",
     justifyContent: "center",
   },
-
-  moreText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-
-  body: {
-    padding: 10,
-  },
-
-  caption: {
-    fontSize: 13,
-    color: "#4A3220",
-    lineHeight: 19,
-    marginBottom: 8,
-  },
-
+  moreText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  body: { padding: 10 },
+  caption: { fontSize: 13, color: "#4A3220", lineHeight: 19, marginBottom: 8 },
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-
-  date: {
-    fontSize: 11,
-    color: "#8C6D4F",
-  },
-
-  likesRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-
-  likesCount: {
-    fontSize: 12,
-    color: "#8C6D4F",
-  },
+  date: { fontSize: 11, color: "#8C6D4F" },
+  likesRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  likesCount: { fontSize: 12, color: "#8C6D4F" },
 });
 
 const infoStyles = StyleSheet.create({
-  statsRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 16,
-  },
-
+  statsRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
   statCard: {
     flex: 1,
     backgroundColor: "#FFF7ED",
@@ -1385,21 +1205,18 @@ const infoStyles = StyleSheet.create({
     padding: 10,
     alignItems: "center",
   },
-
   statNum: {
     fontSize: 20,
     fontWeight: "700",
     color: "#6B4F2E",
     fontFamily: "SourceSerifPro-Regular",
   },
-
   statLabel: {
     fontSize: 10,
     color: "#8C6D4F",
     marginTop: 2,
     fontFamily: "SourceSerifPro-Regular",
   },
-
   sectionLabel: {
     fontSize: 11,
     fontWeight: "600",
@@ -1408,7 +1225,6 @@ const infoStyles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 6,
   },
-
   infoRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -1418,48 +1234,23 @@ const infoStyles = StyleSheet.create({
     padding: 10,
     marginBottom: 5,
   },
-
   infoText: {
     fontSize: 13,
     color: "#4B2C11",
     lineHeight: 18,
     fontFamily: "SourceSerifPro-Regular",
   },
-
-  infoSubText: {
-    fontSize: 11,
-    color: "#8C6D4F",
-    marginTop: 2,
-  },
-
-  daysRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 5,
-    marginTop: 4,
-  },
-
+  infoSubText: { fontSize: 11, color: "#8C6D4F", marginTop: 2 },
+  daysRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 4 },
   dayPill: {
     backgroundColor: "#D2BA94",
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-
-  dayPillClosed: {
-    backgroundColor: "#EDE0CE",
-  },
-
-  dayPillText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#5A3E28",
-  },
-
-  dayPillTextClosed: {
-    color: "#B09070",
-    textDecorationLine: "line-through",
-  },
+  dayPillClosed: { backgroundColor: "#EDE0CE" },
+  dayPillText: { fontSize: 11, fontWeight: "600", color: "#5A3E28" },
+  dayPillTextClosed: { color: "#B09070", textDecorationLine: "line-through" },
 });
 
 const amenityStyles = StyleSheet.create({
@@ -1471,13 +1262,7 @@ const amenityStyles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 8,
   },
-
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   item: {
     width: "47.5%",
     backgroundColor: "#E6D6BE",
@@ -1487,42 +1272,17 @@ const amenityStyles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-
-  itemOff: {
-    backgroundColor: "#EDE0CE",
-  },
-
-  itemLabel: {
-    fontSize: 12,
-    color: "#4A3220",
-    flex: 1,
-  },
-
-  itemLabelOff: {
-    color: "#B09070",
-    textDecorationLine: "line-through",
-  },
-
-  othersRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 5,
-    marginTop: 4,
-  },
-
+  itemOff: { backgroundColor: "#EDE0CE" },
+  itemLabel: { fontSize: 12, color: "#4A3220", flex: 1 },
+  itemLabelOff: { color: "#B09070", textDecorationLine: "line-through" },
+  othersRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 4 },
   otherPill: {
     backgroundColor: "#D2BA94",
     borderRadius: 20,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-
-  otherPillText: {
-    fontSize: 11,
-    color: "#5A3E28",
-    fontWeight: "500",
-  },
-
+  otherPillText: { fontSize: 11, color: "#5A3E28", fontWeight: "500" },
   menuImage: {
     width: "100%",
     height: 200,
@@ -1530,7 +1290,6 @@ const amenityStyles = StyleSheet.create({
     backgroundColor: "#E6D6BE",
     marginBottom: 8,
   },
-
   menuPlaceholder: {
     width: "100%",
     height: 140,
@@ -1541,9 +1300,5 @@ const amenityStyles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-
-  menuPlaceholderText: {
-    fontSize: 12,
-    color: "#B09070",
-  },
+  menuPlaceholderText: { fontSize: 12, color: "#B09070" },
 });
