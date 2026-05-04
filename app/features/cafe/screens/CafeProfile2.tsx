@@ -294,7 +294,6 @@ function ReviewCard({
       onLayout={(e) => setCardWidth(e.nativeEvent.layout.width)}
     >
       <View style={reviewCardStyles.header}>
-        {/* ✅ Only avatar navigates to profile */}
         <TouchableOpacity
           onPress={() =>
             review.user_id ? onNavigateToProfile(review.user_id) : undefined
@@ -315,7 +314,6 @@ function ReviewCard({
           </View>
         </TouchableOpacity>
 
-        {/* ✅ Meta is a plain View — only username text is tappable */}
         <View style={reviewCardStyles.meta}>
           <TouchableOpacity
             onPress={() =>
@@ -329,12 +327,10 @@ function ReviewCard({
               {isOwn && <Text style={reviewCardStyles.youBadge}> (you)</Text>}
             </Text>
           </TouchableOpacity>
-          {/* Stars and date: plain, NOT tappable */}
           <StarRating rating={review.rating} />
           <Text style={reviewCardStyles.date}>{displayDate}</Text>
         </View>
 
-        {/* Three-dot menu */}
         <View>
           <TouchableOpacity
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -576,8 +572,6 @@ function PostCard({ post }: { post: Post }) {
 function CafeInfoTab({ cafe }: { cafe: CafeProfileInformation }) {
   return (
     <View>
-      {/* ── Description ─────────────────────────────────────── */}
-
       <>
         <View style={infoStyles.section}>
           <Text style={infoStyles.sectionTitle}>Description</Text>
@@ -858,9 +852,11 @@ function EmptyState({
 function FavoriteButton({
   cafeId,
   userId,
+  onToggle,
 }: {
   cafeId: string;
   userId: string;
+  onToggle?: (isFavorited: boolean) => void;
 }) {
   const [isFavorited, setIsFavorited] = useState(false);
   const [favoriteId, setFavoriteId] = useState<number | null>(null);
@@ -868,7 +864,6 @@ function FavoriteButton({
   const [toggling, setToggling] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
-  // Check if already favorited on mount
   useEffect(() => {
     if (!userId || !cafeId) return;
     (async () => {
@@ -895,7 +890,6 @@ function FavoriteButton({
     if (toggling || !userId) return;
     setToggling(true);
 
-    // Bounce animation
     Animated.sequence([
       Animated.spring(scaleAnim, {
         toValue: 1.3,
@@ -911,6 +905,7 @@ function FavoriteButton({
 
     const wasLiked = isFavorited;
     setIsFavorited(!wasLiked);
+    onToggle?.(!wasLiked); // ← optimistic count update
 
     try {
       if (wasLiked && favoriteId) {
@@ -931,7 +926,8 @@ function FavoriteButton({
       }
     } catch (err) {
       console.error("Failed to toggle favorite:", err);
-      setIsFavorited(wasLiked); // revert on error
+      setIsFavorited(wasLiked); // revert optimistic UI
+      onToggle?.(wasLiked); // revert optimistic count
     } finally {
       setToggling(false);
     }
@@ -977,10 +973,10 @@ export default function CafeProfileScreen({ navigation }: Props) {
   const [cafeReviews, setCafeReviews] = useState<ReviewWithMeta[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
 
-  // Star filter: null = all, 1–5 = that whole-star bucket
-  // Half-star ratings are floored: 3.5 → shows under "3"
-  const [starFilter, setStarFilter] = useState<number | null>(null);
+  // ── Live favorites count (fetched from DB, kept in sync with button) ──
+  const [favoritesCount, setFavoritesCount] = useState<number>(0);
 
+  const [starFilter, setStarFilter] = useState<number | null>(null);
   const [reportTarget, setReportTarget] = useState<ReviewWithMeta | null>(null);
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
@@ -1007,8 +1003,20 @@ export default function CafeProfileScreen({ navigation }: Props) {
   useEffect(() => {
     (async () => {
       try {
-        const data = await getCafeById(cafeId);
-        setCafe(data);
+        // Load cafe details and live favorites count in parallel
+        const [cafeData, { count, error: countError }] = await Promise.all([
+          getCafeById(cafeId),
+          supabase
+            .from("favorite_cafes")
+            .select("*", { count: "exact", head: true })
+            .eq("cafe_id", Number(cafeId)),
+        ]);
+
+        setCafe(cafeData);
+
+        if (!countError) {
+          setFavoritesCount(count ?? 0);
+        }
       } catch (err) {
         console.error("Failed to load cafe:", err);
       } finally {
@@ -1034,15 +1042,13 @@ export default function CafeProfileScreen({ navigation }: Props) {
     fetchReviews();
   }, [fetchReviews]);
 
-  // Build per-star counts (half-stars floor to whole star below)
   const starCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   for (const r of cafeReviews) {
-    const bucket = Math.floor(r.rating); // 3.5 → 3, 4.0 → 4
+    const bucket = Math.floor(r.rating);
     if (bucket >= 1 && bucket <= 5)
       starCounts[bucket] = (starCounts[bucket] ?? 0) + 1;
   }
 
-  // Apply filter — exact whole-star match on floored rating
   const filteredReviews =
     starFilter === null
       ? cafeReviews
@@ -1145,7 +1151,13 @@ export default function CafeProfileScreen({ navigation }: Props) {
                   <Text style={cafeDetailsStyles.userName}>{cafe.name}</Text>
                 </View>
                 <View style={{ flexShrink: 0 }}>
-                  <FavoriteButton cafeId={cafeId} userId={currentUserId} />
+                  <FavoriteButton
+                    cafeId={cafeId}
+                    userId={currentUserId}
+                    onToggle={(isFavorited) =>
+                      setFavoritesCount((prev) => prev + (isFavorited ? 1 : -1))
+                    }
+                  />
                 </View>
               </View>
               <View style={cafeDetailsStyles.metaRow}>
@@ -1192,7 +1204,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
                   menuURLs: cafe.menu_urls,
                   averageRating: cafe.average_rating,
                   reviewCount: cafe.review_count,
-                  favoritesCount: cafe.favorites_count,
+                  favoritesCount: favoritesCount, // ← live count from state
                   openingTime: cafe.opening_time ?? "",
                   closingTime: cafe.closing_time ?? "",
                   openingDays: cafe.opening_days ?? [],
@@ -1210,7 +1222,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
                   onReviewPosted={fetchReviews}
                 />
 
-                {/* ── Star filter ── */}
                 {!reviewsLoading && cafeReviews.length > 0 && (
                   <StarFilterBar
                     selected={starFilter}
@@ -1726,7 +1737,6 @@ const infoStyles = StyleSheet.create({
   dayPillClosed: { backgroundColor: "#EDE0CE" },
   dayPillText: { fontSize: 11, fontWeight: "600", color: "#5A3E28" },
   dayPillTextClosed: { color: "#B09070", textDecorationLine: "line-through" },
-
   section: {
     paddingVertical: 8,
     backgroundColor: "#FFF7ED",
