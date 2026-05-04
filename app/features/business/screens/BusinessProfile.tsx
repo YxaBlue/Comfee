@@ -190,7 +190,11 @@ export default function BusinessProfile() {
             />
           )}
           {activeTab === "posts" && <PostsTab />}
-          {activeTab === "reviews" && <Text>Reviews coming soon</Text>}
+          {activeTab === "reviews" && (
+            <View style={{ flex: 1, alignItems: "center", marginTop: 40 }}>
+              <Text>Reviews coming soon</Text>
+            </View>
+          )}
         </View>
       </ScrollView>
       {activeTab === "info" &&
@@ -367,7 +371,9 @@ const styles = StyleSheet.create({
     marginLeft: 15,
     alignItems: "center",
     alignSelf: "center",
-    gap: 150,
+    justifyContent: "space-around",
+    width: "100%",
+    paddingHorizontal: 20,
     marginTop: -32,
   },
   avatarImage: {
