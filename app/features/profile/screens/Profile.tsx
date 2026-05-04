@@ -3,17 +3,17 @@ import {
   getProfile,
   uploadAvatar,
   uploadCoverPhoto,
-  type Review,
 } from "@/app/features/profile/services/profileService";
 import { supabase } from "@/app/shared/lib/supabaseClient";
-import ReportModal from "@/app/shared/modals/reportModal"; // ← adjust to your path
+import ReportModal from "@/app/shared/modals/reportModal";
 import {
   deleteReview,
   editReview,
+  formatReviewDate,
   getReviewsByUser,
+  ProfileReview,
   toggleUpvote,
 } from "@/app/shared/modals/reviewService";
-import { formatDate } from "@/app/shared/utils/dateUtils";
 import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRoute } from "@react-navigation/native";
@@ -23,7 +23,6 @@ import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   Image,
   ImageBackground,
   Pressable,
@@ -35,6 +34,9 @@ import {
   View,
 } from "react-native";
 import { RootStackParamList } from "../../../../App";
+
+// Use ProfileReview as the local Review type
+type Review = ProfileReview;
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Profile">;
@@ -60,8 +62,6 @@ type FaveCafe = {
 const AVATAR_SIZE = 106;
 const AVATAR_RIGHT_OFFSET = 20;
 const USER_INFO_RIGHT_GUTTER = AVATAR_SIZE + AVATAR_RIGHT_OFFSET + 14;
-const SCREEN_WIDTH = Dimensions.get("window").width;
-const MAX_REVIEW_MEDIA_WIDTH = 420;
 
 function StarRating({ rating }: { rating: number }) {
   return (
@@ -114,6 +114,11 @@ function ReviewCard({
   const imageHeight = Math.round(imageWidth * 0.68);
   const isNarrow = columns === 1;
 
+  const displayDate = formatReviewDate(review.created_at, review.updated_at);
+
+  const navigateToCafe = () =>
+    navigation.navigate("CafeProfile", { cafeId: String(review.cafeId) });
+
   return (
     <View
       style={styles.reviewCard}
@@ -155,7 +160,7 @@ function ReviewCard({
               }}
             >
               <MaterialIcons name="flag" size={18} color="#8C6D4F" />
-              <Text style={(styles.menuText, { color: "#C0392B" })}>
+              <Text style={[styles.menuText, { color: "#C0392B" }]}>
                 Report
               </Text>
             </TouchableOpacity>
@@ -163,15 +168,11 @@ function ReviewCard({
         </View>
       )}
 
+      {/* ── Header ── */}
+      {/* ✅ Plain View — no TouchableOpacity wrapper around the whole row */}
       <View style={styles.reviewCardHeader}>
-        <TouchableOpacity
-          style={styles.reviewMainInfo}
-          onPress={() =>
-            navigation.navigate("CafeProfile", {
-              cafeId: String(review.cafeId),
-            })
-          }
-        >
+        {/* ✅ Only the cafe icon navigates */}
+        <TouchableOpacity onPress={navigateToCafe} activeOpacity={0.75}>
           <View style={styles.cafeAvatarSmall}>
             {review.cafeAvatar ? (
               <Image
@@ -183,13 +184,18 @@ function ReviewCard({
               <MaterialIcons name="store" size={24} color="#C8A97A" />
             )}
           </View>
-          <View style={styles.reviewCardMeta}>
-            <Text style={styles.reviewLabel}>Review For</Text>
-            <Text style={styles.reviewCafeName}>{review.cafeName}</Text>
-            <StarRating rating={review.rating} />
-            <Text style={styles.reviewDate}>{review.date}</Text>
-          </View>
         </TouchableOpacity>
+
+        {/* ✅ Meta is a plain View; nothing is tappable */}
+        <View style={styles.reviewCardMeta}>
+          <Text style={styles.reviewLabel}>Review For</Text>
+          <Text style={styles.reviewCafeName}>{review.cafeName}</Text>
+          {/* Stars and date: plain Text, NOT tappable */}
+          <StarRating rating={review.rating} />
+          <Text style={styles.reviewDate}>{displayDate}</Text>
+        </View>
+
+        {/* Three-dot menu */}
         <TouchableOpacity
           style={styles.reviewMoreButton}
           onPress={() => setOpenMenuId(showMenu ? null : review.id)}
@@ -355,7 +361,6 @@ function FaveCard({
 
 export default function ProfileScreen({ navigation }: Props) {
   const route = useRoute();
-  // Optional userId param — if present and different from session, show read-only
   const params = (route.params as { userId?: string } | undefined) ?? {};
 
   const [activeTab, setActiveTab] = useState<Tab>("reviews");
@@ -387,7 +392,6 @@ export default function ProfileScreen({ navigation }: Props) {
     bio: "",
   });
 
-  // Review state
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
@@ -395,7 +399,6 @@ export default function ProfileScreen({ navigation }: Props) {
   const [editComment, setEditComment] = useState("");
   const [pendingEditImages, setPendingEditImages] = useState<string[]>([]);
 
-  // Report modal state
   const [reportTarget, setReportTarget] = useState<Review | null>(null);
   const [reportUserTarget, setReportUserTarget] = useState<{
     userId: string;
@@ -442,9 +445,7 @@ export default function ProfileScreen({ navigation }: Props) {
         .select(`id, cafe_id, cafe:cafe_id ( id, name, address, city )`)
         .eq("user_id", uid)
         .order("created_at", { ascending: false });
-
       if (error) throw error;
-
       const favorites =
         data?.flatMap((favorite) => {
           const cafe = Array.isArray(favorite.cafe)
@@ -460,7 +461,6 @@ export default function ProfileScreen({ navigation }: Props) {
             },
           ];
         }) ?? [];
-
       setFavoriteCafes(favorites);
     } catch (err) {
       console.error("Failed to fetch favorite cafes:", err);
@@ -488,7 +488,6 @@ export default function ProfileScreen({ navigation }: Props) {
         const {
           data: { session },
         } = await supabase.auth.getSession();
-
         if (!session?.user) {
           navigation.navigate("Login");
           return;
@@ -496,18 +495,13 @@ export default function ProfileScreen({ navigation }: Props) {
 
         const uid = session.user.id;
         setSessionUserId(uid);
-
-        // Decide which user we're viewing
         const targetId =
           params.userId && params.userId !== uid ? params.userId : uid;
         setViewedUserId(targetId);
         setIsOwnProfile(targetId === uid);
 
-        // Fetch viewed user's profile and current user's profile if different
         const profilePromises = [getProfile(targetId)];
-        if (targetId !== uid) {
-          profilePromises.push(getProfile(uid));
-        }
+        if (targetId !== uid) profilePromises.push(getProfile(uid));
 
         const [viewedProfile, currentUserProfileData] = await Promise.all([
           ...profilePromises,
@@ -516,22 +510,18 @@ export default function ProfileScreen({ navigation }: Props) {
         ]);
 
         setProfile(viewedProfile);
-        if (currentUserProfileData) {
+        if (currentUserProfileData)
           setCurrentUserProfile(currentUserProfileData);
-        }
       } catch (err) {
         console.error("Failed to fetch profile:", err);
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchProfile();
   }, [params.userId]);
 
   if (isLoading) return <ProfileSkeleton />;
-
-  // ── Handlers (only applicable for own profile) ─────────────────────────────
 
   const handleEditPress = () => {
     setActiveTab("info");
@@ -562,9 +552,7 @@ export default function ProfileScreen({ navigation }: Props) {
       let newCoverUrl = profile?.cover_photo ?? null;
 
       if (pendingAvatarUri === null && profile?.profile_picture) {
-        const avatarPath = `avatars/${viewedUserId}.${
-          profile.profile_picture.split(".").pop()?.split("?")[0] || "jpg"
-        }`;
+        const avatarPath = `avatars/${viewedUserId}.${profile.profile_picture.split(".").pop()?.split("?")[0] || "jpg"}`;
         await supabase.storage.from("profile").remove([avatarPath]);
         newAvatarUrl = null;
       } else if (pendingAvatarUri) {
@@ -572,9 +560,7 @@ export default function ProfileScreen({ navigation }: Props) {
       }
 
       if (pendingCoverUri === null && profile?.cover_photo) {
-        const coverPath = `cover_photos/${viewedUserId}.${
-          profile.cover_photo.split(".").pop()?.split("?")[0] || "jpg"
-        }`;
+        const coverPath = `cover_photos/${viewedUserId}.${profile.cover_photo.split(".").pop()?.split("?")[0] || "jpg"}`;
         await supabase.storage.from("profile").remove([coverPath]);
         newCoverUrl = null;
       } else if (pendingCoverUri) {
@@ -600,16 +586,12 @@ export default function ProfileScreen({ navigation }: Props) {
         profile_picture: newAvatarUrl,
         cover_photo: newCoverUrl,
       }));
-
       setPendingAvatarUri(null);
       setPendingCoverUri(null);
       setIsEditing(false);
     } catch (err: any) {
-      if (err?.validationErrors) {
-        setFieldErrors(err.validationErrors);
-      } else {
-        console.error("Failed to save profile:", err);
-      }
+      if (err?.validationErrors) setFieldErrors(err.validationErrors);
+      else console.error("Failed to save profile:", err);
     } finally {
       setIsSaving(false);
     }
@@ -728,7 +710,7 @@ export default function ProfileScreen({ navigation }: Props) {
   };
 
   const handleSaveReview = async () => {
-    if (!editingReview || !sessionUserId) return;
+    if (!editingReview || !sessionUserId || !viewedUserId) return;
     const previous = reviews;
     const existingUrls = pendingEditImages.filter((uri) =>
       uri.startsWith("http"),
@@ -736,47 +718,29 @@ export default function ProfileScreen({ navigation }: Props) {
     const newLocalUris = pendingEditImages.filter(
       (uri) => !uri.startsWith("http"),
     );
-    const originalUrls = editingReview.imageUrls;
-    const removedUrls = originalUrls.filter(
+    const removedUrls = editingReview.imageUrls.filter(
       (url) => !existingUrls.includes(url),
     );
 
     if (removedUrls.length > 0) {
       await Promise.all(
         removedUrls.map(async (url: string) => {
-          const urlParts = url.split("/");
-          const filename = urlParts[urlParts.length - 1]?.split("?")[0];
-          if (filename) {
+          const filename = url.split("/").pop()?.split("?")[0];
+          if (filename)
             await supabase.storage
               .from("posts")
               .remove([`reviews/${filename}`]);
-          }
         }),
       );
     }
 
-    setReviews((prev) =>
-      prev.map((r) =>
-        r.id === editingReview.id
-          ? {
-              ...r,
-              rating: editRating,
-              comment: editComment,
-              imageUrls: pendingEditImages,
-              date: `${formatDate(new Date().toISOString())} (edited)`,
-            }
-          : r,
-      ),
-    );
     setEditingReview(null);
 
     try {
       const uploadedUrls = await Promise.all(
         newLocalUris.map(async (uri) => {
           const ext = uri.split(".").pop()?.split("?")[0] ?? "jpg";
-          const filename = `${editingReview.id}_${Date.now()}_${Math.random()
-            .toString(36)
-            .slice(2)}.${ext}`;
+          const filename = `${editingReview.id}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
           const path = `reviews/${filename}`;
           const response = await fetch(uri);
           const blob = await response.blob();
@@ -795,11 +759,9 @@ export default function ProfileScreen({ navigation }: Props) {
         comment: editComment,
         images_url: finalUrls,
       });
-      setReviews((prev) =>
-        prev.map((r) =>
-          r.id === editingReview.id ? { ...r, imageUrls: finalUrls } : r,
-        ),
-      );
+
+      // ✅ Re-fetch so dates come from DB via formatReviewDate — no manual string construction
+      await fetchReviews(viewedUserId, sessionUserId);
     } catch (err) {
       console.error("Failed to save review:", err);
       setReviews(previous);
@@ -954,7 +916,6 @@ export default function ProfileScreen({ navigation }: Props) {
                 ) : (
                   <Text style={styles.userName}>{profile?.username}</Text>
                 )}
-                {/* Show edit button on own profile, no button on other profiles */}
                 {isOwnProfile && (
                   <TouchableOpacity onPress={handleEditPress}>
                     <MaterialIcons name="edit" size={16} color="#8C6D4F" />
@@ -975,7 +936,6 @@ export default function ProfileScreen({ navigation }: Props) {
             </View>
           </View>
 
-          {/* ── Divider ── */}
           <View style={styles.divider} />
 
           {/* ── Tab bar ── */}
@@ -1010,7 +970,6 @@ export default function ProfileScreen({ navigation }: Props) {
 
           {/* ── Tab content ── */}
           <View style={styles.tabContent}>
-            {/* REVIEWS */}
             {activeTab === "reviews" && (
               <Pressable onPress={() => setOpenMenuId(null)}>
                 <View>
@@ -1054,7 +1013,6 @@ export default function ProfileScreen({ navigation }: Props) {
               </Pressable>
             )}
 
-            {/* FAVORITES */}
             {activeTab === "favorites" && (
               <View>
                 {favoritesLoading ? (
@@ -1082,7 +1040,6 @@ export default function ProfileScreen({ navigation }: Props) {
               </View>
             )}
 
-            {/* INFO */}
             {activeTab === "info" && (
               <View style={styles.infoSection}>
                 <View style={styles.infoRow}>
@@ -1248,7 +1205,7 @@ export default function ProfileScreen({ navigation }: Props) {
           <View style={{ height: 90 }} />
         </ScrollView>
 
-        {/* ── Review Edit Modal (own profile only) ── */}
+        {/* ── Review Edit Modal ── */}
         {editingReview && isOwnProfile && (
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
@@ -1354,7 +1311,6 @@ export default function ProfileScreen({ navigation }: Props) {
           </View>
         )}
 
-        {/* ── Report Modal ── */}
         <ReportModal
           visible={!!reportTarget}
           onClose={() => setReportTarget(null)}
@@ -1365,7 +1321,6 @@ export default function ProfileScreen({ navigation }: Props) {
           }
         />
 
-        {/* ── User Report Modal ── */}
         <ReportModal
           visible={!!reportUserTarget}
           onClose={() => setReportUserTarget(null)}
@@ -1380,7 +1335,7 @@ export default function ProfileScreen({ navigation }: Props) {
   );
 }
 
-// ─── Styles (unchanged from original + minimal additions) ────────────────────
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: "#FFEFD5" },
@@ -1427,7 +1382,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    backgroundColor: "rgba(255,255,255,0.7)",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
@@ -1554,18 +1509,13 @@ const styles = StyleSheet.create({
   },
   reviewCardHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    paddingHorizontal: 13,
-    paddingTop: 13,
-  },
-  reviewMainInfo: {
-    flexDirection: "row",
     alignItems: "center",
     gap: 11,
-    flex: 1,
+    paddingHorizontal: 13,
+    paddingTop: 13,
+    paddingBottom: 4,
   },
-  reviewCardMeta: { justifyContent: "center" },
+  reviewCardMeta: { justifyContent: "center", flex: 1 },
   cafeAvatarSmall: {
     width: 66,
     height: 66,
@@ -1573,9 +1523,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1E7DA",
     borderWidth: 1,
     borderColor: "#EADAC6",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    flexShrink: 0,
   },
   cafeAvatarImage: { width: "100%", height: "100%", borderRadius: 33 },
-  reviewMoreButton: { alignSelf: "flex-start" },
+  reviewMoreButton: { alignSelf: "flex-start", paddingTop: 2 },
   reviewLabel: {
     fontSize: 12,
     color: "#8C6D4F",

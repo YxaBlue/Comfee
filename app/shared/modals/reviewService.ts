@@ -1,5 +1,4 @@
 import { supabase } from "@/app/shared/lib/supabaseClient";
-import { formatDate } from "@/app/shared/utils/dateUtils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -12,13 +11,8 @@ export type Review = {
   images_url: string[] | null;
   created_at: string;
   updated_at: string | null;
-  profile?: {
-    username: string;
-    profile_picture: string | null;
-  };
-  cafe?: {
-    name: string;
-  };
+  profile?: { username: string; profile_picture: string | null };
+  cafe?: { name: string };
 };
 
 export type ReviewWithMeta = {
@@ -32,13 +26,9 @@ export type ReviewWithMeta = {
   updated_at: string | null;
   likes: number;
   isLiked: boolean;
-  profile: {
-    username: string;
-    profile_picture: string | null;
-  } | null;
+  profile: { username: string; profile_picture: string | null } | null;
 };
 
-// Profile screen uses this shape
 export type ProfileReview = {
   id: string;
   cafeId: number;
@@ -46,11 +36,30 @@ export type ProfileReview = {
   cafeAvatar: string | null;
   rating: number;
   comment: string;
-  date: string;
+  // Raw timestamps — always format these in the UI via formatReviewDate()
+  created_at: string;
+  updated_at: string | null;
   likes: number;
   isLiked: boolean;
   imageUrls: string[];
 };
+
+// ─── Shared date formatter (use in BOTH cafe and profile review cards) ────────
+// Output: "May 3, 2026" or "May 3, 2026 (edited on May 4, 2026)"
+
+export function formatReviewDate(
+  created_at: string,
+  updated_at: string | null,
+): string {
+  const fmt = (iso: string) =>
+    new Date(iso).toLocaleDateString("en-PH", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  if (!updated_at) return fmt(created_at);
+  return `${fmt(created_at)} (edited on ${fmt(updated_at)})`;
+}
 
 // ─── Shared storage helper ────────────────────────────────────────────────────
 
@@ -58,26 +67,16 @@ async function deleteFile(bucket: string, path: string) {
   await supabase.storage.from(bucket).remove([path]);
 }
 
-// ─── Fetch reviews for a cafe (with upvote counts + liked status) ─────────────
+// ─── Fetch reviews for a cafe ─────────────────────────────────────────────────
 
 export async function getReviewsByCafe(
   cafeId: number,
   currentUserId: string,
 ): Promise<ReviewWithMeta[]> {
-  // Step 1: Fetch reviews (no join)
   const { data: reviews, error } = await supabase
     .from("review")
     .select(
-      `
-      id,
-      cafe_id,
-      user_id,
-      rating,
-      comment,
-      images_url,
-      created_at,
-      updated_at
-      `,
+      `id, cafe_id, user_id, rating, comment, images_url, created_at, updated_at`,
     )
     .eq("cafe_id", cafeId)
     .order("created_at", { ascending: false });
@@ -85,7 +84,6 @@ export async function getReviewsByCafe(
   if (error) throw error;
   if (!reviews || reviews.length === 0) return [];
 
-  // Step 2: Fetch profiles for all unique user_ids
   const userIds = [...new Set(reviews.map((r) => r.user_id))];
   const { data: profiles } = await supabase
     .from("profile")
@@ -103,7 +101,6 @@ export async function getReviewsByCafe(
     };
   }
 
-  // Step 3: Fetch upvotes
   const reviewIds = reviews.map((r) => r.id);
   const { data: upvoteData } = await supabase
     .from("review_upvotes")
@@ -117,9 +114,7 @@ export async function getReviewsByCafe(
   for (const upvote of upvotes) {
     const rid = upvote.review_id as number;
     likesCountMap[rid] = (likesCountMap[rid] ?? 0) + 1;
-    if (upvote.user_id === currentUserId) {
-      likedByUserSet.add(rid);
-    }
+    if (upvote.user_id === currentUserId) likedByUserSet.add(rid);
   }
 
   return reviews.map((r) => ({
@@ -146,16 +141,7 @@ export async function getReviewsByUser(
   const { data, error } = await supabase
     .from("review")
     .select(
-      `
-      id,
-      cafe_id,
-      rating,
-      comment,
-      images_url,
-      created_at,
-      updated_at,
-      cafe:cafe_id ( name, avatar_url )
-    `,
+      `id, cafe_id, rating, comment, images_url, created_at, updated_at, cafe:cafe_id ( name, avatar_url )`,
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -163,7 +149,6 @@ export async function getReviewsByUser(
   if (error) throw error;
 
   const reviewIds = (data ?? []).map((r) => r.id);
-
   const { data: upvoteData } = await supabase
     .from("review_upvotes")
     .select("review_id, user_id")
@@ -177,17 +162,12 @@ export async function getReviewsByUser(
   for (const upvote of upvotes) {
     const rid = String(upvote.review_id);
     likesCountMap[rid] = (likesCountMap[rid] ?? 0) + 1;
-    if (upvote.user_id === viewerId) {
-      likedByUserSet.add(rid);
-    }
+    if (upvote.user_id === viewerId) likedByUserSet.add(rid);
   }
 
   return (data ?? []).map((r) => {
     const cafe = Array.isArray(r.cafe) ? r.cafe[0] : r.cafe;
-    const isEdited = r.updated_at !== null;
-    const displayDate = isEdited ? r.updated_at : r.created_at;
     const rid = String(r.id);
-
     return {
       id: rid,
       cafeId: r.cafe_id,
@@ -195,7 +175,8 @@ export async function getReviewsByUser(
       cafeAvatar: cafe?.avatar_url ?? null,
       rating: r.rating,
       comment: r.comment ?? "",
-      date: `${formatDate(displayDate)}${isEdited ? " (edited)" : ""}`,
+      created_at: r.created_at,
+      updated_at: r.updated_at ?? null,
       likes: likesCountMap[rid] ?? 0,
       isLiked: likedByUserSet.has(rid),
       imageUrls: Array.isArray(r.images_url) ? r.images_url : [],
@@ -203,7 +184,7 @@ export async function getReviewsByUser(
   });
 }
 
-// ─── Toggle upvote (profile screen) ──────────────────────────────────────────
+// ─── Toggle upvote (string reviewId — profile screen) ────────────────────────
 
 export async function toggleUpvote(
   reviewId: string,
@@ -215,9 +196,7 @@ export async function toggleUpvote(
     .eq("review_id", reviewId)
     .eq("user_id", userId)
     .maybeSingle();
-
   if (fetchError) throw fetchError;
-
   if (existing) {
     const { error } = await supabase
       .from("review_upvotes")
@@ -232,7 +211,7 @@ export async function toggleUpvote(
   }
 }
 
-// ─── Toggle upvote (cafe profile screen) ─────────────────────────────────────
+// ─── Toggle upvote (numeric reviewId — cafe screen) ──────────────────────────
 
 export async function toggleCafeReviewUpvote(
   reviewId: number,
@@ -244,9 +223,7 @@ export async function toggleCafeReviewUpvote(
     .eq("review_id", reviewId)
     .eq("user_id", userId)
     .maybeSingle();
-
   if (fetchError) throw fetchError;
-
   if (existing) {
     const { error } = await supabase
       .from("review_upvotes")
@@ -273,7 +250,6 @@ export async function createReview(payload: {
     data: { session },
   } = await supabase.auth.getSession();
   if (!session) throw new Error("Not authenticated");
-
   const { data, error } = await supabase
     .from("review")
     .insert({
@@ -285,7 +261,6 @@ export async function createReview(payload: {
     })
     .select()
     .single();
-
   if (error) throw error;
   return data;
 }
@@ -298,20 +273,15 @@ export async function deleteReview(reviewId: string): Promise<void> {
     .select("images_url")
     .eq("id", reviewId)
     .single();
-
   if (fetchError) throw fetchError;
-
   if (review?.images_url && Array.isArray(review.images_url)) {
     await Promise.all(
       review.images_url.map(async (url: string) => {
         const filename = url.split("/").pop()?.split("?")[0];
-        if (filename) {
-          await deleteFile("posts", `reviews/${filename}`);
-        }
+        if (filename) await deleteFile("posts", `reviews/${filename}`);
       }),
     );
   }
-
   const { error } = await supabase.from("review").delete().eq("id", reviewId);
   if (error) throw error;
 }
@@ -334,7 +304,7 @@ export async function editReview(
   if (error) throw error;
 }
 
-// ─── Upload a review image to storage ────────────────────────────────────────
+// ─── Upload a review image ────────────────────────────────────────────────────
 
 export async function uploadReviewImage(
   reviewId: number,
@@ -344,21 +314,18 @@ export async function uploadReviewImage(
     data: { session },
   } = await supabase.auth.getSession();
   if (!session) throw new Error("Not authenticated");
-
   const response = await fetch(localUri);
   const blob = await response.blob();
-
   const ext = localUri.split(".").pop()?.split("?")[0] ?? "jpg";
   const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const path = `reviews/${reviewId}/${fileName}`;
-
-  const { error } = await supabase.storage.from("posts").upload(path, blob, {
-    contentType: blob.type || "image/jpeg",
-    upsert: false,
-  });
-
+  const { error } = await supabase.storage
+    .from("posts")
+    .upload(path, blob, {
+      contentType: blob.type || "image/jpeg",
+      upsert: false,
+    });
   if (error) throw error;
-
   const { data } = supabase.storage.from("posts").getPublicUrl(path);
   return data.publicUrl;
 }

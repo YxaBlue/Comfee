@@ -20,6 +20,7 @@ import { supabase } from "@/app/shared/lib/supabaseClient";
 import { useRoute } from "@react-navigation/native";
 import {
   deleteReview,
+  formatReviewDate,
   getReviewsByCafe,
   ReviewWithMeta,
   toggleCafeReviewUpvote,
@@ -147,6 +148,10 @@ function StarRating({ rating }: { rating: number }) {
 
 // ─── Review Card ──────────────────────────────────────────────────────────────
 
+// ─── ReviewCard (drop-in replacement for the one in CafeProfileScreen) ───────
+// Import formatReviewDate alongside the other reviewService imports:
+//   import { ..., formatReviewDate } from "../../../shared/modals/reviewService";
+
 function ReviewCard({
   review,
   isOwn,
@@ -171,7 +176,6 @@ function ReviewCard({
 
   const images = review.images_url ?? [];
   const hasImages = images.length > 0;
-  const isEdited = review.updated_at !== null;
 
   const columns = cardWidth < 480 ? 1 : cardWidth < 800 ? 2 : 3;
   const gap = 6;
@@ -180,13 +184,8 @@ function ReviewCard({
   const imageHeight = Math.round(imageWidth * 0.68);
   const isNarrow = columns === 1;
 
-  const displayDate = new Date(
-    isEdited && review.updated_at ? review.updated_at : review.created_at,
-  ).toLocaleDateString("en-PH", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  // ✅ Always show created_at; append "(edited on <date>)" if updated_at exists
+  const displayDate = formatReviewDate(review.created_at, review.updated_at);
 
   const openMenu = () => {
     setMenuOpen(true);
@@ -218,7 +217,6 @@ function ReviewCard({
     >
       {/* Header */}
       <View style={reviewCardStyles.header}>
-        {/* Avatar — tappable to navigate to profile */}
         <TouchableOpacity
           onPress={() =>
             review.user_id ? onNavigateToProfile(review.user_id) : undefined
@@ -239,25 +237,15 @@ function ReviewCard({
           </View>
         </TouchableOpacity>
 
+        {/* ✅ Meta block is a plain View — only username text is tappable */}
         <View style={reviewCardStyles.meta}>
-          {/* Username — also tappable */}
-          <TouchableOpacity
-            onPress={() =>
-              review.user_id ? onNavigateToProfile(review.user_id) : undefined
-            }
-            disabled={!review.user_id}
-            activeOpacity={0.75}
-          >
-            <Text style={reviewCardStyles.userName}>
-              {review.profile?.username ?? "Anonymous"}
-              {isOwn && <Text style={reviewCardStyles.youBadge}> (you)</Text>}
-            </Text>
-          </TouchableOpacity>
-          <StarRating rating={review.rating} />
-          <Text style={reviewCardStyles.date}>
-            {displayDate}
-            {isEdited ? " (edited)" : ""}
+          <Text style={reviewCardStyles.userName}>
+            {review.profile?.username ?? "Anonymous"}
+            {isOwn && <Text style={reviewCardStyles.youBadge}> (you)</Text>}
           </Text>
+          {/* Stars and date are plain — NOT tappable */}
+          <StarRating rating={review.rating} />
+          <Text style={reviewCardStyles.date}>{displayDate}</Text>
         </View>
 
         {/* Three-dot menu */}
@@ -276,10 +264,7 @@ function ReviewCard({
             <Animated.View
               style={[
                 reviewCardStyles.dropdownMenu,
-                {
-                  opacity: menuAnim,
-                  transform: [{ scale: menuScale }],
-                },
+                { opacity: menuAnim, transform: [{ scale: menuScale }] },
               ]}
             >
               {isOwn ? (
@@ -401,7 +386,7 @@ function ReviewCard({
         </View>
       )}
 
-      {/* Likes — filled icon when current user already liked */}
+      {/* Likes */}
       <Pressable
         style={({ pressed }) => [
           reviewCardStyles.likesRow,
