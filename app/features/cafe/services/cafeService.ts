@@ -205,7 +205,21 @@ export type CafeDetail = {
   closing_time: string | null;
   opening_days: string[] | null;
   info: string | null;
+  // ── Amenities ──
+  wifi_speed: "None" | "Slow" | "Moderate" | "Fast" | null;
+  sockets: "None" | "Some" | "Many" | null;
+  parking: "None" | "Limited" | "Plenty" | null;
+  lighting: "Dim" | "Balanced" | "Bright" | null;
+  seating: string[];
+  tables_type: string[];
+  music: "Quiet" | "Normal" | "Blaring" | null;
+  pet_friendly: boolean;
+  suitable_for: string[];
+  coffee_bean_type: string[];
+  coffee_brew_method: string[];
+  price_level: "P" | "PP" | "PPP" | null;
 };
+
 const WEEKDAY_MAP: Record<number, string> = {
   0: "Sunday",
   1: "Monday",
@@ -217,18 +231,27 @@ const WEEKDAY_MAP: Record<number, string> = {
 };
 
 export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
-  const { data, error } = await supabase
-    .from("cafe")
-    .select(
-      `
-      id, name, address, email, phone,
-      review ( rating ), avatar_url, main_photo_url,
-      cafe_hours (weekday, open_time, close_time) ,
-      info
-    `,
-    )
-    .eq("id", Number(cafeId))
-    .single();
+  const [{ data, error }, { data: amenitiesData }] = await Promise.all([
+    supabase
+      .from("cafe")
+      .select(
+        `
+        id, name, address, email, phone,
+        review ( rating ), avatar_url, main_photo_url,
+        cafe_hours (weekday, open_time, close_time),
+        info
+      `,
+      )
+      .eq("id", Number(cafeId))
+      .single(),
+    supabase
+      .from("cafe_amenities")
+      .select(
+        "music, wifi_speed, sockets, parking, lighting, pet_friendly, price_level, coffee_brew_method, seating, tables_type, suitable_for, coffee_bean_type",
+      )
+      .eq("cafe_id", Number(cafeId))
+      .maybeSingle(),
+  ]);
 
   if (error) {
     console.log("Supabase error:", JSON.stringify(error));
@@ -246,13 +269,10 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
         ) / 10
       : 0;
 
-  //opening hours
   const hours: { weekday: number; open_time: string; close_time: string }[] =
     data.cafe_hours ?? [];
-
   const opening_days = hours.map((h) => WEEKDAY_MAP[h.weekday]).filter(Boolean);
-
-  const opening_time = hours[0]?.open_time?.slice(0, 5) ?? null; // "08:00"
+  const opening_time = hours[0]?.open_time?.slice(0, 5) ?? null;
   const closing_time = hours[0]?.close_time?.slice(0, 5) ?? null;
 
   return {
@@ -271,5 +291,18 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
     closing_time,
     opening_days,
     info: data.info ?? null,
+    // ── Amenities (null-safe if no row in cafe_amenities yet) ──
+    wifi_speed: amenitiesData?.wifi_speed ?? null,
+    sockets: amenitiesData?.sockets ?? null,
+    parking: amenitiesData?.parking ?? null,
+    lighting: amenitiesData?.lighting ?? null,
+    seating: amenitiesData?.seating ?? [],
+    tables_type: amenitiesData?.tables_type ?? [],
+    music: amenitiesData?.music ?? null,
+    pet_friendly: amenitiesData?.pet_friendly ?? false,
+    suitable_for: amenitiesData?.suitable_for ?? [],
+    coffee_bean_type: amenitiesData?.coffee_bean_type ?? [],
+    coffee_brew_method: amenitiesData?.coffee_brew_method ?? [],
+    price_level: amenitiesData?.price_level ?? null,
   };
 }

@@ -72,8 +72,8 @@ type Amenities = {
 };
 
 type Coffee = {
-  BeanType: ("Arabica" | "Robusta" | "Liberica (Barako)" | "Excelsa")[];
-  BrewMethod: ("Espresso" | "Drip" | "French Press" | "Pour Over" | "Cold Brew")[];
+  BeanType: ("arabica" | "robusta" | "liberica (Barako)" | "excelsa")[];
+  BrewMethod: ("espresso" | "drip" | "french-press" | "pour Over" | "cold-brew")[];
 }
 
 type PriceLevel = {
@@ -117,10 +117,10 @@ const MOCK_POSTS: Post[] = [
   },
 ];
 
-const MOCK_COFFEE: Coffee = {
-  BeanType: ["Arabica", "Liberica (Barako)"],
-  BrewMethod: ["Espresso", "Pour Over", "Cold Brew"],
-};
+// const MOCK_COFFEE: Coffee = {
+//   BeanType: ["Arabica", "Liberica (Barako)"],
+//   BrewMethod: ["Espresso", "Pour Over", "Cold Brew"],
+// };
 
 const MOCK_PRICE: PriceLevel = {
   PriceRange: "PP",
@@ -1492,10 +1492,25 @@ export default function CafeProfileScreen({ navigation }: Props) {
 
             {activeTab === "Cafe-Ammenities-Menu" && (
               <AmenitiesMenuTab
-                amenities={MOCK_AMENITIES}
+                amenities={{
+                  WiFi: cafe.wifi_speed as Amenities["WiFi"],
+                  Sockets: cafe.sockets as Amenities["Sockets"],
+                  Parking: cafe.parking as Amenities["Parking"],
+                  Lighting: cafe.lighting as Amenities["Lighting"],
+                  Seating: (cafe.seating[0] as Amenities["Seating"]) ?? null,
+                  Tables: (cafe.tables_type[0] as Amenities["Tables"]) ?? null,
+                  Music: cafe.music as Amenities["Music"],
+                  PetFriendly: cafe.pet_friendly,
+                  SuitableConditions: cafe.suitable_for as Amenities["SuitableConditions"],
+                }}
                 menuURLs={cafe.menu_urls}
-                coffee={MOCK_COFFEE}
-                price={MOCK_PRICE}
+                coffee={{
+                  BeanType: cafe.coffee_bean_type as Coffee["BeanType"],
+                  BrewMethod: cafe.coffee_brew_method as Coffee["BrewMethod"],
+                }}
+                price={{
+                  PriceRange: cafe.price_level as PriceLevel["PriceRange"],
+                }}
               />
             )}
           </View>
