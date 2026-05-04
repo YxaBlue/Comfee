@@ -57,6 +57,7 @@ type FaveCafe = {
   cafeId: number | null;
   name: string;
   location: string;
+  mainPhotoUrl: string | null;
 };
 
 const AVATAR_SIZE = 106;
@@ -169,9 +170,7 @@ function ReviewCard({
       )}
 
       {/* ── Header ── */}
-      {/* ✅ Plain View — no TouchableOpacity wrapper around the whole row */}
       <View style={styles.reviewCardHeader}>
-        {/* ✅ Only the cafe icon navigates */}
         <TouchableOpacity onPress={navigateToCafe} activeOpacity={0.75}>
           <View style={styles.cafeAvatarSmall}>
             {review.cafeAvatar ? (
@@ -321,40 +320,43 @@ function ProfileSkeleton() {
 
 function FaveCard({
   cafe,
-  onRemove,
-  isRemoving,
-  readonly,
+  navigation,
 }: {
   cafe: FaveCafe;
-  onRemove?: (favoriteId: string) => void;
-  isRemoving?: boolean;
   readonly?: boolean;
+  navigation: NativeStackNavigationProp<RootStackParamList, "Profile">;
 }) {
+  const navigateToCafe = () => {
+    if (cafe.cafeId)
+      navigation.navigate("CafeProfile", { cafeId: String(cafe.cafeId) });
+  };
+
   return (
     <View style={styles.favoriteCard}>
-      <View style={styles.favoriteImagePlaceholder} />
+      <TouchableOpacity
+        onPress={navigateToCafe}
+        activeOpacity={0.85}
+        style={styles.favoritePhotoWrapper}
+      >
+        {cafe.mainPhotoUrl ? (
+          <Image
+            source={{ uri: cafe.mainPhotoUrl }}
+            style={styles.favoritePhoto}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={[styles.favoritePhoto, styles.favoritePhotoFallback]}>
+            <MaterialIcons name="local-cafe" size={28} color="#C8A97A" />
+          </View>
+        )}
+      </TouchableOpacity>
       <View style={styles.favoriteInfo}>
         <Text style={styles.favoriteName}>{cafe.name}</Text>
         <View style={styles.locationRow}>
-          <MaterialIcons name="location-on" size={16} color="#E9D0A2" />
+          <MaterialIcons name="location-on" size={14} color="#A97C4E" />
           <Text style={styles.favoriteLocation}>{cafe.location}</Text>
         </View>
       </View>
-      {!readonly && onRemove && (
-        <TouchableOpacity
-          onPress={() => onRemove(cafe.id)}
-          disabled={isRemoving}
-          accessibilityRole="button"
-          accessibilityLabel={`Remove ${cafe.name} from favorites`}
-        >
-          {isRemoving ? (
-            <ActivityIndicator size="small" color="#6B4F2E" />
-          ) : (
-            <MaterialIcons name="favorite" size={20} color="#6B4F2E" />
-          )}
-        </TouchableOpacity>
-      )}
-      {readonly && <MaterialIcons name="favorite" size={20} color="#C4A882" />}
     </View>
   );
 }
@@ -442,7 +444,9 @@ export default function ProfileScreen({ navigation }: Props) {
     try {
       const { data, error } = await supabase
         .from("favorite_cafes")
-        .select(`id, cafe_id, cafe:cafe_id ( id, name, address, city )`)
+        .select(
+          `id, cafe_id, cafe:cafe_id ( id, name, address, city, main_photo_url )`,
+        )
         .eq("user_id", uid)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -458,6 +462,7 @@ export default function ProfileScreen({ navigation }: Props) {
               cafeId: favorite.cafe_id,
               name: cafe.name,
               location: cafe.address || cafe.city || "Location unavailable",
+              mainPhotoUrl: cafe.main_photo_url ?? null,
             },
           ];
         }) ?? [];
@@ -1031,9 +1036,7 @@ export default function ProfileScreen({ navigation }: Props) {
                     <FaveCard
                       key={cafe.id}
                       cafe={cafe}
-                      onRemove={isOwnProfile ? handleRemoveFavorite : undefined}
-                      isRemoving={removingFavoriteId === cafe.id}
-                      readonly={!isOwnProfile}
+                      navigation={navigation}
                     />
                   ))
                 )}
@@ -1682,35 +1685,71 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFAF3",
-    marginHorizontal: 10,
+    marginHorizontal: 4,
     marginBottom: 12,
-    padding: 12,
-    borderRadius: 12,
-    elevation: 2,
+    borderRadius: 16,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#ECD9BE",
+    shadowColor: "#8C6D4F",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  favoritePhotoWrapper: {
+    width: 90,
+    height: 90,
+    flexShrink: 0,
+  },
+  favoritePhoto: {
+    width: 90,
     height: 90,
   },
-  favoriteImagePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
-    backgroundColor: "#E5D3B3",
-    marginRight: 12,
+  favoritePhotoFallback: {
+    backgroundColor: "#ECD9BE",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  favoriteInfo: { flex: 1 },
+  favoriteInfo: {
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 3,
+  },
   favoriteName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#4E342E",
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#3B2A1A",
     fontFamily: "SourceSerifPro-Regular",
+    flexWrap: "wrap",
   },
   favoriteLocation: {
-    fontSize: 14,
+    fontSize: 12,
     color: "#8C6D4F",
-    marginTop: 2,
     marginLeft: 2,
     fontFamily: "SourceSerifPro-Regular",
+    flexShrink: 1,
+    flexWrap: "wrap",
   },
-  locationRow: { flexDirection: "row", marginTop: 3 },
+  locationRow: { flexDirection: "row", alignItems: "center", marginTop: 2 },
+  removeFromFavBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 8,
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: "#FAE9E7",
+  },
+  removeFromFavText: {
+    fontSize: 11,
+    color: "#C0392B",
+    fontWeight: "600",
+    fontFamily: "SourceSerifPro-Regular",
+  },
   modalOverlay: {
     position: "absolute",
     top: 0,
