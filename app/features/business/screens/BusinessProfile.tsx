@@ -4,6 +4,7 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
+  Alert,
   Image,
   ImageBackground,
   ScrollView,
@@ -13,6 +14,7 @@ import {
   View,
 } from "react-native";
 
+import * as ImagePicker from "expo-image-picker";
 import { useBusinessProfile } from "../../../../hooks/useBusinessProfile";
 import BusinessInfoTab from "./components/BusinessInfoTab";
 
@@ -23,7 +25,48 @@ export default function BusinessProfile() {
   const [activeTab, setActiveTab] = useState<"info" | "posts" | "reviews">(
     "info",
   );
-  const { profile, loading, error } = useBusinessProfile();
+  const {
+    profile,
+    loading,
+    error,
+    updateProfile,
+    updateAvatar,
+    updateCoverPhoto,
+  } = useBusinessProfile();
+
+  // Add this handler:
+  const handleAvatarEdit = async () => {
+    console.log("Avatar tapped");
+
+    // ✅ Skip Alert, go straight to picker
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    console.log("Result:", JSON.stringify(result));
+
+    if (!result.canceled) {
+      console.log("URI:", result.assets[0].uri);
+      const { error } = await updateAvatar(result.assets[0].uri);
+      console.log("Upload error:", error);
+      if (error) Alert.alert("Upload failed", error);
+    }
+  };
+
+  const handleCoverEdit = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [16, 9], // ← landscape ratio for cover
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      const { error } = await updateCoverPhoto(result.assets[0].uri);
+      if (error) Alert.alert("Upload failed", error);
+    }
+  };
 
   return (
     <ImageBackground
@@ -53,8 +96,42 @@ export default function BusinessProfile() {
 
       <ScrollView>
         <View style={styles.wrapper}>
-          <View style={styles.coverPhoto}></View>
-          <View style={styles.businessProf}></View>
+          <TouchableOpacity style={styles.coverPhoto} onPress={handleCoverEdit}>
+            {profile?.main_photo_url ? (
+              <Image
+                key={profile.main_photo_url}
+                source={{ uri: profile.main_photo_url }}
+                style={styles.coverImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.coverPlaceholder}>
+                <MaterialIcons name="add-a-photo" size={28} color="#8C6D4F" />
+                <Text style={styles.coverPlaceholderText}>Add Cover Photo</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.businessProf}
+            onPress={handleAvatarEdit}
+          >
+            {profile?.avatar_url ? (
+              <Image
+                key={profile.avatar_url}
+                source={{ uri: profile.avatar_url }}
+                style={styles.avatarImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <MaterialIcons name="store" size={40} color="#8C6D4F" />
+            )}
+            {/* Camera edit badge */}
+            <View style={styles.avatarBadge}>
+              <MaterialIcons name="camera-alt" size={12} color="#fff" />
+            </View>
+          </TouchableOpacity>
+
           <View style={styles.infoHolder}>
             <Text style={styles.cafeName}>{profile?.name ?? "Loading..."}</Text>
             <View style={styles.locRow}>
@@ -95,6 +172,7 @@ export default function BusinessProfile() {
               profile={profile}
               loading={loading}
               error={error}
+              updateProfile={updateProfile}
             />
           )}
           {activeTab === "posts" && <Text>Posts coming soon</Text>}
@@ -193,7 +271,8 @@ const styles = StyleSheet.create({
     marginLeft: 30,
     borderColor: "#E9D0A2",
     borderWidth: 1,
-    zIndex: 3,
+    zIndex: 10,
+    elevation: 10,
   },
 
   infoHolder: {
@@ -236,5 +315,41 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     gap: 150,
     marginTop: -32,
+  },
+  avatarImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  avatarBadge: {
+    position: "absolute",
+    bottom: 2,
+    right: 2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "#8C6D4F",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#E9D0A2",
+  },
+
+  coverImage: {
+    width: "100%",
+    height: "100%",
+    borderBottomLeftRadius: 15,
+    borderBottomRightRadius: 15,
+  },
+  coverPlaceholder: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 4,
+  },
+  coverPlaceholderText: {
+    fontSize: 12,
+    color: "#8C6D4F",
+    fontFamily: "SourceSerifPro-Regular",
   },
 });

@@ -119,7 +119,7 @@ export async function getCafesWithFeatures(): Promise<CafeWithFeatures[]> {
       name,
       address,
       city,
-      main_photo_url,
+      avatar_url,
       featured,
       review ( rating )
     `,
@@ -166,7 +166,7 @@ export async function getCafesWithFeatures(): Promise<CafeWithFeatures[]> {
       name: cafe.name,
       address: cafe.address,
       city: cafe.city,
-      main_photo_url: cafe.main_photo_url,
+      main_photo_url: cafe.avatar_url,
       featured: cafe.featured,
       average_rating,
       features: featuresByCafeId.get(cafe.id) ?? null,
@@ -212,7 +212,7 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
     .select(
       `
       id, name, address, email, phone,
-      review ( rating )
+      review ( rating ), avatar_url, main_photo_url
       
     `,
     )
@@ -239,10 +239,10 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
     id: data.id,
     name: data.name,
     address: data.address,
-    email: null,
-    phone: null,
-    avatar_url: null,
-    cover_photo_url: null,
+    email: data.email ?? null,
+    phone: data.phone ?? null,
+    avatar_url: data.avatar_url ?? null,
+    cover_photo_url: data.main_photo_url ?? null,
     menu_urls: null,
     average_rating,
     review_count: ratings.length,
