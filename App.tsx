@@ -1,6 +1,6 @@
 import {
-    NavigationContainer,
-    NavigationContainerRef,
+  NavigationContainer,
+  NavigationContainerRef,
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import * as Linking from "expo-linking";
@@ -13,7 +13,7 @@ import LoginScreen from "./app/features/auth/screens/Login";
 import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
 import BusinessProfile from "./app/features/business/screens/BusinessProfile";
 import CafeCard from "./app/features/cafe/screens/CafeCard";
-import CafeProfileScreen from "./app/features/cafe/screens/CafeProfile2";
+import CafeProfileScreen from "./app/features/cafe/screens/cafeProfile";
 import FilteredCafes from "./app/features/cafe/screens/DashboardFilter";
 import FilterScreen from "./app/features/cafe/screens/Filter";
 import SearchScreen from "./app/features/cafe/screens/Search";
@@ -66,8 +66,6 @@ export type RootStackParamList = {
 };
 
 const linking = {
-  // comfeeproject:// → standalone/bare builds
-  // exp+ComfeeProject:// → Expo Go (slug is case-sensitive, matches app.json)
   prefixes: ["comfeeproject://", "exp+ComfeeProject://"],
   config: {
     screens: {
