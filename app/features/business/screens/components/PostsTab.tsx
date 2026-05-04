@@ -11,12 +11,11 @@ import {
     View,
 } from "react-native";
 import { useCafePosts } from "../../../../../hooks/useCafePosts";
-import AddPostModal from "./AddPostModal";
 
 const CAFE_ID = 4; // same hardcoded ID you're using elsewhere
 
 export default function PostsTab() {
-  const { posts, loading, error, addPost, likePost } = useCafePosts(CAFE_ID);
+  const { posts, loading, error, likePost } = useCafePosts(CAFE_ID);
   const [modalVisible, setModalVisible] = useState(false);
 
   if (loading) {
@@ -76,20 +75,6 @@ export default function PostsTab() {
           </View>
         ))}
       </ScrollView>
-
-      {/* FAB — triggers modal */}
-      <TouchableOpacity
-        style={styles.addPost}
-        onPress={() => setModalVisible(true)}
-      >
-        <MaterialIcons name="add" size={25} color="#8C6D4F" />
-      </TouchableOpacity>
-
-      <AddPostModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        onSubmit={addPost}
-      />
     </View>
   );
 }
@@ -141,20 +126,5 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 10,
     right: 10,
-  },
-  addPost: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "#E9D0A2",
-    justifyContent: "center",
-    alignItems: "center",
-    position: "absolute",
-    bottom: 20,
-    right: 20,
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
   },
 });
