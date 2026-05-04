@@ -2,7 +2,7 @@ import { RootStackParamList } from "@/App";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Alert,
   Image,
@@ -14,9 +14,12 @@ import {
   View,
 } from "react-native";
 
+import { useCafePosts } from "@/hooks/useCafePosts";
 import * as ImagePicker from "expo-image-picker";
 import { useBusinessProfile } from "../../../../hooks/useBusinessProfile";
+import AddPostModal from "./components/AddPostModal";
 import BusinessInfoTab from "./components/BusinessInfoTab";
+import PostsTab from "./components/PostsTab";
 
 type NavProps = NativeStackNavigationProp<RootStackParamList, "ProfileBusi">;
 
@@ -25,6 +28,12 @@ export default function BusinessProfile() {
   const [activeTab, setActiveTab] = useState<"info" | "posts" | "reviews">(
     "info",
   );
+  const [isEditing, setIsEditing] = useState(false);
+  const saveRef = useRef<() => Promise<void>>(() => Promise.resolve());
+
+  const [postModalVisible, setPostModalVisible] = useState(false);
+  const { addPost } = useCafePosts(4); // ← hardcoded cafe ID for now
+
   const {
     profile,
     loading,
@@ -173,15 +182,60 @@ export default function BusinessProfile() {
               loading={loading}
               error={error}
               updateProfile={updateProfile}
+              isEditing={isEditing}
+              setIsEditing={setIsEditing}
+              onSaveRef={(fn) => {
+                saveRef.current = fn;
+              }}
             />
           )}
-          {activeTab === "posts" && <Text>Posts coming soon</Text>}
+          {activeTab === "posts" && <PostsTab />}
           {activeTab === "reviews" && <Text>Reviews coming soon</Text>}
         </View>
       </ScrollView>
+      {activeTab === "info" &&
+        (isEditing ? (
+          <View style={styles.fabRow}>
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setIsEditing(false)}
+            >
+              <MaterialIcons name="close" size={20} color="#8C6D4F" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.saveButton}
+              onPress={() => saveRef.current()}
+            >
+              <MaterialIcons name="check" size={20} color="#8C6D4F" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => setIsEditing(true)}
+          >
+            <MaterialIcons name="edit" size={20} color="#8C6D4F" />
+          </TouchableOpacity>
+        ))}
+
+      {activeTab === "posts" && (
+        <TouchableOpacity
+          style={styles.addPost}
+          onPress={() => setPostModalVisible(true)} // ← new state
+        >
+          <MaterialIcons name="add" size={25} color="#8C6D4F" />
+        </TouchableOpacity>
+      )}
+
+      <AddPostModal
+        visible={postModalVisible}
+        onClose={() => setPostModalVisible(false)}
+        onSubmit={addPost}
+      />
     </ImageBackground>
   );
 }
+
 const styles = StyleSheet.create({
   background: {
     flex: 1,
@@ -351,5 +405,69 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#8C6D4F",
     fontFamily: "SourceSerifPro-Regular",
+  },
+
+  // ── FAB styles ──────────────────────────────────────────────────────
+  editButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#E9D0A2",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "absolute",
+    bottom: 30,
+    right: 20,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  fabRow: {
+    flexDirection: "row",
+    gap: 12,
+    position: "absolute",
+    bottom: 30,
+    right: 20,
+  },
+  cancelButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#f5dede",
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  saveButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#d4edda",
+    justifyContent: "center",
+    alignItems: "center",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+  },
+  addPost: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#E9D0A2",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "absolute",
+
+    bottom: 20,
+    right: 20,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
 });

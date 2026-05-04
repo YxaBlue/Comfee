@@ -1,13 +1,12 @@
 import type { BusinessProfile } from "@/hooks/useBusinessProfile";
 import { MaterialIcons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from "react-native";
 
@@ -18,6 +17,9 @@ type Props = {
   updateProfile: (
     updates: Partial<BusinessProfile>,
   ) => Promise<{ error: string | null }>;
+  isEditing: boolean;
+  setIsEditing: (v: boolean) => void;
+  onSaveRef?: (fn: () => Promise<void>) => void;
 };
 
 // ─── Read-only row ───────────────────────────────────────────────────────────
@@ -58,31 +60,28 @@ export default function BusinessInfoTab({
   loading,
   error,
   updateProfile,
+  isEditing,
+  setIsEditing,
+  onSaveRef,
 }: Props) {
-  const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Local draft state
   const [draft, setDraft] = useState<Partial<BusinessProfile>>({});
 
-  const startEditing = () => {
-    if (!profile) return;
-    setDraft({
-      info: profile.info,
-      address: profile.address,
-      city: profile.city,
-      phone: profile.phone,
-      landline: profile.landline,
-      email: profile.email,
-      branches: profile.branches,
-    });
-    setIsEditing(true);
-  };
-
-  const cancelEditing = () => {
-    setDraft({});
-    setIsEditing(false);
-  };
+  useEffect(() => {
+    if (isEditing && profile) {
+      setDraft({
+        info: profile.info,
+        address: profile.address,
+        city: profile.city,
+        phone: profile.phone,
+        landline: profile.landline,
+        email: profile.email,
+        branches: profile.branches,
+      });
+    }
+  }, [isEditing]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -97,16 +96,23 @@ export default function BusinessInfoTab({
     }
   };
 
+  useEffect(() => {
+    if (onSaveRef) onSaveRef(handleSave);
+  }, [draft]);
+
+  const cancelEditing = () => {
+    setDraft({});
+    setIsEditing(false);
+  };
+
   const set = (field: keyof BusinessProfile) => (value: string) =>
     setDraft((prev) => ({ ...prev, [field]: value || null }));
 
-  // ─── Display values: draft when editing, profile when not ─────────────────
   const val = (field: keyof BusinessProfile) =>
     isEditing
       ? (draft[field] as string | null)
       : (profile?.[field] as string | null);
 
-  // ─── Loading / error states ───────────────────────────────────────────────
   if (loading) {
     return (
       <View style={styles.center}>
@@ -225,33 +231,6 @@ export default function BusinessInfoTab({
           </Text>
         )}
       </View>
-
-      {/* ── FAB area: edit / save / cancel ────────────────────────────────── */}
-      {isEditing ? (
-        <View style={styles.fabRow}>
-          {/* Cancel */}
-          <TouchableOpacity style={styles.cancelButton} onPress={cancelEditing}>
-            <MaterialIcons name="close" size={20} color="#8C6D4F" />
-          </TouchableOpacity>
-
-          {/* Save */}
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={handleSave}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color="#8C6D4F" />
-            ) : (
-              <MaterialIcons name="check" size={20} color="#8C6D4F" />
-            )}
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <TouchableOpacity style={styles.editButton} onPress={startEditing}>
-          <MaterialIcons name="edit" size={20} color="#8C6D4F" />
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
