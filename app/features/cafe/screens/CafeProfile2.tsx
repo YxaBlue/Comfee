@@ -1,5 +1,5 @@
 import { RootStackParamList } from "@/App";
-import ReportModal from "@/app/shared/modals/reportModal"; // ← adjust path to match your project
+import ReportModal from "@/app/shared/modals/reportModal";
 import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -128,7 +128,15 @@ const DAY_SHORT: Record<string, string> = {
 
 // ─── Star Rating (display only) ───────────────────────────────────────────────
 
-function StarRating({ rating }: { rating: number }) {
+function StarRating({
+  rating,
+  size = 13,
+  color = "#C8863A",
+}: {
+  rating: number;
+  size?: number;
+  color?: string;
+}) {
   return (
     <View style={starStyles.row}>
       {[1, 2, 3, 4, 5].map((star) => {
@@ -139,18 +147,90 @@ function StarRating({ rating }: { rating: number }) {
               ? "star-half"
               : "star-border";
         return (
-          <MaterialIcons key={star} name={name} size={13} color="#C8863A" />
+          <MaterialIcons key={star} name={name} size={size} color={color} />
         );
       })}
     </View>
   );
 }
 
-// ─── Review Card ──────────────────────────────────────────────────────────────
+function StarFilterBar({
+  selected,
+  counts,
+  onSelect,
+}: {
+  selected: number | null;
+  counts: Record<number, number>;
+  onSelect: (star: number | null) => void;
+}) {
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={filterStyles.row}
+    >
+      <TouchableOpacity
+        style={[
+          filterStyles.pill,
+          selected === null && filterStyles.pillActive,
+        ]}
+        onPress={() => onSelect(null)}
+      >
+        <Text
+          style={[
+            filterStyles.pillText,
+            selected === null && filterStyles.pillTextActive,
+          ]}
+        >
+          All
+        </Text>
+      </TouchableOpacity>
+      {[5, 4, 3, 2, 1].map((star) => {
+        const count = counts[star] ?? 0;
+        const isActive = selected === star;
+        return (
+          <TouchableOpacity
+            key={star}
+            style={[
+              filterStyles.pill,
+              isActive && filterStyles.pillActive,
+              count === 0 && filterStyles.pillDisabled,
+            ]}
+            onPress={() =>
+              count > 0 ? onSelect(isActive ? null : star) : undefined
+            }
+          >
+            <MaterialIcons
+              name="star"
+              size={13}
+              color={isActive ? "#FFF7EA" : count === 0 ? "#D2BA94" : "#C8863A"}
+            />
+            <Text
+              style={[
+                filterStyles.pillText,
+                isActive && filterStyles.pillTextActive,
+                count === 0 && filterStyles.pillTextDisabled,
+              ]}
+            >
+              {star}
+            </Text>
+            <Text
+              style={[
+                filterStyles.pillCount,
+                isActive && filterStyles.pillTextActive,
+                count === 0 && filterStyles.pillTextDisabled,
+              ]}
+            >
+              ({count})
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
+  );
+}
 
-// ─── ReviewCard (drop-in replacement for the one in CafeProfileScreen) ───────
-// Import formatReviewDate alongside the other reviewService imports:
-//   import { ..., formatReviewDate } from "../../../shared/modals/reviewService";
+// ─── Review Card ──────────────────────────────────────────────────────────────
 
 function ReviewCard({
   review,
@@ -184,7 +264,6 @@ function ReviewCard({
   const imageHeight = Math.round(imageWidth * 0.68);
   const isNarrow = columns === 1;
 
-  // ✅ Always show created_at; append "(edited on <date>)" if updated_at exists
   const displayDate = formatReviewDate(review.created_at, review.updated_at);
 
   const openMenu = () => {
@@ -196,7 +275,6 @@ function ReviewCard({
       useNativeDriver: true,
     }).start();
   };
-
   const closeMenu = () => {
     Animated.timing(menuAnim, {
       toValue: 0,
@@ -204,7 +282,6 @@ function ReviewCard({
       useNativeDriver: true,
     }).start(() => setMenuOpen(false));
   };
-
   const menuScale = menuAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0.8, 1],
@@ -215,8 +292,8 @@ function ReviewCard({
       style={reviewCardStyles.container}
       onLayout={(e) => setCardWidth(e.nativeEvent.layout.width)}
     >
-      {/* Header */}
       <View style={reviewCardStyles.header}>
+        {/* ✅ Only avatar navigates to profile */}
         <TouchableOpacity
           onPress={() =>
             review.user_id ? onNavigateToProfile(review.user_id) : undefined
@@ -237,13 +314,21 @@ function ReviewCard({
           </View>
         </TouchableOpacity>
 
-        {/* ✅ Meta block is a plain View — only username text is tappable */}
+        {/* ✅ Meta is a plain View — only username text is tappable */}
         <View style={reviewCardStyles.meta}>
-          <Text style={reviewCardStyles.userName}>
-            {review.profile?.username ?? "Anonymous"}
-            {isOwn && <Text style={reviewCardStyles.youBadge}> (you)</Text>}
-          </Text>
-          {/* Stars and date are plain — NOT tappable */}
+          <TouchableOpacity
+            onPress={() =>
+              review.user_id ? onNavigateToProfile(review.user_id) : undefined
+            }
+            disabled={!review.user_id}
+            activeOpacity={0.75}
+          >
+            <Text style={reviewCardStyles.userName}>
+              {review.profile?.username ?? "Anonymous"}
+              {isOwn && <Text style={reviewCardStyles.youBadge}> (you)</Text>}
+            </Text>
+          </TouchableOpacity>
+          {/* Stars and date: plain, NOT tappable */}
           <StarRating rating={review.rating} />
           <Text style={reviewCardStyles.date}>{displayDate}</Text>
         </View>
@@ -256,7 +341,6 @@ function ReviewCard({
           >
             <MaterialIcons name="more-vert" size={18} color="#8C6D4F" />
           </TouchableOpacity>
-
           {menuOpen && (
             <Pressable style={StyleSheet.absoluteFill} onPress={closeMenu} />
           )}
@@ -322,12 +406,10 @@ function ReviewCard({
         </View>
       </View>
 
-      {/* Comment */}
       {review.comment ? (
         <Text style={reviewCardStyles.comment}>"{review.comment}"</Text>
       ) : null}
 
-      {/* Images */}
       {hasImages && cardWidth > 0 && (
         <View style={reviewCardStyles.mediaWrapper}>
           {isNarrow ? (
@@ -336,12 +418,11 @@ function ReviewCard({
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
-                onScroll={(e) => {
-                  const index = Math.round(
-                    e.nativeEvent.contentOffset.x / cardWidth,
-                  );
-                  setActiveIndex(index);
-                }}
+                onScroll={(e) =>
+                  setActiveIndex(
+                    Math.round(e.nativeEvent.contentOffset.x / cardWidth),
+                  )
+                }
                 scrollEventThrottle={16}
               >
                 {images.map((uri, i) => (
@@ -386,7 +467,6 @@ function ReviewCard({
         </View>
       )}
 
-      {/* Likes */}
       <Pressable
         style={({ pressed }) => [
           reviewCardStyles.likesRow,
@@ -607,7 +687,6 @@ function AmenitiesMenuTab({
       enabled: amenities.petFriendly === "Pet Friendly",
     },
   ];
-
   return (
     <View>
       <Text style={amenityStyles.sectionLabel}>Amenities</Text>
@@ -633,7 +712,6 @@ function AmenitiesMenuTab({
           </View>
         ))}
       </View>
-
       {amenities.others.length > 0 && (
         <>
           <Text style={[amenityStyles.sectionLabel, { marginTop: 14 }]}>
@@ -648,7 +726,6 @@ function AmenitiesMenuTab({
           </View>
         </>
       )}
-
       <Text style={[amenityStyles.sectionLabel, { marginTop: 16 }]}>Menu</Text>
       {menuURLs && Array.isArray(menuURLs) && menuURLs.length > 0 ? (
         menuURLs.map((url: string, i: number) => (
@@ -762,6 +839,114 @@ function EmptyState({
   );
 }
 
+// ─── Favorite Button ──────────────────────────────────────────────────────────
+
+function FavoriteButton({
+  cafeId,
+  userId,
+}: {
+  cafeId: string;
+  userId: string;
+}) {
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favoriteId, setFavoriteId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState(false);
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  // Check if already favorited on mount
+  useEffect(() => {
+    if (!userId || !cafeId) return;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("favorite_cafes")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("cafe_id", Number(cafeId))
+          .maybeSingle();
+        if (data) {
+          setIsFavorited(true);
+          setFavoriteId(data.id);
+        }
+      } catch (err) {
+        console.error("Failed to check favorite status:", err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [userId, cafeId]);
+
+  const handleToggle = async () => {
+    if (toggling || !userId) return;
+    setToggling(true);
+
+    // Bounce animation
+    Animated.sequence([
+      Animated.spring(scaleAnim, {
+        toValue: 1.3,
+        useNativeDriver: true,
+        speed: 50,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 50,
+      }),
+    ]).start();
+
+    const wasLiked = isFavorited;
+    setIsFavorited(!wasLiked);
+
+    try {
+      if (wasLiked && favoriteId) {
+        const { error } = await supabase
+          .from("favorite_cafes")
+          .delete()
+          .eq("id", favoriteId);
+        if (error) throw error;
+        setFavoriteId(null);
+      } else {
+        const { data, error } = await supabase
+          .from("favorite_cafes")
+          .insert({ user_id: userId, cafe_id: Number(cafeId) })
+          .select("id")
+          .single();
+        if (error) throw error;
+        setFavoriteId(data.id);
+      }
+    } catch (err) {
+      console.error("Failed to toggle favorite:", err);
+      setIsFavorited(wasLiked); // revert on error
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  if (loading) return null;
+
+  return (
+    <TouchableOpacity
+      onPress={handleToggle}
+      disabled={toggling || !userId}
+      activeOpacity={0.8}
+      style={favStyles.btn}
+      accessibilityRole="button"
+      accessibilityLabel={
+        isFavorited ? "Remove from favorites" : "Add to favorites"
+      }
+    >
+      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+        <MaterialIcons
+          name={isFavorited ? "favorite" : "favorite-border"}
+          size={18}
+          color={isFavorited ? "#C0392B" : "#8C6D4F"}
+        />
+      </Animated.View>
+    </TouchableOpacity>
+  );
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function CafeProfileScreen({ navigation }: Props) {
@@ -778,7 +963,10 @@ export default function CafeProfileScreen({ navigation }: Props) {
   const [cafeReviews, setCafeReviews] = useState<ReviewWithMeta[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
 
-  // Report modal state
+  // Star filter: null = all, 1–5 = that whole-star bucket
+  // Half-star ratings are floored: 3.5 → shows under "3"
+  const [starFilter, setStarFilter] = useState<number | null>(null);
+
   const [reportTarget, setReportTarget] = useState<ReviewWithMeta | null>(null);
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
@@ -788,7 +976,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
     { key: "Cafe-Ammenities-Menu", icon: "list" },
   ];
 
-  // Get current user session and profile
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
@@ -803,7 +990,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
     });
   }, []);
 
-  // Fetch cafe details
   useEffect(() => {
     (async () => {
       try {
@@ -817,7 +1003,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
     })();
   }, [cafeId]);
 
-  // Fetch reviews
   const fetchReviews = useCallback(async () => {
     if (!cafeId || !currentUserId) return;
     setReviewsLoading(true);
@@ -834,6 +1019,20 @@ export default function CafeProfileScreen({ navigation }: Props) {
   useEffect(() => {
     fetchReviews();
   }, [fetchReviews]);
+
+  // Build per-star counts (half-stars floor to whole star below)
+  const starCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  for (const r of cafeReviews) {
+    const bucket = Math.floor(r.rating); // 3.5 → 3, 4.0 → 4
+    if (bucket >= 1 && bucket <= 5)
+      starCounts[bucket] = (starCounts[bucket] ?? 0) + 1;
+  }
+
+  // Apply filter — exact whole-star match on floored rating
+  const filteredReviews =
+    starFilter === null
+      ? cafeReviews
+      : cafeReviews.filter((r) => Math.floor(r.rating) === starFilter);
 
   const handleToggleLike = async (
     reviewId: number,
@@ -873,7 +1072,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
 
   const handleNavigateToProfile = (userId: string) => {
     if (!userId) return;
-    // Navigate to profile — pass the userId so ProfileScreen renders the right user
     navigation.navigate("Profile", { userId });
   };
 
@@ -928,22 +1126,17 @@ export default function CafeProfileScreen({ navigation }: Props) {
               )}
             </View>
             <View style={cafeDetailsStyles.userInfoSection}>
-              <Text
-                style={cafeDetailsStyles.userName}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {cafe.name}
-              </Text>
+              <View style={cafeDetailsStyles.nameRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={cafeDetailsStyles.userName}>{cafe.name}</Text>
+                </View>
+                <View style={{ flexShrink: 0 }}>
+                  <FavoriteButton cafeId={cafeId} userId={currentUserId} />
+                </View>
+              </View>
               <View style={cafeDetailsStyles.metaRow}>
                 <MaterialIcons name="place" size={13} color="#8C6D4F" />
-                <Text
-                  style={cafeDetailsStyles.metaText}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {cafe.address}
-                </Text>
+                <Text style={cafeDetailsStyles.metaText}>{cafe.address}</Text>
               </View>
             </View>
           </View>
@@ -1001,6 +1194,16 @@ export default function CafeProfileScreen({ navigation }: Props) {
                   cafeId={cafeId}
                   onReviewPosted={fetchReviews}
                 />
+
+                {/* ── Star filter ── */}
+                {!reviewsLoading && cafeReviews.length > 0 && (
+                  <StarFilterBar
+                    selected={starFilter}
+                    counts={starCounts}
+                    onSelect={setStarFilter}
+                  />
+                )}
+
                 {reviewsLoading ? (
                   <ActivityIndicator
                     size="small"
@@ -1013,8 +1216,14 @@ export default function CafeProfileScreen({ navigation }: Props) {
                     title="No reviews yet..."
                     subtitle="Be the first to leave a review for this café!"
                   />
+                ) : filteredReviews.length === 0 ? (
+                  <EmptyState
+                    icon="filter-list"
+                    title="No matching reviews"
+                    subtitle={`No reviews with a ${starFilter}-star rating yet.`}
+                  />
                 ) : (
-                  cafeReviews.map((review) => (
+                  filteredReviews.map((review) => (
                     <ReviewCard
                       key={review.id}
                       review={review}
@@ -1023,7 +1232,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
                       onReport={(r) => setReportTarget(r)}
                       onDelete={handleDeleteReview}
                       onEdit={(r) => {
-                        // Navigate to edit review screen — adjust to your nav setup
                         navigation.navigate("WriteReviewFE", {
                           cafeName: cafe.name,
                           cafeId: Number(cafeId),
@@ -1065,7 +1273,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
         </View>
       </ScrollView>
 
-      {/* ── Report Modal ── */}
       <ReportModal
         visible={!!reportTarget}
         onClose={() => setReportTarget(null)}
@@ -1120,6 +1327,63 @@ const styles = StyleSheet.create({
   },
 });
 
+const favStyles = StyleSheet.create({
+  btn: {
+    padding: 4,
+  },
+  inner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 14,
+  },
+  innerActive: {},
+  label: {
+    fontSize: 11,
+    color: "#8C6D4F",
+  },
+  labelActive: {
+    color: "#C0392B",
+  },
+});
+
+const filterStyles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 0,
+    paddingVertical: 10,
+  },
+  pill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#F0E5D8",
+    borderRadius: 20,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderWidth: 1.5,
+    borderColor: "#D2BA94",
+  },
+  pillActive: { backgroundColor: "#6B4F2E", borderColor: "#6B4F2E" },
+  pillDisabled: { opacity: 0.45 },
+  pillText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#6B4F2E",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  pillTextActive: { color: "#FFF7EA" },
+  pillTextDisabled: { color: "#B09070" },
+  pillCount: {
+    fontSize: 11,
+    color: "#8C6D4F",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+});
+
 const cafeProfileNavStyles = StyleSheet.create({
   tabBar: {
     flexDirection: "row",
@@ -1158,24 +1422,28 @@ const cafeDetailsStyles = StyleSheet.create({
     marginBottom: 15,
     flex: 1,
     minWidth: 0,
+    flexShrink: 1,
   },
   userName: {
     fontSize: 22,
     fontWeight: "700",
     color: "#3B2A1A",
     fontFamily: "SourceSerifPro-Regular",
+    flexShrink: 1,
+    flexWrap: "wrap",
   },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    flex: 1,
-  },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 4, flex: 1 },
   metaText: {
     fontSize: 12,
     color: "#8C6D4F",
     flexShrink: 1,
     fontFamily: "SourceSerifPro-Regular",
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    width: "100%",
   },
 });
 
@@ -1192,6 +1460,8 @@ const avatarStyles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "flex-start",
     paddingRight: 16,
+    flexShrink: 1,
+    overflow: "hidden",
   },
   avatarCircle: {
     width: 100,
@@ -1234,11 +1504,7 @@ const writeReviewStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  buttonText: {
-    color: "#FFF7EA",
-    fontSize: 18,
-    fontWeight: "700",
-  },
+  buttonText: { color: "#FFF7EA", fontSize: 18, fontWeight: "700" },
 });
 
 const starInputStyles = StyleSheet.create({
@@ -1248,13 +1514,7 @@ const starInputStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  leftHalf: {
-    position: "absolute",
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: "50%",
-  },
+  leftHalf: { position: "absolute", left: 0, top: 0, bottom: 0, width: "50%" },
   rightHalf: {
     position: "absolute",
     right: 0,
@@ -1269,7 +1529,7 @@ const reviewCardStyles = StyleSheet.create({
     backgroundColor: "#E6D6BE",
     borderRadius: 12,
     marginBottom: 10,
-    overflow: "visible", // allow dropdown to overflow
+    overflow: "visible",
   },
   header: {
     flexDirection: "row",
@@ -1304,23 +1564,14 @@ const reviewCardStyles = StyleSheet.create({
     paddingBottom: 8,
   },
   mediaWrapper: { overflow: "hidden" },
-  imageGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    padding: 8,
-  },
+  imageGrid: { flexDirection: "row", flexWrap: "wrap", padding: 8 },
   dotsRow: {
     flexDirection: "row",
     justifyContent: "center",
     gap: 4,
     paddingVertical: 6,
   },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#C8A97A",
-  },
+  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: "#C8A97A" },
   dotActive: {
     width: 6,
     height: 6,
@@ -1337,7 +1588,6 @@ const reviewCardStyles = StyleSheet.create({
   },
   likesCount: { fontSize: 12, color: "#8C6D4F" },
   likesCountActive: { color: "#6B4F2E", fontWeight: "600" },
-  // Dropdown menu
   dropdownMenu: {
     position: "absolute",
     top: 24,
