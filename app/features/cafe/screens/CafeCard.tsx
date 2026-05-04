@@ -106,7 +106,6 @@ export default function CafeCard() {
     <Pressable
       style={styles.cafeHolder}
       onPress={() => {
-        console.log("cafeId being passed:", item.id);
         navigation.navigate("CafeProfile", { cafeId: String(item.id) });
       }}
     >

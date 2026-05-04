@@ -196,7 +196,6 @@ export default function SearchScreen() {
     }
 
     if (userCoords) {
-      // console.log("location: ", userCoords);
       await activateNearMe(userCoords);
       return;
     }

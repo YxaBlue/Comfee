@@ -52,7 +52,7 @@ export function calculateAge(birthDate: Date | string): number {
   return age;
 }
 
-const formatDate = (dateString: string) => {
+export const formatDate = (dateString: string) => {
   try {
     return format(parseISO(dateString), "MMM dd, yyyy · h:mm a");
   } catch {

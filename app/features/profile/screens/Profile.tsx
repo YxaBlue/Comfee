@@ -3,16 +3,27 @@ import {
   getProfile,
   uploadAvatar,
   uploadCoverPhoto,
+  type Review,
 } from "@/app/features/profile/services/profileService";
 import { supabase } from "@/app/shared/lib/supabaseClient";
+import ReportModal from "@/app/shared/modals/reportModal"; // ← adjust to your path
+import {
+  deleteReview,
+  editReview,
+  getReviewsByUser,
+  toggleUpvote,
+} from "@/app/shared/modals/reviewService";
+import { formatDate } from "@/app/shared/utils/dateUtils";
 import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
+import { useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { format, parseISO } from "date-fns";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   Image,
   ImageBackground,
   Pressable,
@@ -30,16 +41,6 @@ type Props = {
 };
 
 type Tab = "info" | "favorites" | "reviews";
-
-type Review = {
-  id: string;
-  cafeName: string;
-  rating: number;
-  comment: string;
-  date: string;
-  likes: number;
-  imageCount: number;
-};
 
 type EditableFields = {
   username: string;
@@ -59,104 +60,136 @@ type FaveCafe = {
 const AVATAR_SIZE = 106;
 const AVATAR_RIGHT_OFFSET = 20;
 const USER_INFO_RIGHT_GUTTER = AVATAR_SIZE + AVATAR_RIGHT_OFFSET + 14;
-
-const MOCK_REVIEWS: Review[] = [
-  {
-    id: "1",
-    cafeName: "CafeName13",
-    rating: 2,
-    comment: "Something about their cafe...",
-    date: "07/03/2026 · 11AM",
-    likes: 25,
-    imageCount: 3,
-  },
-  {
-    id: "2",
-    cafeName: "CafeName123",
-    rating: 1,
-    comment: "Ew... just no. The service was terrible and the",
-    date: "07/01/2026 · 11AM",
-    likes: 8,
-    imageCount: 0,
-  },
-  {
-    id: "3",
-    cafeName: "Cloud Nine Café",
-    rating: 5,
-    comment: "Best cold brew I've ever had. The cozy interior is perfect!",
-    date: "06/28/2026 · 3PM",
-    likes: 41,
-    imageCount: 2,
-  },
-];
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const MAX_REVIEW_MEDIA_WIDTH = 420;
 
 function StarRating({ rating }: { rating: number }) {
   return (
     <View style={styles.starsRow}>
-      {[1, 2, 3, 4, 5].map((star) => (
-        <MaterialIcons
-          key={star}
-          name={star <= rating ? "star" : "star-border"}
-          size={18}
-          color="#6B4F2E"
-        />
-      ))}
+      {[1, 2, 3, 4, 5].map((star) => {
+        const iconName =
+          rating >= star
+            ? "star"
+            : rating >= star - 0.5
+              ? "star-half"
+              : "star-border";
+        return (
+          <MaterialIcons key={star} name={iconName} size={18} color="#6B4F2E" />
+        );
+      })}
     </View>
   );
 }
 
 function ReviewCard({
   review,
+  isOwn,
   openMenuId,
   setOpenMenuId,
   onDelete,
   onEdit,
+  onToggleLike,
+  onReport,
+  navigation,
 }: {
   review: Review;
+  isOwn: boolean;
   openMenuId: string | null;
   setOpenMenuId: (id: string | null) => void;
   onDelete: (id: string) => void;
   onEdit: (review: Review) => void;
+  onToggleLike: (reviewId: string, currentlyLiked: boolean) => void;
+  onReport: (review: Review) => void;
+  navigation: NativeStackNavigationProp<RootStackParamList, "Profile">;
 }) {
-  const [isLiked, setIsLiked] = useState(false);
-  const hasImages = review.imageCount > 0;
-  const displayedLikes = review.likes + (isLiked ? 1 : 0);
+  const [cardWidth, setCardWidth] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const hasImages = review.imageUrls.length > 0;
   const showMenu = openMenuId === review.id;
 
+  const columns = cardWidth < 480 ? 1 : cardWidth < 800 ? 2 : 3;
+  const gap = 6;
+  const imageWidth =
+    cardWidth > 0 ? Math.floor((cardWidth - gap * (columns - 1)) / columns) : 0;
+  const imageHeight = Math.round(imageWidth * 0.68);
+  const isNarrow = columns === 1;
+
   return (
-    <View style={styles.reviewCard}>
+    <View
+      style={styles.reviewCard}
+      onLayout={(e) => setCardWidth(e.nativeEvent.layout.width)}
+    >
       {showMenu && (
         <View style={styles.menuContainer}>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => {
-              setOpenMenuId(null);
-              onEdit(review);
-            }}
-          >
-            <MaterialIcons name="edit" size={18} color="#6B4F2E" />
-            <Text style={styles.menuText}>Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => onDelete(review.id)}
-          >
-            <MaterialIcons name="delete" size={18} color="#C0392B" />
-            <Text style={[styles.menuText, { color: "#C0392B" }]}>Delete</Text>
-          </TouchableOpacity>
+          {isOwn ? (
+            <>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setOpenMenuId(null);
+                  onEdit(review);
+                }}
+              >
+                <MaterialIcons name="edit" size={18} color="#6B4F2E" />
+                <Text style={styles.menuText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setOpenMenuId(null);
+                  onDelete(review.id);
+                }}
+              >
+                <MaterialIcons name="delete" size={18} color="#C0392B" />
+                <Text style={[styles.menuText, { color: "#C0392B" }]}>
+                  Delete
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setOpenMenuId(null);
+                onReport(review);
+              }}
+            >
+              <MaterialIcons name="flag" size={18} color="#8C6D4F" />
+              <Text style={(styles.menuText, { color: "#C0392B" })}>
+                Report
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
       <View style={styles.reviewCardHeader}>
-        <View style={styles.reviewMainInfo}>
-          <View style={styles.cafeAvatarSmall} />
+        <TouchableOpacity
+          style={styles.reviewMainInfo}
+          onPress={() =>
+            navigation.navigate("CafeProfile", {
+              cafeId: String(review.cafeId),
+            })
+          }
+        >
+          <View style={styles.cafeAvatarSmall}>
+            {review.cafeAvatar ? (
+              <Image
+                source={{ uri: review.cafeAvatar }}
+                style={styles.cafeAvatarImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <MaterialIcons name="store" size={24} color="#C8A97A" />
+            )}
+          </View>
           <View style={styles.reviewCardMeta}>
             <Text style={styles.reviewLabel}>Review For</Text>
             <Text style={styles.reviewCafeName}>{review.cafeName}</Text>
             <StarRating rating={review.rating} />
             <Text style={styles.reviewDate}>{review.date}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
         <TouchableOpacity
           style={styles.reviewMoreButton}
           onPress={() => setOpenMenuId(showMenu ? null : review.id)}
@@ -174,42 +207,87 @@ function ReviewCard({
         {`"${review.comment}"`}
       </Text>
 
-      {hasImages && (
-        <View style={styles.reviewMediaSection}>
-          <View style={styles.reviewMediaPlaceholder} />
-          {review.imageCount > 1 && (
-            <View style={styles.reviewMediaDots}>
-              {Array.from({ length: Math.min(review.imageCount, 5) }).map(
-                (_, index) => (
-                  <View key={index} style={styles.reviewMediaDot} />
-                ),
+      {hasImages && cardWidth > 0 && (
+        <View style={styles.reviewMediaWrapper}>
+          {isNarrow ? (
+            <>
+              <ScrollView
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onScroll={(e) => {
+                  const index = Math.round(
+                    e.nativeEvent.contentOffset.x / cardWidth,
+                  );
+                  setActiveIndex(index);
+                }}
+                scrollEventThrottle={16}
+              >
+                {review.imageUrls.map((uri, index) => (
+                  <Image
+                    key={index}
+                    source={{ uri }}
+                    style={{ width: cardWidth, height: imageHeight }}
+                    resizeMode="cover"
+                  />
+                ))}
+              </ScrollView>
+              {review.imageUrls.length > 1 && (
+                <View style={styles.dotsRow}>
+                  {review.imageUrls.map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.dot,
+                        i === activeIndex && styles.dotActive,
+                      ]}
+                    />
+                  ))}
+                </View>
               )}
+            </>
+          ) : (
+            <View style={[styles.imageGrid, { gap }]}>
+              {review.imageUrls.map((uri, index) => (
+                <Image
+                  key={index}
+                  source={{ uri }}
+                  style={{
+                    width: imageWidth,
+                    height: imageHeight,
+                    borderRadius: 8,
+                  }}
+                  resizeMode="cover"
+                />
+              ))}
             </View>
           )}
         </View>
       )}
 
-      <Pressable
-        style={({ pressed }) => [
-          styles.likesRow,
-          !hasImages && styles.likesRowWithoutMedia,
-          pressed && styles.likesRowPressed,
-        ]}
-        onPress={() => setIsLiked((prev) => !prev)}
-        accessibilityRole="button"
-        accessibilityLabel={
-          isLiked ? "Remove like from review" : "Like this review"
-        }
+      <View
+        style={[styles.likesRow, !hasImages && styles.likesRowWithoutMedia]}
       >
-        <MaterialIcons
-          name={isLiked ? "thumb-up" : "thumb-up-off-alt"}
-          size={20}
-          color="#6B4F2E"
-        />
-        <Text style={[styles.likesCount, isLiked && styles.likesCountActive]}>
-          {displayedLikes}
+        <Pressable
+          onPress={() => onToggleLike(review.id, review.isLiked)}
+          accessibilityRole="button"
+          accessibilityLabel={
+            review.isLiked ? "Remove like from review" : "Like this review"
+          }
+          style={({ pressed }) => [pressed && styles.likesRowPressed]}
+        >
+          <MaterialIcons
+            name={review.isLiked ? "thumb-up" : "thumb-up-off-alt"}
+            size={20}
+            color={review.isLiked ? "#6B4F2E" : "#8C6D4F"}
+          />
+        </Pressable>
+        <Text
+          style={[styles.likesCount, review.isLiked && styles.likesCountActive]}
+        >
+          {review.likes}
         </Text>
-      </Pressable>
+      </View>
     </View>
   );
 }
@@ -239,10 +317,12 @@ function FaveCard({
   cafe,
   onRemove,
   isRemoving,
+  readonly,
 }: {
   cafe: FaveCafe;
-  onRemove: (favoriteId: string) => void;
-  isRemoving: boolean;
+  onRemove?: (favoriteId: string) => void;
+  isRemoving?: boolean;
+  readonly?: boolean;
 }) {
   return (
     <View style={styles.favoriteCard}>
@@ -254,26 +334,39 @@ function FaveCard({
           <Text style={styles.favoriteLocation}>{cafe.location}</Text>
         </View>
       </View>
-      <TouchableOpacity
-        onPress={() => onRemove(cafe.id)}
-        disabled={isRemoving}
-        accessibilityRole="button"
-        accessibilityLabel={`Remove ${cafe.name} from favorites`}
-      >
-        {isRemoving ? (
-          <ActivityIndicator size="small" color="#6B4F2E" />
-        ) : (
-          <MaterialIcons name="favorite" size={20} color="#6B4F2E" />
-        )}
-      </TouchableOpacity>
+      {!readonly && onRemove && (
+        <TouchableOpacity
+          onPress={() => onRemove(cafe.id)}
+          disabled={isRemoving}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${cafe.name} from favorites`}
+        >
+          {isRemoving ? (
+            <ActivityIndicator size="small" color="#6B4F2E" />
+          ) : (
+            <MaterialIcons name="favorite" size={20} color="#6B4F2E" />
+          )}
+        </TouchableOpacity>
+      )}
+      {readonly && <MaterialIcons name="favorite" size={20} color="#C4A882" />}
     </View>
   );
 }
 
 export default function ProfileScreen({ navigation }: Props) {
+  const route = useRoute();
+  // Optional userId param — if present and different from session, show read-only
+  const params = (route.params as { userId?: string } | undefined) ?? {};
+
   const [activeTab, setActiveTab] = useState<Tab>("reviews");
-  const [userId, setUserId] = useState<string | null>(null);
+  const [sessionUserId, setSessionUserId] = useState<string | null>(null);
+  const [viewedUserId, setViewedUserId] = useState<string | null>(null);
+  const [isOwnProfile, setIsOwnProfile] = useState(true);
+
   const [profile, setProfile] = useState<null | any>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<null | any>(
+    null,
+  );
   const [favoriteCafes, setFavoriteCafes] = useState<FaveCafe[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(true);
   const [removingFavoriteId, setRemovingFavoriteId] = useState<string | null>(
@@ -294,12 +387,20 @@ export default function ProfileScreen({ navigation }: Props) {
     bio: "",
   });
 
-  // ── Review state ──
-  const [reviews, setReviews] = useState<Review[]>(MOCK_REVIEWS);
+  // Review state
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [editRating, setEditRating] = useState(0);
   const [editComment, setEditComment] = useState("");
-  const [isReviewSaving, setIsReviewSaving] = useState(false);
+  const [pendingEditImages, setPendingEditImages] = useState<string[]>([]);
+
+  // Report modal state
+  const [reportTarget, setReportTarget] = useState<Review | null>(null);
+  const [reportUserTarget, setReportUserTarget] = useState<{
+    userId: string;
+    username: string;
+  } | null>(null);
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: "info", icon: "info-outline" },
@@ -369,6 +470,18 @@ export default function ProfileScreen({ navigation }: Props) {
     }
   };
 
+  const fetchReviews = async (userId: string, currentUserId?: string) => {
+    setReviewsLoading(true);
+    try {
+      const data = await getReviewsByUser(userId, currentUserId);
+      setReviews(data);
+    } catch (err) {
+      console.error("Failed to fetch reviews:", err);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -382,15 +495,30 @@ export default function ProfileScreen({ navigation }: Props) {
         }
 
         const uid = session.user.id;
-        setUserId(uid);
+        setSessionUserId(uid);
 
-        const [data] = await Promise.all([
-          getProfile(uid),
-          supabase.auth.getUser(),
-          fetchFavoriteCafes(uid),
+        // Decide which user we're viewing
+        const targetId =
+          params.userId && params.userId !== uid ? params.userId : uid;
+        setViewedUserId(targetId);
+        setIsOwnProfile(targetId === uid);
+
+        // Fetch viewed user's profile and current user's profile if different
+        const profilePromises = [getProfile(targetId)];
+        if (targetId !== uid) {
+          profilePromises.push(getProfile(uid));
+        }
+
+        const [viewedProfile, currentUserProfileData] = await Promise.all([
+          ...profilePromises,
+          fetchFavoriteCafes(targetId),
+          fetchReviews(targetId, uid),
         ]);
 
-        setProfile(data);
+        setProfile(viewedProfile);
+        if (currentUserProfileData) {
+          setCurrentUserProfile(currentUserProfileData);
+        }
       } catch (err) {
         console.error("Failed to fetch profile:", err);
       } finally {
@@ -399,9 +527,11 @@ export default function ProfileScreen({ navigation }: Props) {
     };
 
     fetchProfile();
-  }, []);
+  }, [params.userId]);
 
   if (isLoading) return <ProfileSkeleton />;
+
+  // ── Handlers (only applicable for own profile) ─────────────────────────────
 
   const handleEditPress = () => {
     setActiveTab("info");
@@ -417,7 +547,7 @@ export default function ProfileScreen({ navigation }: Props) {
   };
 
   const handleSave = async () => {
-    if (!userId) return;
+    if (!viewedUserId) return;
     if (!trimmedUsername) {
       setFieldErrors((prev) => ({
         ...prev,
@@ -428,20 +558,32 @@ export default function ProfileScreen({ navigation }: Props) {
     setFieldErrors({});
     setIsSaving(true);
     try {
-      // Upload any pending images first
       let newAvatarUrl = profile?.profile_picture ?? null;
       let newCoverUrl = profile?.cover_photo ?? null;
 
-      if (pendingAvatarUri) {
-        newAvatarUrl = await uploadAvatar(userId, pendingAvatarUri);
+      if (pendingAvatarUri === null && profile?.profile_picture) {
+        const avatarPath = `avatars/${viewedUserId}.${
+          profile.profile_picture.split(".").pop()?.split("?")[0] || "jpg"
+        }`;
+        await supabase.storage.from("profile").remove([avatarPath]);
+        newAvatarUrl = null;
+      } else if (pendingAvatarUri) {
+        newAvatarUrl = await uploadAvatar(viewedUserId, pendingAvatarUri);
       }
-      if (pendingCoverUri) {
-        newCoverUrl = await uploadCoverPhoto(userId, pendingCoverUri);
+
+      if (pendingCoverUri === null && profile?.cover_photo) {
+        const coverPath = `cover_photos/${viewedUserId}.${
+          profile.cover_photo.split(".").pop()?.split("?")[0] || "jpg"
+        }`;
+        await supabase.storage.from("profile").remove([coverPath]);
+        newCoverUrl = null;
+      } else if (pendingCoverUri) {
+        newCoverUrl = await uploadCoverPhoto(viewedUserId, pendingCoverUri);
       }
 
       await editProfile(
         {
-          userId,
+          userId: viewedUserId,
           username: trimmedUsername,
           first_name: editFields.first_name,
           last_name: editFields.last_name,
@@ -459,7 +601,6 @@ export default function ProfileScreen({ navigation }: Props) {
         cover_photo: newCoverUrl,
       }));
 
-      // clear pending URIs
       setPendingAvatarUri(null);
       setPendingCoverUri(null);
       setIsEditing(false);
@@ -477,8 +618,8 @@ export default function ProfileScreen({ navigation }: Props) {
   const handleCancel = () => {
     setIsEditing(false);
     setFieldErrors({});
-    setPendingAvatarUri(null); // ← discard
-    setPendingCoverUri(null); // ← discard
+    setPendingAvatarUri(null);
+    setPendingCoverUri(null);
   };
 
   const handleTabPress = (key: Tab) => {
@@ -504,11 +645,9 @@ export default function ProfileScreen({ navigation }: Props) {
     }
   };
 
-  // ── Avatar picker (1:1 crop) ──
   const handlePickAvatar = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"] as any,
       allowsEditing: true,
@@ -516,17 +655,12 @@ export default function ProfileScreen({ navigation }: Props) {
       quality: 0.8,
       selectionLimit: 1,
     });
-
-    if (!result.canceled) {
-      setPendingAvatarUri(result.assets[0].uri); // ← local preview only
-    }
+    if (!result.canceled) setPendingAvatarUri(result.assets[0].uri);
   };
 
-  // ── Cover photo picker (16:9 crop) ──
   const handlePickCoverPhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"] as any,
       allowsEditing: true,
@@ -534,37 +668,142 @@ export default function ProfileScreen({ navigation }: Props) {
       quality: 0.85,
       selectionLimit: 1,
     });
+    if (!result.canceled) setPendingCoverUri(result.assets[0].uri);
+  };
 
+  const handlePickEditImages = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return;
+    const remaining = 5 - pendingEditImages.length;
+    if (remaining <= 0) return;
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"] as any,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+      selectionLimit: remaining,
+    });
     if (!result.canceled) {
-      setPendingCoverUri(result.assets[0].uri); // ← local preview only
+      const newUris = result.assets.map((a) => a.uri);
+      setPendingEditImages((prev) => [...prev, ...newUris].slice(0, 5));
     }
   };
+
   const handleDeleteReview = (reviewId: string) => {
     const previous = reviews;
     setReviews((prev) => prev.filter((r) => r.id !== reviewId));
     setOpenMenuId(null);
-    // No DB call yet — mock only
-    // When ready: deleteReview(reviewId).catch(() => setReviews(previous));
+    deleteReview(reviewId).catch(() => setReviews(previous));
+  };
+
+  const handleToggleReviewLike = async (
+    reviewId: string,
+    currentlyLiked: boolean,
+  ) => {
+    if (!sessionUserId) return;
+    const previousReviews = reviews;
+    setReviews((prev) =>
+      prev.map((review) =>
+        review.id === reviewId
+          ? {
+              ...review,
+              isLiked: !currentlyLiked,
+              likes: review.likes + (currentlyLiked ? -1 : 1),
+            }
+          : review,
+      ),
+    );
+    try {
+      await toggleUpvote(reviewId, sessionUserId);
+    } catch (err) {
+      console.error("Failed to update review upvote:", err);
+      setReviews(previousReviews);
+    }
   };
 
   const handleOpenEditReview = (review: Review) => {
     setEditingReview(review);
     setEditRating(review.rating);
     setEditComment(review.comment);
+    setPendingEditImages(review.imageUrls);
   };
 
-  const handleSaveReview = () => {
-    if (!editingReview) return;
+  const handleSaveReview = async () => {
+    if (!editingReview || !sessionUserId) return;
+    const previous = reviews;
+    const existingUrls = pendingEditImages.filter((uri) =>
+      uri.startsWith("http"),
+    );
+    const newLocalUris = pendingEditImages.filter(
+      (uri) => !uri.startsWith("http"),
+    );
+    const originalUrls = editingReview.imageUrls;
+    const removedUrls = originalUrls.filter(
+      (url) => !existingUrls.includes(url),
+    );
+
+    if (removedUrls.length > 0) {
+      await Promise.all(
+        removedUrls.map(async (url: string) => {
+          const urlParts = url.split("/");
+          const filename = urlParts[urlParts.length - 1]?.split("?")[0];
+          if (filename) {
+            await supabase.storage
+              .from("posts")
+              .remove([`reviews/${filename}`]);
+          }
+        }),
+      );
+    }
+
     setReviews((prev) =>
       prev.map((r) =>
         r.id === editingReview.id
-          ? { ...r, rating: editRating, comment: editComment }
+          ? {
+              ...r,
+              rating: editRating,
+              comment: editComment,
+              imageUrls: pendingEditImages,
+              date: `${formatDate(new Date().toISOString())} (edited)`,
+            }
           : r,
       ),
     );
     setEditingReview(null);
-    // No DB call yet — mock only
-    // When ready: editReview(editingReview.id, { rating: editRating, comment: editComment })
+
+    try {
+      const uploadedUrls = await Promise.all(
+        newLocalUris.map(async (uri) => {
+          const ext = uri.split(".").pop()?.split("?")[0] ?? "jpg";
+          const filename = `${editingReview.id}_${Date.now()}_${Math.random()
+            .toString(36)
+            .slice(2)}.${ext}`;
+          const path = `reviews/${filename}`;
+          const response = await fetch(uri);
+          const blob = await response.blob();
+          const { error } = await supabase.storage
+            .from("posts")
+            .upload(path, blob, { upsert: false, contentType: `image/${ext}` });
+          if (error) throw error;
+          const { data } = supabase.storage.from("posts").getPublicUrl(path);
+          return `${data.publicUrl}?t=${Date.now()}`;
+        }),
+      );
+
+      const finalUrls = [...existingUrls, ...uploadedUrls];
+      await editReview(editingReview.id, {
+        rating: editRating,
+        comment: editComment,
+        images_url: finalUrls,
+      });
+      setReviews((prev) =>
+        prev.map((r) =>
+          r.id === editingReview.id ? { ...r, imageUrls: finalUrls } : r,
+        ),
+      );
+    } catch (err) {
+      console.error("Failed to save review:", err);
+      setReviews(previous);
+    }
   };
 
   return (
@@ -576,13 +815,14 @@ export default function ProfileScreen({ navigation }: Props) {
       <View style={styles.wrapper}>
         <TopBar
           navigation={navigation}
-          profilePicture={pendingAvatarUri ?? profile?.profile_picture}
+          profilePicture={
+            currentUserProfile?.profile_picture ?? profile?.profile_picture
+          }
         />
 
         <ScrollView showsVerticalScrollIndicator={false}>
-          {/* ── Header band (cover photo + avatar) ── */}
+          {/* ── Header band ── */}
           <View style={styles.headerBand}>
-            {/* Cover photo */}
             {profile?.cover_photo ? (
               <Image
                 key={profile.cover_photo}
@@ -602,23 +842,51 @@ export default function ProfileScreen({ navigation }: Props) {
               />
             )}
 
-            {/* Cover edit button — only in edit mode */}
-            {isEditing && (
-              <TouchableOpacity
-                style={styles.coverEditBtn}
-                onPress={handlePickCoverPhoto}
-              >
-                <MaterialIcons name="photo-camera" size={16} color="#fff" />
-                <Text style={styles.coverEditText}>Edit Cover</Text>
-              </TouchableOpacity>
+            {isEditing && isOwnProfile && (
+              <View style={styles.coverEditRow}>
+                <TouchableOpacity
+                  style={styles.coverEditBtn}
+                  onPress={handlePickCoverPhoto}
+                >
+                  <MaterialIcons name="photo-camera" size={16} color="#fff" />
+                  <Text style={styles.coverEditText}>Edit Cover</Text>
+                </TouchableOpacity>
+                {(pendingCoverUri !== null || profile?.cover_photo) && (
+                  <TouchableOpacity
+                    style={[styles.coverEditBtn, styles.removeBtn]}
+                    onPress={() => setPendingCoverUri(null)}
+                  >
+                    <MaterialIcons name="delete" size={16} color="#fff" />
+                    <Text style={styles.coverEditText}>Remove</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
 
-            {/* Avatar */}
+            {!isEditing && !isOwnProfile && (
+              <View style={styles.coverEditRow}>
+                <TouchableOpacity
+                  style={styles.coverReportBtn}
+                  onPress={() =>
+                    setReportUserTarget({
+                      userId: viewedUserId!,
+                      username: profile?.username ?? "User",
+                    })
+                  }
+                >
+                  <MaterialIcons name="flag" size={16} color="#C0392B" />
+                  <Text style={styles.coverReportText}>Report</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             <View style={styles.avatarWrapper}>
               <TouchableOpacity
                 style={styles.avatarTouchTarget}
-                onPress={isEditing ? handlePickAvatar : undefined}
-                activeOpacity={isEditing ? 0.7 : 1}
+                onPress={
+                  isEditing && isOwnProfile ? handlePickAvatar : undefined
+                }
+                activeOpacity={isEditing && isOwnProfile ? 0.7 : 1}
               >
                 <View style={styles.avatarCircle}>
                   {profile?.profile_picture ? (
@@ -628,19 +896,33 @@ export default function ProfileScreen({ navigation }: Props) {
                         uri: pendingAvatarUri ?? profile?.profile_picture,
                         cache: "reload",
                       }}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        borderRadius: 63,
-                      }}
+                      style={styles.avatarImage}
+                      resizeMode="cover"
                     />
                   ) : (
                     <MaterialIcons name="person" size={52} color="#C8A97A" />
                   )}
                 </View>
-                {isEditing && (
-                  <View style={styles.cameraBadge}>
-                    <MaterialIcons name="photo-camera" size={12} color="#fff" />
+                {isEditing && isOwnProfile && (
+                  <View style={styles.avatarEditRow}>
+                    <TouchableOpacity
+                      style={styles.avatarEditBtn}
+                      onPress={handlePickAvatar}
+                    >
+                      <MaterialIcons
+                        name="photo-camera"
+                        size={12}
+                        color="#fff"
+                      />
+                    </TouchableOpacity>
+                    {profile?.profile_picture && (
+                      <TouchableOpacity
+                        style={[styles.avatarEditBtn, styles.removeBtn]}
+                        onPress={() => setPendingAvatarUri(null)}
+                      >
+                        <MaterialIcons name="delete" size={12} color="#fff" />
+                      </TouchableOpacity>
+                    )}
                   </View>
                 )}
               </TouchableOpacity>
@@ -651,7 +933,7 @@ export default function ProfileScreen({ navigation }: Props) {
           <View style={styles.container}>
             <View style={styles.userInfoSection}>
               <View style={styles.nameEditRow}>
-                {isEditing ? (
+                {isEditing && isOwnProfile ? (
                   <TextInput
                     style={styles.usernameInput}
                     value={editFields.username}
@@ -672,7 +954,8 @@ export default function ProfileScreen({ navigation }: Props) {
                 ) : (
                   <Text style={styles.userName}>{profile?.username}</Text>
                 )}
-                {!isEditing && (
+                {/* Show edit button on own profile, no button on other profiles */}
+                {isOwnProfile && (
                   <TouchableOpacity onPress={handleEditPress}>
                     <MaterialIcons name="edit" size={16} color="#8C6D4F" />
                   </TouchableOpacity>
@@ -695,7 +978,7 @@ export default function ProfileScreen({ navigation }: Props) {
           {/* ── Divider ── */}
           <View style={styles.divider} />
 
-          {/* ── Icon tab bar ── */}
+          {/* ── Tab bar ── */}
           <View style={styles.tabBar}>
             {TAB_ICONS.map(({ key, icon }) => {
               const isLocked = isEditing && key === "reviews";
@@ -731,7 +1014,13 @@ export default function ProfileScreen({ navigation }: Props) {
             {activeTab === "reviews" && (
               <Pressable onPress={() => setOpenMenuId(null)}>
                 <View>
-                  {MOCK_REVIEWS.length === 0 ? (
+                  {reviewsLoading ? (
+                    <ActivityIndicator
+                      size="small"
+                      color="#8C6D4F"
+                      style={{ marginTop: 12 }}
+                    />
+                  ) : reviews.length === 0 ? (
                     <View style={styles.emptyState}>
                       <MaterialIcons
                         name="menu-book"
@@ -740,18 +1029,24 @@ export default function ProfileScreen({ navigation }: Props) {
                       />
                       <Text style={styles.emptyText}>No reviews yet</Text>
                       <Text style={styles.emptySubText}>
-                        Start exploring cafés and share your thoughts!
+                        {isOwnProfile
+                          ? "Start exploring cafés and share your thoughts!"
+                          : "This user hasn't reviewed any cafés yet."}
                       </Text>
                     </View>
                   ) : (
-                    MOCK_REVIEWS.map((r) => (
+                    reviews.map((r) => (
                       <ReviewCard
                         key={r.id}
                         review={r}
+                        isOwn={isOwnProfile}
                         openMenuId={openMenuId}
                         setOpenMenuId={setOpenMenuId}
                         onDelete={handleDeleteReview}
                         onEdit={handleOpenEditReview}
+                        onToggleLike={handleToggleReviewLike}
+                        onReport={(rev) => setReportTarget(rev)}
+                        navigation={navigation}
                       />
                     ))
                   )}
@@ -778,8 +1073,9 @@ export default function ProfileScreen({ navigation }: Props) {
                     <FaveCard
                       key={cafe.id}
                       cafe={cafe}
-                      onRemove={handleRemoveFavorite}
+                      onRemove={isOwnProfile ? handleRemoveFavorite : undefined}
                       isRemoving={removingFavoriteId === cafe.id}
+                      readonly={!isOwnProfile}
                     />
                   ))
                 )}
@@ -792,7 +1088,7 @@ export default function ProfileScreen({ navigation }: Props) {
                 <View style={styles.infoRow}>
                   <View style={styles.infoField}>
                     <Text style={styles.infoLabel}>First Name</Text>
-                    {isEditing ? (
+                    {isEditing && isOwnProfile ? (
                       <TextInput
                         style={styles.infoInput}
                         value={editFields.first_name}
@@ -823,7 +1119,7 @@ export default function ProfileScreen({ navigation }: Props) {
                   </View>
                   <View style={styles.infoField}>
                     <Text style={styles.infoLabel}>Last Name</Text>
-                    {isEditing ? (
+                    {isEditing && isOwnProfile ? (
                       <TextInput
                         style={styles.infoInput}
                         value={editFields.last_name}
@@ -863,7 +1159,7 @@ export default function ProfileScreen({ navigation }: Props) {
                   </View>
                   <View style={styles.infoField}>
                     <Text style={styles.infoLabel}>Birth Date</Text>
-                    {isEditing ? (
+                    {isEditing && isOwnProfile ? (
                       <TextInput
                         style={styles.infoInput}
                         value={editFields.birth_date}
@@ -901,7 +1197,7 @@ export default function ProfileScreen({ navigation }: Props) {
 
                 <View style={styles.infoField}>
                   <Text style={styles.infoLabel}>Bio</Text>
-                  {isEditing ? (
+                  {isEditing && isOwnProfile ? (
                     <TextInput
                       style={[
                         styles.infoInput,
@@ -922,7 +1218,7 @@ export default function ProfileScreen({ navigation }: Props) {
                   )}
                 </View>
 
-                {isEditing && (
+                {isEditing && isOwnProfile && (
                   <View style={styles.editActionsRow}>
                     <TouchableOpacity
                       style={styles.cancelBtn}
@@ -951,38 +1247,45 @@ export default function ProfileScreen({ navigation }: Props) {
 
           <View style={{ height: 90 }} />
         </ScrollView>
-        {/* ── Review Edit Modal ── */}
-        {editingReview && (
+
+        {/* ── Review Edit Modal (own profile only) ── */}
+        {editingReview && isOwnProfile && (
           <View style={styles.modalOverlay}>
             <View style={styles.modalCard}>
               <Text style={styles.modalTitle}>Edit Review</Text>
               <Text style={styles.modalCafeName}>{editingReview.cafeName}</Text>
 
-              {/* Star picker */}
               <View style={styles.starsRow}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <TouchableOpacity
-                    key={star}
-                    onPress={() => setEditRating(star)}
-                  >
-                    <MaterialIcons
-                      name={star <= editRating ? "star" : "star-border"}
-                      size={28}
-                      color="#6B4F2E"
-                    />
-                  </TouchableOpacity>
-                ))}
+                {[1, 2, 3, 4, 5].map((star) => {
+                  const iconName =
+                    editRating >= star
+                      ? "star"
+                      : editRating >= star - 0.5
+                        ? "star-half"
+                        : "star-border";
+                  return (
+                    <Pressable
+                      key={star}
+                      onPressIn={(event) => {
+                        const { locationX } = event.nativeEvent;
+                        setEditRating(locationX < 14 ? star - 0.5 : star);
+                      }}
+                      style={styles.starPressable}
+                    >
+                      <MaterialIcons
+                        name={iconName}
+                        size={28}
+                        color="#6B4F2E"
+                      />
+                    </Pressable>
+                  );
+                })}
               </View>
 
-              {/* Comment input */}
               <TextInput
                 style={[
                   styles.infoInput,
-                  {
-                    minHeight: 80,
-                    textAlignVertical: "top",
-                    marginTop: 12,
-                  },
+                  { minHeight: 80, textAlignVertical: "top", marginTop: 12 },
                 ]}
                 value={editComment}
                 onChangeText={setEditComment}
@@ -991,7 +1294,48 @@ export default function ProfileScreen({ navigation }: Props) {
                 multiline
               />
 
-              {/* Actions */}
+              <Text
+                style={[styles.infoLabel, { marginTop: 14, marginBottom: 8 }]}
+              >
+                {`Photos (${pendingEditImages.length}/5)`}
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.editImagesRow}>
+                  {pendingEditImages.map((uri, index) => (
+                    <View key={index} style={styles.editImageThumb}>
+                      <Image
+                        source={{ uri }}
+                        style={styles.editImageThumbImg}
+                        resizeMode="cover"
+                      />
+                      <TouchableOpacity
+                        style={styles.editImageRemoveBtn}
+                        onPress={() =>
+                          setPendingEditImages((prev) =>
+                            prev.filter((_, i) => i !== index),
+                          )
+                        }
+                      >
+                        <MaterialIcons name="close" size={12} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  {pendingEditImages.length < 5 && (
+                    <TouchableOpacity
+                      style={styles.editImageAddBtn}
+                      onPress={handlePickEditImages}
+                    >
+                      <MaterialIcons
+                        name="add-photo-alternate"
+                        size={28}
+                        color="#A97C4E"
+                      />
+                      <Text style={styles.editImageAddText}>Add</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </ScrollView>
+
               <View style={styles.editActionsRow}>
                 <TouchableOpacity
                   style={styles.cancelBtn}
@@ -1009,10 +1353,34 @@ export default function ProfileScreen({ navigation }: Props) {
             </View>
           </View>
         )}
+
+        {/* ── Report Modal ── */}
+        <ReportModal
+          visible={!!reportTarget}
+          onClose={() => setReportTarget(null)}
+          targetType="review"
+          targetId={reportTarget ? reportTarget.id : ""}
+          targetLabel={
+            reportTarget ? `review for ${reportTarget.cafeName}` : undefined
+          }
+        />
+
+        {/* ── User Report Modal ── */}
+        <ReportModal
+          visible={!!reportUserTarget}
+          onClose={() => setReportUserTarget(null)}
+          targetType="user"
+          targetId={reportUserTarget ? reportUserTarget.userId : ""}
+          targetLabel={
+            reportUserTarget ? `@${reportUserTarget.username}` : undefined
+          }
+        />
       </View>
     </ImageBackground>
   );
 }
+
+// ─── Styles (unchanged from original + minimal additions) ────────────────────
 
 const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: "#FFEFD5" },
@@ -1028,8 +1396,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#D4B896",
     width: "80%",
   },
-
-  /* Header */
   headerBand: {
     height: 150,
     alignItems: "center",
@@ -1039,10 +1405,15 @@ const styles = StyleSheet.create({
     zIndex: 10,
     elevation: 10,
   },
-  coverEditBtn: {
+  coverEditRow: {
     position: "absolute",
     top: 10,
     right: 12,
+    flexDirection: "row",
+    gap: 8,
+    zIndex: 30,
+  },
+  coverEditBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
@@ -1050,13 +1421,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
-    zIndex: 30,
   },
-  coverEditText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
+  coverEditText: { color: "#fff", fontSize: 12, fontWeight: "600" },
+  coverReportBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
+  coverReportText: { color: "#c83535", fontSize: 12, fontWeight: "600" },
+  removeBtn: { backgroundColor: "rgba(192,57,43,0.8)" },
   avatarWrapper: {
     alignSelf: "flex-end",
     marginRight: 30,
@@ -1065,10 +1442,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     elevation: 10,
   },
-  avatarTouchTarget: {
-    position: "relative",
-    overflow: "visible",
-  },
+  avatarTouchTarget: { position: "relative", overflow: "visible" },
   avatarCircle: {
     width: 126,
     height: 126,
@@ -1080,20 +1454,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
   },
-  cameraBadge: {
+  avatarImage: { width: "100%", height: "100%", borderRadius: 63 },
+  avatarEditRow: {
     position: "absolute",
     right: 2,
     bottom: 2,
+    flexDirection: "row",
+    gap: 4,
+    zIndex: 1,
+    elevation: 2,
+  },
+  avatarEditBtn: {
     backgroundColor: "#6B4F2E",
     borderRadius: 15,
     padding: 6,
     borderWidth: 2,
     borderColor: "#EDDEC7",
-    zIndex: 1,
-    elevation: 2,
   },
-
-  /* User info */
   userInfoSection: {
     marginTop: 20,
     paddingTop: 14,
@@ -1136,8 +1513,6 @@ const styles = StyleSheet.create({
     paddingRight: 8,
     fontFamily: "SourceSerifPro-Regular",
   },
-
-  /* Divider */
   divider: {
     height: 1,
     backgroundColor: "#D2BA94",
@@ -1145,8 +1520,6 @@ const styles = StyleSheet.create({
     marginTop: -10,
     zIndex: 5,
   },
-
-  /* Tab bar */
   tabBar: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -1170,14 +1543,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#6B4F2E",
     borderRadius: 2,
   },
-
-  /* Tab content */
-  tabContent: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-  },
-
-  /* Review card */
+  tabContent: { paddingHorizontal: 16, paddingTop: 14 },
   reviewCard: {
     backgroundColor: "#F6F0E8",
     borderRadius: 14,
@@ -1199,9 +1565,7 @@ const styles = StyleSheet.create({
     gap: 11,
     flex: 1,
   },
-  reviewCardMeta: {
-    justifyContent: "center",
-  },
+  reviewCardMeta: { justifyContent: "center" },
   cafeAvatarSmall: {
     width: 66,
     height: 66,
@@ -1210,9 +1574,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#EADAC6",
   },
-  reviewMoreButton: {
-    alignSelf: "flex-start",
-  },
+  cafeAvatarImage: { width: "100%", height: "100%", borderRadius: 33 },
+  reviewMoreButton: { alignSelf: "flex-start" },
   reviewLabel: {
     fontSize: 12,
     color: "#8C6D4F",
@@ -1225,11 +1588,7 @@ const styles = StyleSheet.create({
     color: "#3B2A1A",
     fontFamily: "SourceSerifPro-Regular",
   },
-  starsRow: {
-    flexDirection: "row",
-    marginTop: 3,
-    marginLeft: -2,
-  },
+  starsRow: { flexDirection: "row", marginTop: 3, marginLeft: -2 },
   reviewDate: {
     fontSize: 10,
     color: "#A08060",
@@ -1244,33 +1603,7 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     paddingHorizontal: 22,
   },
-  reviewCommentWithoutMedia: {
-    marginBottom: 0,
-  },
-  reviewMediaSection: {
-    marginBottom: 2,
-  },
-  reviewMediaPlaceholder: {
-    height: 184,
-    backgroundColor: "#F3EADA",
-    borderTopWidth: 1,
-    borderTopColor: "#F1E6D7",
-  },
-  reviewMediaDots: {
-    position: "absolute",
-    bottom: 8,
-    left: 0,
-    right: 0,
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 4,
-  },
-  reviewMediaDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "#FFF8ED",
-  },
+  reviewCommentWithoutMedia: { marginBottom: 0 },
   likesRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1280,23 +1613,15 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 13,
   },
-  likesRowWithoutMedia: {
-    paddingTop: 2,
-  },
-  likesRowPressed: {
-    opacity: 0.7,
-  },
+  likesRowWithoutMedia: { paddingTop: 2 },
+  likesRowPressed: { opacity: 0.7 },
   likesCount: {
     fontSize: 14,
     color: "#8C6D4F",
     fontWeight: "500",
     fontFamily: "SourceSerifPro-Regular",
   },
-  likesCountActive: {
-    color: "#6B4F2E",
-  },
-
-  /* Info tab */
+  likesCountActive: { color: "#6B4F2E" },
   infoSection: { gap: 12 },
   infoLabel: {
     fontSize: 14,
@@ -1305,10 +1630,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     fontFamily: "SourceSerifPro-Regular",
   },
-  infoRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
+  infoRow: { flexDirection: "row", gap: 10 },
   infoField: { flex: 1, gap: 4 },
   infoValueBox: {
     backgroundColor: "#E6D6BE",
@@ -1316,10 +1638,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  infoValue: {
-    fontSize: 13,
-    color: "#3B2A1A",
-  },
+  infoValue: { fontSize: 13, color: "#3B2A1A" },
   infoInput: {
     backgroundColor: "#FDF6EC",
     borderRadius: 8,
@@ -1338,11 +1657,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     fontFamily: "SourceSerifPro-Regular",
   },
-  editActionsRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 6,
-  },
+  editActionsRow: { flexDirection: "row", gap: 10, marginTop: 12 },
   cancelBtn: {
     flex: 1,
     paddingVertical: 11,
@@ -1352,11 +1667,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#C4A882",
   },
-  cancelBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#8C6D4F",
-  },
+  cancelBtnText: { fontSize: 14, fontWeight: "600", color: "#8C6D4F" },
   saveBtn: {
     flex: 1,
     paddingVertical: 11,
@@ -1364,16 +1675,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#6B4F2E",
     alignItems: "center",
   },
-  saveBtnDisabled: {
-    opacity: 0.6,
-  },
-  saveBtnText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#FDF6EC",
-  },
-
-  /* Empty state */
+  saveBtnDisabled: { opacity: 0.6 },
+  saveBtnText: { fontSize: 14, fontWeight: "600", color: "#FDF6EC" },
   emptyState: {
     alignItems: "center",
     paddingVertical: 50,
@@ -1394,11 +1697,7 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     fontFamily: "SourceSerifPro-Regular",
   },
-  background: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
+  background: { flex: 1, width: "100%", height: "100%" },
   menuContainer: {
     position: "absolute",
     top: 40,
@@ -1425,8 +1724,6 @@ const styles = StyleSheet.create({
     color: "#3B2A1A",
     fontFamily: "SourceSerifPro-Regular",
   },
-
-  /* Favorites tab */
   favoriteCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -1445,9 +1742,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#E5D3B3",
     marginRight: 12,
   },
-  favoriteInfo: {
-    flex: 1,
-  },
+  favoriteInfo: { flex: 1 },
   favoriteName: {
     fontSize: 16,
     fontWeight: "600",
@@ -1461,20 +1756,7 @@ const styles = StyleSheet.create({
     marginLeft: 2,
     fontFamily: "SourceSerifPro-Regular",
   },
-  locationRow: {
-    flexDirection: "row",
-    marginTop: 3,
-  },
-  profileNavAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#A97C4E",
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-
+  locationRow: { flexDirection: "row", marginTop: 3 },
   modalOverlay: {
     position: "absolute",
     top: 0,
@@ -1509,4 +1791,54 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontFamily: "SourceSerifPro-Regular",
   },
+  editImagesRow: { flexDirection: "row", gap: 8, paddingBottom: 4 },
+  editImageThumbImg: { width: "100%", height: "100%" },
+  editImageRemoveBtn: {
+    position: "absolute",
+    top: 3,
+    right: 3,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 10,
+    padding: 3,
+  },
+  editImageAddBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "#C8A97A",
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FDF6EC",
+    gap: 2,
+  },
+  editImageAddText: {
+    fontSize: 11,
+    color: "#A97C4E",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  reviewMediaWrapper: { overflow: "hidden" },
+  imageGrid: { flexDirection: "row", flexWrap: "wrap", padding: 8 },
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 6,
+  },
+  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: "#C8A97A" },
+  dotActive: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#6B4F2E",
+  },
+  editImageThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    overflow: "hidden",
+    position: "relative",
+  },
+  starPressable: { padding: 2 },
 });
