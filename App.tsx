@@ -1,27 +1,230 @@
-// App.tsx
-import { NavigationContainer } from "@react-navigation/native";
+import {
+    NavigationContainer,
+    NavigationContainerRef,
+} from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import React from "react";
+import * as Linking from "expo-linking";
+import { useEffect, useRef } from "react";
 
-import CreateAcc from "./app/screens/createAcc-FE";
-import LoginScreen from "./app/screens/login-FE";
+import { supabase } from "@/app/shared/lib/supabaseClient";
+import CreateAccountScreen from "./app/features/auth/screens/CreateAccount";
+import ForgotPasswordScreen from "./app/features/auth/screens/ForgotPassword";
+import LoginScreen from "./app/features/auth/screens/Login";
+import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
+import BusinessProfile from "./app/features/business/screens/BusinessProfile";
+import CafeCard from "./app/features/cafe/screens/CafeCard";
+import CafeProfileScreen from "./app/features/cafe/screens/CafeProfile2";
+import FilteredCafes from "./app/features/cafe/screens/DashboardFilter";
+import FilterScreen from "./app/features/cafe/screens/Filter";
+import SearchScreen from "./app/features/cafe/screens/Search";
+import WriteReviewFEScreen from "./app/features/cafe/screens/write-review-FE";
+import { FilterSelectionState } from "./app/features/cafe/services/filtering";
+import ProfileScreen from "./app/features/profile/screens/Profile";
+import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";
+import SettingsScreen from "./app/features/settings/screens/Settings";
 
 export type RootStackParamList = {
   Login: undefined;
   CreateAccount: undefined;
+  Profile: { userId?: string } | undefined;
+  Settings: undefined;
+  ChangePassword: undefined;
+  EditProfile: undefined;
+  ForgotPassword: undefined;
+  ResetPassword: undefined;
+  Dashboard: undefined;
+  Filter:
+    | {
+        query?: string;
+        city?: string;
+        selectedFilters?: FilterSelectionState;
+        userCoords?: { latitude: number; longitude: number };
+      }
+    | undefined;
+  Search: {
+    query?: string;
+    city?: string;
+    selectedFilters?: FilterSelectionState;
+    userCoords?: { latitude: number; longitude: number };
+  };
+  FilteredCafes: { filterType: string };
+  ProfileBusi: undefined;
+  CafeProfile: { cafeId: string };
+  WriteReviewFE:
+    | {
+        cafeName?: string;
+        cafeId: number;
+        initialRating?: number;
+        reviewId?: number;
+        username?: string;
+        avatarURL?: string;
+        onReviewPosted?: () => void;
+      }
+    | undefined;
+};
+
+const linking = {
+  // comfeeproject:// → standalone/bare builds
+  // exp+ComfeeProject:// → Expo Go (slug is case-sensitive, matches app.json)
+  prefixes: ["comfeeproject://", "exp+ComfeeProject://"],
+  config: {
+    screens: {
+      ResetPassword: "reset-password",
+      Login: "login",
+      CreateAccount: "create-account",
+      ForgotPassword: "forgot-password",
+    },
+  },
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+function isRecoveryUrl(url: string): boolean {
+  try {
+    const hash = url.split("#")[1] ?? "";
+    const hashParams = new URLSearchParams(hash);
+    if (hashParams.get("type") === "recovery") return true;
+
+    const query = url.split("?")[1]?.split("#")[0] ?? "";
+    const queryParams = new URLSearchParams(query);
+    if (queryParams.get("type") === "recovery") return true;
+  } catch {
+    // ignore malformed URLs
+  }
+  return false;
+}
+
 export default function App() {
+  const navigationRef =
+    useRef<NavigationContainerRef<RootStackParamList>>(null);
+
+  const isRecoveryFlow = useRef(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    let initialRouteSynced = false;
+
+    const bootstrapRecoveryFromUrl = async () => {
+      try {
+        const initialUrl = await Linking.getInitialURL();
+        if (initialUrl && isRecoveryUrl(initialUrl)) {
+          isRecoveryFlow.current = true;
+        }
+      } catch {
+        // not critical
+      }
+    };
+
+    const syncInitialRoute = async () => {
+      await bootstrapRecoveryFromUrl();
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!isMounted || !navigationRef.current) return;
+      if (initialRouteSynced) return;
+      initialRouteSynced = true;
+
+      if (isRecoveryFlow.current) {
+        navigationRef.current.reset({
+          index: 0,
+          routes: [{ name: "ResetPassword" }],
+        });
+        return;
+      }
+
+      navigationRef.current.reset({
+        index: 0,
+        routes: [{ name: session ? "Dashboard" : "Login" }],
+      });
+    };
+
+    syncInitialRoute();
+
+    const linkingSub = Linking.addEventListener("url", ({ url }) => {
+      if (isRecoveryUrl(url)) {
+        isRecoveryFlow.current = true;
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "ResetPassword" }],
+        });
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!isMounted) return;
+      if (event === "INITIAL_SESSION") return;
+
+      const currentRoute = navigationRef.current?.getCurrentRoute()?.name;
+
+      if (event === "PASSWORD_RECOVERY") {
+        isRecoveryFlow.current = true;
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "ResetPassword" }],
+        });
+        return;
+      }
+
+      if (event === "SIGNED_IN" && session) {
+        if (isRecoveryFlow.current || currentRoute === "ResetPassword") {
+          return;
+        }
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "Dashboard" }],
+        });
+        return;
+      }
+
+      if (event === "USER_UPDATED") {
+        isRecoveryFlow.current = false;
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "Login" }],
+        });
+        return;
+      }
+
+      if (event === "SIGNED_OUT") {
+        isRecoveryFlow.current = false;
+        navigationRef.current?.reset({
+          index: 0,
+          routes: [{ name: "Login" }],
+        });
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      linkingSub.remove();
+      subscription.unsubscribe();
+    };
+  }, []);
+
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking} ref={navigationRef}>
       <Stack.Navigator
-        initialRouteName="Login"
+        initialRouteName="Dashboard"
         screenOptions={{ headerShown: false }}
       >
         <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="CreateAccount" component={CreateAcc} />
+        <Stack.Screen name="CreateAccount" component={CreateAccountScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+        <Stack.Screen name="Dashboard" component={CafeCard} />
+        <Stack.Screen name="Filter" component={FilterScreen} />
+        <Stack.Screen name="Search" component={SearchScreen} />
+        <Stack.Screen name="FilteredCafes" component={FilteredCafes} />
+        <Stack.Screen name="ProfileBusi" component={BusinessProfile} />
+        <Stack.Screen name="CafeProfile" component={CafeProfileScreen} />
+        <Stack.Screen name="WriteReviewFE" component={WriteReviewFEScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
