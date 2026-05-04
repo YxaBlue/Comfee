@@ -13,6 +13,7 @@ type updatedData = {
 
 export type Review = {
   id: string;
+  cafeId: number;
   cafeName: string;
   cafeAvatar: string | null;
   rating: number;
@@ -160,6 +161,7 @@ export async function getReviewsByUser(userId: string): Promise<Review[]> {
     .select(
       `
       id,
+      cafe_id,
       rating,
       comment,
       images_url,
@@ -203,6 +205,7 @@ export async function getReviewsByUser(userId: string): Promise<Review[]> {
 
     return {
       id: rid,
+      cafeId: r.cafe_id,
       cafeName: cafe?.name ?? "Unknown Cafe",
       cafeAvatar: cafe?.avatar_url ?? null,
       rating: r.rating,

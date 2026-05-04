@@ -1,10 +1,12 @@
 import { RootStackParamList } from "@/App";
+import ReportModal from "@/app/shared/modals/reportModal"; // ← adjust path to match your project
 import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Image,
   Pressable,
   ScrollView,
@@ -16,12 +18,14 @@ import {
 
 import { supabase } from "@/app/shared/lib/supabaseClient";
 import { useRoute } from "@react-navigation/native";
-import { CafeDetail, getCafeById } from "../services/cafeService";
 import {
+  deleteReview,
   getReviewsByCafe,
   ReviewWithMeta,
   toggleCafeReviewUpvote,
-} from "../services/reviewService";
+} from "../../../shared/modals/reviewService";
+import { getProfile } from "../../profile/services/profileService";
+import { CafeDetail, getCafeById } from "../services/cafeService";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "CafeProfile">;
@@ -145,13 +149,26 @@ function StarRating({ rating }: { rating: number }) {
 
 function ReviewCard({
   review,
+  isOwn,
   onToggleLike,
+  onReport,
+  onEdit,
+  onDelete,
+  onNavigateToProfile,
 }: {
   review: ReviewWithMeta;
+  isOwn: boolean;
   onToggleLike: (id: number, currentlyLiked: boolean) => void;
+  onReport: (review: ReviewWithMeta) => void;
+  onEdit?: (review: ReviewWithMeta) => void;
+  onDelete?: (id: number) => void;
+  onNavigateToProfile: (userId: string) => void;
 }) {
   const [cardWidth, setCardWidth] = useState(0);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuAnim = useRef(new Animated.Value(0)).current;
+
   const images = review.images_url ?? [];
   const hasImages = images.length > 0;
   const isEdited = review.updated_at !== null;
@@ -171,6 +188,29 @@ function ReviewCard({
     year: "numeric",
   });
 
+  const openMenu = () => {
+    setMenuOpen(true);
+    Animated.spring(menuAnim, {
+      toValue: 1,
+      damping: 18,
+      stiffness: 250,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const closeMenu = () => {
+    Animated.timing(menuAnim, {
+      toValue: 0,
+      duration: 120,
+      useNativeDriver: true,
+    }).start(() => setMenuOpen(false));
+  };
+
+  const menuScale = menuAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.8, 1],
+  });
+
   return (
     <View
       style={reviewCardStyles.container}
@@ -178,30 +218,123 @@ function ReviewCard({
     >
       {/* Header */}
       <View style={reviewCardStyles.header}>
-        <View style={reviewCardStyles.avatar}>
-          {review.profile?.profile_picture ? (
-            <Image
-              source={{ uri: review.profile.profile_picture }}
-              style={{ width: "100%", height: "100%", borderRadius: 17 }}
-              resizeMode="cover"
-            />
-          ) : (
-            <MaterialIcons name="person" size={20} color="#C8A97A" />
-          )}
-        </View>
+        {/* Avatar — tappable to navigate to profile */}
+        <TouchableOpacity
+          onPress={() =>
+            review.user_id ? onNavigateToProfile(review.user_id) : undefined
+          }
+          disabled={!review.user_id}
+          activeOpacity={0.75}
+        >
+          <View style={reviewCardStyles.avatar}>
+            {review.profile?.profile_picture ? (
+              <Image
+                source={{ uri: review.profile.profile_picture }}
+                style={{ width: "100%", height: "100%", borderRadius: 17 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <MaterialIcons name="person" size={20} color="#C8A97A" />
+            )}
+          </View>
+        </TouchableOpacity>
+
         <View style={reviewCardStyles.meta}>
-          <Text style={reviewCardStyles.userName}>
-            {review.profile?.username ?? "Anonymous"}
-          </Text>
+          {/* Username — also tappable */}
+          <TouchableOpacity
+            onPress={() =>
+              review.user_id ? onNavigateToProfile(review.user_id) : undefined
+            }
+            disabled={!review.user_id}
+            activeOpacity={0.75}
+          >
+            <Text style={reviewCardStyles.userName}>
+              {review.profile?.username ?? "Anonymous"}
+              {isOwn && <Text style={reviewCardStyles.youBadge}> (you)</Text>}
+            </Text>
+          </TouchableOpacity>
           <StarRating rating={review.rating} />
           <Text style={reviewCardStyles.date}>
             {displayDate}
             {isEdited ? " (edited)" : ""}
           </Text>
         </View>
-        <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <MaterialIcons name="more-vert" size={18} color="#8C6D4F" />
-        </TouchableOpacity>
+
+        {/* Three-dot menu */}
+        <View>
+          <TouchableOpacity
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={menuOpen ? closeMenu : openMenu}
+          >
+            <MaterialIcons name="more-vert" size={18} color="#8C6D4F" />
+          </TouchableOpacity>
+
+          {menuOpen && (
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeMenu} />
+          )}
+          {menuOpen && (
+            <Animated.View
+              style={[
+                reviewCardStyles.dropdownMenu,
+                {
+                  opacity: menuAnim,
+                  transform: [{ scale: menuScale }],
+                },
+              ]}
+            >
+              {isOwn ? (
+                <>
+                  <TouchableOpacity
+                    style={reviewCardStyles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      onEdit?.(review);
+                    }}
+                  >
+                    <MaterialIcons name="edit" size={15} color="#6B4F2E" />
+                    <Text style={reviewCardStyles.dropdownItemText}>Edit</Text>
+                  </TouchableOpacity>
+                  <View style={reviewCardStyles.dropdownDivider} />
+                  <TouchableOpacity
+                    style={reviewCardStyles.dropdownItem}
+                    onPress={() => {
+                      closeMenu();
+                      onDelete?.(review.id);
+                    }}
+                  >
+                    <MaterialIcons name="delete" size={15} color="#C0392B" />
+                    <Text
+                      style={[
+                        reviewCardStyles.dropdownItemText,
+                        { color: "#C0392B" },
+                      ]}
+                    >
+                      Delete
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={reviewCardStyles.dropdownItem}
+                  onPress={() => {
+                    closeMenu();
+                    onReport(review);
+                  }}
+                >
+                  <MaterialIcons name="flag" size={15} color="#C0392B" />
+                  <Text
+                    style={[
+                      reviewCardStyles.dropdownItemText,
+                      { color: "#C0392B" },
+                    ]}
+                  >
+                    Report
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </Animated.View>
+          )}
+        </View>
       </View>
 
       {/* Comment */}
@@ -268,7 +401,7 @@ function ReviewCard({
         </View>
       )}
 
-      {/* Likes */}
+      {/* Likes — filled icon when current user already liked */}
       <Pressable
         style={({ pressed }) => [
           reviewCardStyles.likesRow,
@@ -281,7 +414,7 @@ function ReviewCard({
         <MaterialIcons
           name={review.isLiked ? "thumb-up" : "thumb-up-off-alt"}
           size={16}
-          color="#6B4F2E"
+          color={review.isLiked ? "#6B4F2E" : "#8C6D4F"}
         />
         <Text
           style={[
@@ -300,7 +433,6 @@ function ReviewCard({
 
 function PostCard({ post }: { post: Post }) {
   const imageCount = post.imageURL.length;
-
   return (
     <View style={postCardStyles.container}>
       {imageCount === 1 && (
@@ -568,7 +700,6 @@ function WriteReviewCTA({
   onReviewPosted: () => void;
 }) {
   const [rating, setRating] = useState<number>(0);
-
   return (
     <View style={writeReviewStyles.container}>
       <StarRatingInput value={rating} onChange={setRating} />
@@ -578,7 +709,7 @@ function WriteReviewCTA({
         onPress={() =>
           navigation.navigate("WriteReviewFE", {
             cafeName,
-            cafeId: Number(cafeId), // cast string → number for createReview
+            cafeId: Number(cafeId),
             initialRating: rating,
             onReviewPosted,
           })
@@ -605,7 +736,6 @@ function StarRatingInput({
       : half
         ? "star-half"
         : "star-border";
-
     return (
       <View key={index} style={starInputStyles.starBox}>
         <MaterialIcons name={name} size={30} color="#3B2A1A" />
@@ -620,7 +750,6 @@ function StarRatingInput({
       </View>
     );
   };
-
   return (
     <View style={writeReviewStyles.starsRow}>
       {[1, 2, 3, 4, 5].map(renderStar)}
@@ -660,8 +789,12 @@ export default function CafeProfileScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
 
   const [currentUserId, setCurrentUserId] = useState<string>("");
+  const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
   const [cafeReviews, setCafeReviews] = useState<ReviewWithMeta[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
+
+  // Report modal state
+  const [reportTarget, setReportTarget] = useState<ReviewWithMeta | null>(null);
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: "Cafe-Info", icon: "info" },
@@ -670,10 +803,18 @@ export default function CafeProfileScreen({ navigation }: Props) {
     { key: "Cafe-Ammenities-Menu", icon: "list" },
   ];
 
-  // Get current user session
+  // Get current user session and profile
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) setCurrentUserId(session.user.id);
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        setCurrentUserId(session.user.id);
+        try {
+          const profile = await getProfile(session.user.id);
+          setCurrentUserProfile(profile);
+        } catch (err) {
+          console.error("Failed to fetch user profile:", err);
+        }
+      }
     });
   }, []);
 
@@ -691,7 +832,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
     })();
   }, [cafeId]);
 
-  // Fetch reviews — extracted so it can be called again after posting
+  // Fetch reviews
   const fetchReviews = useCallback(async () => {
     if (!cafeId || !currentUserId) return;
     setReviewsLoading(true);
@@ -734,6 +875,23 @@ export default function CafeProfileScreen({ navigation }: Props) {
     }
   };
 
+  const handleDeleteReview = async (reviewId: number) => {
+    const previous = cafeReviews;
+    setCafeReviews((prev) => prev.filter((r) => r.id !== reviewId));
+    try {
+      await deleteReview(String(reviewId));
+    } catch (err) {
+      console.error("Failed to delete review:", err);
+      setCafeReviews(previous);
+    }
+  };
+
+  const handleNavigateToProfile = (userId: string) => {
+    if (!userId) return;
+    // Navigate to profile — pass the userId so ProfileScreen renders the right user
+    navigation.navigate("Profile", { userId });
+  };
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -752,7 +910,10 @@ export default function CafeProfileScreen({ navigation }: Props) {
 
   return (
     <View style={styles.wrapper}>
-      <TopBar navigation={navigation} />
+      <TopBar
+        navigation={navigation}
+        profilePicture={currentUserProfile?.profile_picture}
+      />
 
       <ScrollView
         contentContainerStyle={styles.container}
@@ -853,7 +1014,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
                   navigation={navigation}
                   cafeName={cafe.name}
                   cafeId={cafeId}
-                  onReviewPosted={fetchReviews} // ← re-fetch after posting
+                  onReviewPosted={fetchReviews}
                 />
                 {reviewsLoading ? (
                   <ActivityIndicator
@@ -872,7 +1033,21 @@ export default function CafeProfileScreen({ navigation }: Props) {
                     <ReviewCard
                       key={review.id}
                       review={review}
+                      isOwn={review.user_id === currentUserId}
                       onToggleLike={handleToggleLike}
+                      onReport={(r) => setReportTarget(r)}
+                      onDelete={handleDeleteReview}
+                      onEdit={(r) => {
+                        // Navigate to edit review screen — adjust to your nav setup
+                        navigation.navigate("WriteReviewFE", {
+                          cafeName: cafe.name,
+                          cafeId: Number(cafeId),
+                          initialRating: r.rating,
+                          reviewId: r.id,
+                          onReviewPosted: fetchReviews,
+                        });
+                      }}
+                      onNavigateToProfile={handleNavigateToProfile}
                     />
                   ))
                 )}
@@ -904,6 +1079,19 @@ export default function CafeProfileScreen({ navigation }: Props) {
           </View>
         </View>
       </ScrollView>
+
+      {/* ── Report Modal ── */}
+      <ReportModal
+        visible={!!reportTarget}
+        onClose={() => setReportTarget(null)}
+        targetType="review"
+        targetId={reportTarget ? String(reportTarget.id) : ""}
+        targetLabel={
+          reportTarget
+            ? `review by @${reportTarget.profile?.username ?? "Anonymous"}`
+            : undefined
+        }
+      />
     </View>
   );
 }
@@ -1096,7 +1284,7 @@ const reviewCardStyles = StyleSheet.create({
     backgroundColor: "#E6D6BE",
     borderRadius: 12,
     marginBottom: 10,
-    overflow: "hidden",
+    overflow: "visible", // allow dropdown to overflow
   },
   header: {
     flexDirection: "row",
@@ -1104,6 +1292,8 @@ const reviewCardStyles = StyleSheet.create({
     gap: 8,
     padding: 12,
     paddingBottom: 4,
+    position: "relative",
+    zIndex: 1,
   },
   avatar: {
     width: 34,
@@ -1117,6 +1307,7 @@ const reviewCardStyles = StyleSheet.create({
   },
   meta: { flex: 1, gap: 1 },
   userName: { fontSize: 13, fontWeight: "600", color: "#3B2A1A" },
+  youBadge: { fontSize: 11, fontWeight: "400", color: "#8C6D4F" },
   date: { fontSize: 11, color: "#8C6D4F", marginTop: 1 },
   comment: {
     fontSize: 12,
@@ -1161,6 +1352,40 @@ const reviewCardStyles = StyleSheet.create({
   },
   likesCount: { fontSize: 12, color: "#8C6D4F" },
   likesCountActive: { color: "#6B4F2E", fontWeight: "600" },
+  // Dropdown menu
+  dropdownMenu: {
+    position: "absolute",
+    top: 24,
+    right: 0,
+    backgroundColor: "#FDF6EC",
+    borderRadius: 10,
+    paddingVertical: 4,
+    minWidth: 130,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 20,
+    zIndex: 999,
+    borderWidth: 1,
+    borderColor: "#E6D6BE",
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 13,
+  },
+  dropdownItemText: {
+    fontSize: 13,
+    color: "#3B2A1A",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  dropdownDivider: {
+    height: 1,
+    backgroundColor: "#E6D6BE",
+    marginHorizontal: 8,
+  },
 });
 
 const postCardStyles = StyleSheet.create({

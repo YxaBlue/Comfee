@@ -17,7 +17,11 @@ import {
   View,
 } from "react-native";
 
-import { createReview, uploadReviewImage } from "../services/reviewService";
+import {
+  createReview,
+  editReview,
+  uploadReviewImage,
+} from "../../../shared/modals/reviewService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "WriteReviewFE">;
 
@@ -33,6 +37,10 @@ export default function WriteReviewFEScreen({ navigation, route }: Props) {
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [images, setImages] = useState<string[]>([]);
+  const [reviewLoading, setReviewLoading] = useState(false);
+
+  const reviewId = route.params?.reviewId;
+  const isEditMode = typeof reviewId === "number";
 
   // Profile state — loaded from Supabase
   const [username, setUsername] = useState(route.params?.username ?? "");
@@ -71,8 +79,8 @@ export default function WriteReviewFEScreen({ navigation, route }: Props) {
   const charCount = text.length;
 
   const canPost = useMemo(
-    () => rating > 0 && cafeId != null && !submitting,
-    [rating, cafeId, submitting],
+    () => rating > 0 && cafeId != null && !submitting && !reviewLoading,
+    [rating, cafeId, submitting, reviewLoading],
   );
 
   // Only considered dirty if the user actually changed something inside this screen
@@ -80,6 +88,32 @@ export default function WriteReviewFEScreen({ navigation, route }: Props) {
     rating !== initialRating || text.trim().length > 0 || images.length > 0;
 
   const handleClose = () => navigation.goBack();
+
+  useEffect(() => {
+    if (!isEditMode) return;
+    setReviewLoading(true);
+
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("review")
+          .select("rating, comment, images_url")
+          .eq("id", reviewId)
+          .single();
+
+        if (error) throw error;
+        if (data) {
+          setRating(data.rating ?? 0);
+          setText(data.comment ?? "");
+          setImages(Array.isArray(data.images_url) ? data.images_url : []);
+        }
+      } catch (err) {
+        console.error("Failed to load review for editing:", err);
+      } finally {
+        setReviewLoading(false);
+      }
+    })();
+  }, [isEditMode, reviewId]);
 
   const handlePickImages = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -109,25 +143,44 @@ export default function WriteReviewFEScreen({ navigation, route }: Props) {
     if (!canPost || cafeId == null) return;
     setSubmitting(true);
     try {
-      // Create the review first to get its id
-      const review = await createReview({
-        cafe_id: cafeId,
-        rating,
-        comment: text.trim(),
-      });
-
-      // Only upload images on actual post — never before
-      let uploadedUrls: string[] = [];
-      if (images.length > 0) {
-        uploadedUrls = await Promise.all(
-          images.map((uri) => uploadReviewImage(review.id, uri)),
+      if (isEditMode && reviewId != null) {
+        const existingRemoteUrls = images.filter((uri) =>
+          uri.startsWith("http"),
         );
+        const localUris = images.filter((uri) => !uri.startsWith("http"));
 
-        // Patch the review with image URLs
-        await supabase
-          .from("review")
-          .update({ images_url: uploadedUrls })
-          .eq("id", review.id);
+        const uploadedUrls = [
+          ...existingRemoteUrls,
+          ...(localUris.length > 0
+            ? await Promise.all(
+                localUris.map((uri) => uploadReviewImage(reviewId, uri)),
+              )
+            : []),
+        ];
+
+        await editReview(String(reviewId), {
+          rating,
+          comment: text.trim(),
+          images_url: uploadedUrls,
+        });
+      } else {
+        const review = await createReview({
+          cafe_id: cafeId,
+          rating,
+          comment: text.trim(),
+        });
+
+        let uploadedUrls: string[] = [];
+        if (images.length > 0) {
+          uploadedUrls = await Promise.all(
+            images.map((uri) => uploadReviewImage(review.id, uri)),
+          );
+
+          await supabase
+            .from("review")
+            .update({ images_url: uploadedUrls })
+            .eq("id", review.id);
+        }
       }
 
       onReviewPosted?.();
@@ -156,7 +209,9 @@ export default function WriteReviewFEScreen({ navigation, route }: Props) {
           <Text style={styles.headerTitle} numberOfLines={1}>
             {cafeName}
           </Text>
-          <Text style={styles.headerSubtitle}>Rate this cafe</Text>
+          <Text style={styles.headerSubtitle}>
+            {isEditMode ? "Edit your review" : "Rate this cafe"}
+          </Text>
         </View>
 
         <TouchableOpacity

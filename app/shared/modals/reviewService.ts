@@ -41,6 +41,7 @@ export type ReviewWithMeta = {
 // Profile screen uses this shape
 export type ProfileReview = {
   id: string;
+  cafeId: number;
   cafeName: string;
   cafeAvatar: string | null;
   rating: number;
@@ -140,12 +141,14 @@ export async function getReviewsByCafe(
 
 export async function getReviewsByUser(
   userId: string,
+  currentUserId?: string,
 ): Promise<ProfileReview[]> {
   const { data, error } = await supabase
     .from("review")
     .select(
       `
       id,
+      cafe_id,
       rating,
       comment,
       images_url,
@@ -169,11 +172,12 @@ export async function getReviewsByUser(
   const upvotes = upvoteData ?? [];
   const likesCountMap: Record<string, number> = {};
   const likedByUserSet = new Set<string>();
+  const viewerId = currentUserId ?? userId;
 
   for (const upvote of upvotes) {
     const rid = String(upvote.review_id);
     likesCountMap[rid] = (likesCountMap[rid] ?? 0) + 1;
-    if (upvote.user_id === userId) {
+    if (upvote.user_id === viewerId) {
       likedByUserSet.add(rid);
     }
   }
@@ -186,6 +190,7 @@ export async function getReviewsByUser(
 
     return {
       id: rid,
+      cafeId: r.cafe_id,
       cafeName: cafe?.name ?? "Unknown Cafe",
       cafeAvatar: cafe?.avatar_url ?? null,
       rating: r.rating,

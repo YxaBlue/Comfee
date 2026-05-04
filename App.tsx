@@ -1,6 +1,6 @@
 import {
-  NavigationContainer,
-  NavigationContainerRef,
+    NavigationContainer,
+    NavigationContainerRef,
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import * as Linking from "expo-linking";
@@ -26,7 +26,7 @@ import SettingsScreen from "./app/features/settings/screens/Settings";
 export type RootStackParamList = {
   Login: undefined;
   CreateAccount: undefined;
-  Profile: undefined;
+  Profile: { userId?: string } | undefined;
   Settings: undefined;
   ChangePassword: undefined;
   EditProfile: undefined;
@@ -55,6 +55,7 @@ export type RootStackParamList = {
         cafeName?: string;
         cafeId: number;
         initialRating?: number;
+        reviewId?: number;
         username?: string;
         avatarURL?: string;
         onReviewPosted?: () => void;
