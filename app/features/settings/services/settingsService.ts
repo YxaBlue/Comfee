@@ -9,10 +9,6 @@ export const changePassword = async (
     error: sessionError,
   } = await supabase.auth.getSession();
 
-  if (sessionError) {
-    throw new Error(sessionError.message || "Unable to verify your session.");
-  }
-
   if (!session) {
     throw new Error("You must be logged in to change your password.");
   }
@@ -21,10 +17,6 @@ export const changePassword = async (
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
-
-  if (userError) {
-    throw new Error(userError.message || "Unable to verify your account.");
-  }
 
   if (!user?.email) {
     throw new Error("You must be logged in to change your password.");

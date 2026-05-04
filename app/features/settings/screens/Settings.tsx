@@ -28,7 +28,7 @@ type ActionOption = {
 
 const ACTION_OPTIONS: ActionOption[] = [
   { label: "Change Password" },
-  { label: "Verify Account" },
+  { label: "Submit a Cafe" },
   { label: "Ads Payment" },
   { label: "Delete My Account", destructive: true },
 ];
@@ -60,6 +60,11 @@ export default function SettingsScreen({ navigation }: Props) {
   const handleOptionPress = (label: string) => {
     if (label === "Change Password") {
       navigation.navigate("ChangePassword");
+      return;
+    }
+
+    if (label === "Submit a Cafe") {
+      navigation.navigate("SubmitCafe");
       return;
     }
 

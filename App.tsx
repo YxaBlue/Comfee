@@ -22,6 +22,7 @@ import { FilterSelectionState } from "./app/features/cafe/services/filtering";
 import ProfileScreen from "./app/features/profile/screens/Profile";
 import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";
 import SettingsScreen from "./app/features/settings/screens/Settings";
+import SubmitCafeScreen from "./app/features/settings/screens/SubmitCafe";
 
 export type RootStackParamList = {
   Login: undefined;
@@ -29,6 +30,7 @@ export type RootStackParamList = {
   Profile: { userId?: string } | undefined;
   Settings: undefined;
   ChangePassword: undefined;
+  SubmitCafe: undefined;
   EditProfile: undefined;
   ForgotPassword: undefined;
   ResetPassword: undefined;
@@ -216,6 +218,7 @@ export default function App() {
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+        <Stack.Screen name="SubmitCafe" component={SubmitCafeScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         <Stack.Screen name="Dashboard" component={CafeCard} />
