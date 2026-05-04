@@ -163,38 +163,37 @@ export default function CafeCard() {
             style={{ marginLeft: 6, marginTop: 4 }}
           />
         </Pressable>
-      </View>
-
-      {/* Search Bar */}
-      <View style={[styles.searchBar, styles.androidShadow]}>
-        <MaterialIcons name="search" size={24} color="#C8AA7A" />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search café"
-          placeholderTextColor="#C8AA7A"
-          value={search}
-          onChangeText={(text) => setSearch(text)}
-          onSubmitEditing={() => {
-            navigation.navigate("Search", {
-              query: search,
-              city,
-              userCoords: userCoords ?? undefined,
-            });
-          }}
-        />
-        <Pressable
-          onPress={() =>
-            navigation.navigate("Filter", {
-              query: search,
-              city,
-              userCoords: userCoords ?? undefined,
-            })
-          }
-          hitSlop={10}
-          style={styles.filterTrigger}
-        >
-          <MaterialIcons name="tune" size={22} color="#C8AA7A" />
-        </Pressable>
+        {/* Search Bar */}
+        <View style={[styles.searchBar, styles.androidShadow]}>
+          <MaterialIcons name="search" size={24} color="#C8AA7A" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search café"
+            placeholderTextColor="#C8AA7A"
+            value={search}
+            onChangeText={(text) => setSearch(text)}
+            onSubmitEditing={() => {
+              navigation.navigate("Search", {
+                query: search,
+                city,
+                userCoords: userCoords ?? undefined,
+              });
+            }}
+          />
+          <Pressable
+            onPress={() =>
+              navigation.navigate("Filter", {
+                query: search,
+                city,
+                userCoords: userCoords ?? undefined,
+              })
+            }
+            hitSlop={10}
+            style={styles.filterTrigger}
+          >
+            <MaterialIcons name="tune" size={22} color="#C8AA7A" />
+          </Pressable>
+        </View>
       </View>
 
       {/* Scrollable body
@@ -320,12 +319,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 25,
     marginBottom: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
   },
 
   locText1: {
     fontSize: 9,
     color: "#4B2C11",
     fontFamily: "SourceSerifPro-Regular",
+    marginTop: 20,
   },
 
   locText2: {
@@ -337,19 +339,18 @@ const styles = StyleSheet.create({
   },
 
   searchBar: {
-    position: "absolute",
     backgroundColor: "#FFFAF3",
     borderRadius: 15,
-    top: 135,
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "center",
-    width: "75%",
+    width: "100%",
     height: 46,
     shadowColor: "#E9D6B9",
     shadowOffset: { width: 0, height: 4 },
     elevation: 20,
     paddingHorizontal: 10,
+    marginTop: 10,
   },
 
   searchInput: {

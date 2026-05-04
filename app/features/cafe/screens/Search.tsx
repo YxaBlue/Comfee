@@ -41,41 +41,49 @@ function DiscoverMore({ allCafes }: { allCafes: CafeWithFeatures[] }) {
       <Text style={styles.discoverTitle}>Discover More</Text>
       <View style={styles.discoverGrid}>
         {allCafes.slice(0, 4).map((item) => (
-          <View key={item.id} style={styles.cafeHolder}>
-            {item.main_photo_url ? (
-              <Image
-                source={{ uri: item.main_photo_url }}
-                style={styles.cafeImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={styles.cafeImageFallback}>
-                <MaterialIcons name="local-cafe" size={28} color="#C8AA7A" />
-              </View>
-            )}
-            <View style={styles.cafeTextWrapper}>
-              <View style={styles.cafeText}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.cafeName} numberOfLines={1}>
-                    {item.name}
-                  </Text>
-                  <View style={styles.locationRow}>
-                    <MaterialIcons
-                      name="location-on"
-                      size={14}
-                      color="#E9D0A2"
-                    />
-                    <Text style={styles.location} numberOfLines={1}>
-                      {item.address}
-                    </Text>
-                  </View>
+          <Pressable
+            key={item.id}
+            onPress={() =>
+              navigation.navigate("CafeProfile", { cafeId: String(item.id) })
+            }
+            style={{ flex: 1 }}
+          >
+            <View key={item.id} style={styles.cafeHolder}>
+              {item.main_photo_url ? (
+                <Image
+                  source={{ uri: item.main_photo_url }}
+                  style={styles.cafeImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.cafeImageFallback}>
+                  <MaterialIcons name="local-cafe" size={28} color="#C8AA7A" />
                 </View>
-                <Text style={styles.rating}>
-                  {item.average_rating?.toFixed(1) ?? "New"}
-                </Text>
+              )}
+              <View style={styles.cafeTextWrapper}>
+                <View style={styles.cafeText}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cafeName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <View style={styles.locationRow}>
+                      <MaterialIcons
+                        name="location-on"
+                        size={14}
+                        color="#E9D0A2"
+                      />
+                      <Text style={styles.location} numberOfLines={1}>
+                        {item.address}
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.rating}>
+                    {item.average_rating?.toFixed(1) ?? "New"}
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
+          </Pressable>
         ))}
       </View>
     </View>
@@ -459,45 +467,54 @@ export default function SearchScreen() {
               ) : null
             }
             renderItem={({ item }) => (
-              <View style={styles.cafeHolder}>
-                {item.main_photo_url ? (
-                  <Image
-                    source={{ uri: item.main_photo_url }}
-                    style={styles.cafeImage}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={styles.cafeImageFallback}>
-                    <MaterialIcons
-                      name="local-cafe"
-                      size={28}
-                      color="#C8AA7A"
+              <Pressable
+                onPress={() =>
+                  navigation.navigate("CafeProfile", {
+                    cafeId: String(item.id),
+                  })
+                }
+                style={{ flex: 1 }}
+              >
+                <View style={styles.cafeHolder}>
+                  {item.main_photo_url ? (
+                    <Image
+                      source={{ uri: item.main_photo_url }}
+                      style={styles.cafeImage}
+                      resizeMode="cover"
                     />
-                  </View>
-                )}
-                <View style={styles.cafeTextWrapper}>
-                  <View style={styles.cafeText}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.cafeName} numberOfLines={1}>
-                        {item.name}
-                      </Text>
-                      <View style={styles.locationRow}>
-                        <MaterialIcons
-                          name="location-on"
-                          size={14}
-                          color="#E9D0A2"
-                        />
-                        <Text style={styles.location} numberOfLines={1}>
-                          {item.address}
-                        </Text>
-                      </View>
+                  ) : (
+                    <View style={styles.cafeImageFallback}>
+                      <MaterialIcons
+                        name="local-cafe"
+                        size={28}
+                        color="#C8AA7A"
+                      />
                     </View>
-                    <Text style={styles.rating}>
-                      {item.average_rating?.toFixed(1) ?? "New"}
-                    </Text>
+                  )}
+                  <View style={styles.cafeTextWrapper}>
+                    <View style={styles.cafeText}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.cafeName} numberOfLines={1}>
+                          {item.name}
+                        </Text>
+                        <View style={styles.locationRow}>
+                          <MaterialIcons
+                            name="location-on"
+                            size={14}
+                            color="#E9D0A2"
+                          />
+                          <Text style={styles.location} numberOfLines={1}>
+                            {item.address}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text style={styles.rating}>
+                        {item.average_rating?.toFixed(1) ?? "New"}
+                      </Text>
+                    </View>
                   </View>
                 </View>
-              </View>
+              </Pressable>
             )}
             ListEmptyComponent={
               <View>

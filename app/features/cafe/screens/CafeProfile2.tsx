@@ -905,7 +905,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={true}
       >
         {/* ── Header ── */}
-        <View style={{ backgroundColor: "#E9D0A2" }}>
+        <View style={{ backgroundColor: "#FFEFD5" }}>
           <View style={avatarStyles.headerBand}>
             {cafe.cover_photo_url ? (
               <Image
@@ -1085,7 +1085,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: "#EDDEC7" },
-  container: { flexGrow: 1, backgroundColor: "#EDDEC7" },
+  container: { flexGrow: 1, backgroundColor: "#FFEFD5" },
   centered: {
     flex: 1,
     justifyContent: "center",
