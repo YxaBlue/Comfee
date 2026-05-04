@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   text: {
     color: "#3B2A1A",
     fontFamily: "SourceSerifPro-Regular",
-    fontSize: 14,
+    fontSize: 13,
   },
   postCont: {
     width: "100%",
