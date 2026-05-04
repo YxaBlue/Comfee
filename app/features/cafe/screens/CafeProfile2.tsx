@@ -56,6 +56,7 @@ type CafeProfileInformation = {
   openingTime: string;
   closingTime: string;
   openingDays: string[];
+  info: string | null;
 };
 
 type Amenities = {
@@ -495,6 +496,19 @@ function PostCard({ post }: { post: Post }) {
 function CafeInfoTab({ cafe }: { cafe: CafeProfileInformation }) {
   return (
     <View>
+      {/* ── Description ─────────────────────────────────────── */}
+
+      <>
+        <View style={infoStyles.section}>
+          <Text style={infoStyles.sectionTitle}>Description</Text>
+          <View style={infoStyles.line} />
+          <Text style={infoStyles.sectionIntro}>
+            {cafe.info ?? "No description available."}
+          </Text>
+        </View>
+        <View style={infoStyles.sectionDivider} />
+      </>
+
       <View style={infoStyles.statsRow}>
         <View style={infoStyles.statCard}>
           <Text style={infoStyles.statNum}>
@@ -989,6 +1003,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
                   openingTime: cafe.opening_time ?? "",
                   closingTime: cafe.closing_time ?? "",
                   openingDays: cafe.opening_days ?? [],
+                  info: cafe.info ?? null,
                 }}
               />
             )}
@@ -1461,6 +1476,42 @@ const infoStyles = StyleSheet.create({
   dayPillClosed: { backgroundColor: "#EDE0CE" },
   dayPillText: { fontSize: 11, fontWeight: "600", color: "#5A3E28" },
   dayPillTextClosed: { color: "#B09070", textDecorationLine: "line-through" },
+
+  section: {
+    paddingVertical: 8,
+    backgroundColor: "#FFF7ED",
+    width: "100%",
+    borderRadius: 10,
+    marginBottom: 1,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#3B2A1A",
+    marginBottom: 2,
+    marginLeft: 10,
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  sectionIntro: {
+    fontSize: 14,
+    color: "#3B2A1A",
+    marginLeft: 20,
+    fontFamily: "SourceSerifPro-Regular",
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  line: {
+    height: 1,
+    backgroundColor: "#4b2c1148",
+    marginVertical: 4,
+    width: "98%",
+    alignSelf: "center",
+  },
+  sectionDivider: {
+    height: 5,
+    backgroundColor: "#FFEFD5",
+    marginBottom: 4,
+  },
 });
 
 const amenityStyles = StyleSheet.create({

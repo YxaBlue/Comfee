@@ -204,6 +204,16 @@ export type CafeDetail = {
   opening_time: string | null;
   closing_time: string | null;
   opening_days: string[] | null;
+  info: string | null;
+};
+const WEEKDAY_MAP: Record<number, string> = {
+  0: "Sunday",
+  1: "Monday",
+  2: "Tuesday",
+  3: "Wednesday",
+  4: "Thursday",
+  5: "Friday",
+  6: "Saturday",
 };
 
 export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
@@ -212,8 +222,9 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
     .select(
       `
       id, name, address, email, phone,
-      review ( rating ), avatar_url, main_photo_url
-      
+      review ( rating ), avatar_url, main_photo_url,
+      cafe_hours (weekday, open_time, close_time) ,
+      info
     `,
     )
     .eq("id", Number(cafeId))
@@ -235,6 +246,15 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
         ) / 10
       : 0;
 
+  //opening hours
+  const hours: { weekday: number; open_time: string; close_time: string }[] =
+    data.cafe_hours ?? [];
+
+  const opening_days = hours.map((h) => WEEKDAY_MAP[h.weekday]).filter(Boolean);
+
+  const opening_time = hours[0]?.open_time?.slice(0, 5) ?? null; // "08:00"
+  const closing_time = hours[0]?.close_time?.slice(0, 5) ?? null;
+
   return {
     id: data.id,
     name: data.name,
@@ -247,8 +267,9 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
     average_rating,
     review_count: ratings.length,
     favorites_count: 0,
-    opening_time: null,
-    closing_time: null,
-    opening_days: null,
+    opening_time,
+    closing_time,
+    opening_days,
+    info: data.info ?? null,
   };
 }

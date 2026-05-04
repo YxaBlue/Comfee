@@ -133,7 +133,7 @@ export default function BusinessInfoTab({
     <View style={styles.container}>
       {/* ── Intro ─────────────────────────────────────────────────────────── */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Intro</Text>
+        <Text style={styles.sectionTitle}>Description</Text>
         <View style={styles.line} />
         {isEditing ? (
           <TextInput
