@@ -33,7 +33,74 @@ export type CafeWithFeatures = Cafe & {
   features: CafeFeatures | null;
 };
 
+export type CafeDetail = {
+  id: number;
+  name: string;
+  address: string;
+  email: string | null;
+  phone: string | null;
+  avatar_url: string | null;
+  cover_photo_url: string | null;
+  menu_urls: string[] | null;
+  average_rating: number;
+  review_count: number;
+  favorites_count: number;
+  opening_time: string | null;
+  closing_time: string | null;
+  opening_days: string[] | null;
+  info: string | null;
+  // ── Amenities ──
+  wifi_speed: "None" | "Slow" | "Moderate" | "Fast" | null;
+  sockets: "None" | "Some" | "Many" | null;
+  parking: "None" | "Limited" | "Plenty" | null;
+  lighting: "Dim" | "Balanced" | "Bright" | null;
+  seating: string[];
+  tables_type: string[];
+  music: "Quiet" | "Normal" | "Blaring" | null;
+  pet_friendly: boolean;
+  suitable_for: string[];
+  coffee_bean_type: string[];
+  coffee_brew_method: string[];
+  price_level: "P" | "PP" | "PPP" | null;
+};
+
 const PAGE_SIZE = 10;
+
+// ─── Normalization helpers ────────────────────────────────────────────────────
+
+/**
+ * Maps raw DB strings (e.g. "cold-brew", "fast", "french_press")
+ * to the display labels used in the UI pills.
+ */
+const DISPLAY_OVERRIDES: Record<string, string> = {
+  // Coffee bean types
+  "Liberica (Barako)": "Liberica (Barako)",
+  "Liberica (barako)": "Liberica (Barako)",
+  // Brew methods
+  "French Press": "French Press",
+  "Pour Over": "Pour Over",
+  "Cold Brew": "Cold Brew",
+  // Tables
+  "Bar Type": "Bar type",
+  "Individual Tables": "Individual Tables",
+  "Large Tables (>6)": "Large tables (>6)",
+  "Large Tables (> 6)": "Large tables (>6)",
+};
+
+function toDisplay(val: string | null | undefined): string | null {
+  if (!val) return null;
+  const normalized = val
+    .replace(/_/g, " ")                          // snake_case → spaces
+    .replace(/-/g, " ")                          // kebab-case → spaces
+    .replace(/\b\w/g, (c) => c.toUpperCase());   // title Case
+  return DISPLAY_OVERRIDES[normalized] ?? normalized;
+}
+
+function toDisplayArr(arr: string[] | null | undefined): string[] {
+  return (arr ?? []).map((v) => toDisplay(v) ?? v);
+}
+
+// ─── Location ─────────────────────────────────────────────────────────────────
 
 export async function getUserLocation(): Promise<{
   latitude: number;
@@ -47,18 +114,6 @@ export async function getUserLocation(): Promise<{
       accuracy: Location.Accuracy.Balanced,
     });
 
-    // REVERSE GEOCODING CITY STILL DOES NOT WORK
-    // const [geocode] = await Location.reverseGeocodeAsync({
-    //   latitude: location.coords.latitude,
-    //   longitude: location.coords.longitude,
-    // });
-
-    // // Map to your CEBU_CITIES list
-    // const CEBU_CITIES = ["Cebu", "Mandaue", "Lapu-Lapu", "Talisay"];
-    // const detectedCity = CEBU_CITIES.find(c =>
-    //   geocode.city?.toLowerCase().includes(c.toLowerCase())
-    // );
-
     return {
       latitude: location.coords.latitude,
       longitude: location.coords.longitude,
@@ -67,6 +122,8 @@ export async function getUserLocation(): Promise<{
     return null;
   }
 }
+
+// ─── Cafe lists ───────────────────────────────────────────────────────────────
 
 export async function getCafesByCity(
   city: string,
@@ -96,7 +153,7 @@ export async function getCafesByCity(
               ratings.length) *
               10,
           ) / 10
-        : 0; // ← was null
+        : 0;
 
     return {
       id: cafe.id,
@@ -159,7 +216,7 @@ export async function getCafesWithFeatures(): Promise<CafeWithFeatures[]> {
               ratings.length) *
               10,
           ) / 10
-        : 0; // ← 0 if no reviews
+        : 0;
 
     return {
       id: cafe.id,
@@ -189,36 +246,7 @@ export async function getNearbyCafes(
   return data ?? [];
 }
 
-export type CafeDetail = {
-  id: number;
-  name: string;
-  address: string;
-  email: string | null;
-  phone: string | null;
-  avatar_url: string | null;
-  cover_photo_url: string | null;
-  menu_urls: string[] | null;
-  average_rating: number;
-  review_count: number;
-  favorites_count: number;
-  opening_time: string | null;
-  closing_time: string | null;
-  opening_days: string[] | null;
-  info: string | null;
-  // ── Amenities ──
-  wifi_speed: "None" | "Slow" | "Moderate" | "Fast" | null;
-  sockets: "None" | "Some" | "Many" | null;
-  parking: "None" | "Limited" | "Plenty" | null;
-  lighting: "Dim" | "Balanced" | "Bright" | null;
-  seating: string[];
-  tables_type: string[];
-  music: "Quiet" | "Normal" | "Blaring" | null;
-  pet_friendly: boolean;
-  suitable_for: string[];
-  coffee_bean_type: string[];
-  coffee_brew_method: string[];
-  price_level: "P" | "PP" | "PPP" | null;
-};
+// ─── Cafe detail ──────────────────────────────────────────────────────────────
 
 const WEEKDAY_MAP: Record<number, string> = {
   0: "Sunday",
@@ -259,6 +287,7 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
   }
   if (!data) return null;
 
+  // ── Ratings ──
   const ratings = (data.review ?? []).map((r: { rating: number }) => r.rating);
   const average_rating =
     ratings.length > 0
@@ -269,11 +298,15 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
         ) / 10
       : 0;
 
+  // ── Opening hours ──
   const hours: { weekday: number; open_time: string; close_time: string }[] =
     data.cafe_hours ?? [];
   const opening_days = hours.map((h) => WEEKDAY_MAP[h.weekday]).filter(Boolean);
   const opening_time = hours[0]?.open_time?.slice(0, 5) ?? null;
   const closing_time = hours[0]?.close_time?.slice(0, 5) ?? null;
+
+  // ── Debug: remove once values are confirmed correct ──
+  console.log("RAW amenitiesData:", JSON.stringify(amenitiesData, null, 2));
 
   return {
     id: data.id,
@@ -291,18 +324,18 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
     closing_time,
     opening_days,
     info: data.info ?? null,
-    // ── Amenities (null-safe if no row in cafe_amenities yet) ──
-    wifi_speed: amenitiesData?.wifi_speed ?? null,
-    sockets: amenitiesData?.sockets ?? null,
-    parking: amenitiesData?.parking ?? null,
-    lighting: amenitiesData?.lighting ?? null,
-    seating: amenitiesData?.seating ?? [],
-    tables_type: amenitiesData?.tables_type ?? [],
-    music: amenitiesData?.music ?? null,
+
+    wifi_speed: toDisplay(amenitiesData?.wifi_speed) as CafeDetail["wifi_speed"],
+    sockets: toDisplay(amenitiesData?.sockets) as CafeDetail["sockets"],
+    parking: toDisplay(amenitiesData?.parking) as CafeDetail["parking"],
+    lighting: toDisplay(amenitiesData?.lighting) as CafeDetail["lighting"],
+    seating: toDisplayArr(amenitiesData?.seating),
+    tables_type: toDisplayArr(amenitiesData?.tables_type),
+    music: toDisplay(amenitiesData?.music) as CafeDetail["music"],
     pet_friendly: amenitiesData?.pet_friendly ?? false,
-    suitable_for: amenitiesData?.suitable_for ?? [],
-    coffee_bean_type: amenitiesData?.coffee_bean_type ?? [],
-    coffee_brew_method: amenitiesData?.coffee_brew_method ?? [],
-    price_level: amenitiesData?.price_level ?? null,
+    suitable_for: toDisplayArr(amenitiesData?.suitable_for),
+    coffee_bean_type: toDisplayArr(amenitiesData?.coffee_bean_type),
+    coffee_brew_method: toDisplayArr(amenitiesData?.coffee_brew_method),
+    price_level: (amenitiesData?.price_level ?? null) as CafeDetail["price_level"],
   };
 }

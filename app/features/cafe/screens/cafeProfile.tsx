@@ -72,8 +72,8 @@ type Amenities = {
 };
 
 type Coffee = {
-  BeanType: ("arabica" | "robusta" | "liberica (Barako)" | "excelsa")[];
-  BrewMethod: ("espresso" | "drip" | "french-press" | "pour Over" | "cold-brew")[];
+  BeanType: ("Arabica" | "Robusta" | "Liberica (Barako)" | "Excelsa")[];
+  BrewMethod: ("Espresso" | "Drip" | "French Press" | "Pour Over" | "Cold Brew")[];
 }
 
 type PriceLevel = {
@@ -82,18 +82,6 @@ type PriceLevel = {
 
 
 // ============== MOCK DATA ==============
-const MOCK_AMENITIES: Amenities = {
-  WiFi: "Fast",
-  Sockets: "Some",
-  Parking: "Limited",
-  Lighting: "Balanced",
-  Seating: "Inside",
-  Tables: "Individual Tables",
-  Music: "Quiet",
-  PetFriendly: true,
-  SuitableConditions: ["Student"],
-};
-
 const MOCK_POSTS: Post[] = [
   {
     id: "1",
@@ -116,16 +104,6 @@ const MOCK_POSTS: Post[] = [
     likes: 34,
   },
 ];
-
-// const MOCK_COFFEE: Coffee = {
-//   BeanType: ["Arabica", "Liberica (Barako)"],
-//   BrewMethod: ["Espresso", "Pour Over", "Cold Brew"],
-// };
-
-const MOCK_PRICE: PriceLevel = {
-  PriceRange: "PP",
-};
-
 
 
 const ALL_DAYS = [
@@ -1413,7 +1391,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
                 }}
               />
             )}
-
             {activeTab === "Cafe-Reviews" && (
               <View>
                 <WriteReviewCTA
