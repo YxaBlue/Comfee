@@ -332,12 +332,12 @@ function FaveCard({
   };
 
   return (
-    <View style={styles.favoriteCard}>
-      <TouchableOpacity
-        onPress={navigateToCafe}
-        activeOpacity={0.85}
-        style={styles.favoritePhotoWrapper}
-      >
+    <TouchableOpacity
+      onPress={navigateToCafe}
+      activeOpacity={0.85}
+      style={styles.favoriteCard}
+    >
+      <View style={styles.favoritePhotoWrapper}>
         {cafe.mainPhotoUrl ? (
           <Image
             source={{ uri: cafe.mainPhotoUrl }}
@@ -349,7 +349,7 @@ function FaveCard({
             <MaterialIcons name="local-cafe" size={28} color="#C8A97A" />
           </View>
         )}
-      </TouchableOpacity>
+      </View>
       <View style={styles.favoriteInfo}>
         <Text style={styles.favoriteName}>{cafe.name}</Text>
         <View style={styles.locationRow}>
@@ -357,7 +357,7 @@ function FaveCard({
           <Text style={styles.favoriteLocation}>{cafe.location}</Text>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
