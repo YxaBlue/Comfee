@@ -209,12 +209,16 @@ const toComparableOption = (value: string) => {
   return value;
 };
 
-const matchesArrayFilter = (values: string[], selected: string[]) =>
+const matchesArrayFilter = (
+  values: string[] | null | undefined,
+  selected: string[],
+) =>
   selected.length === 0 ||
-  selected.some(
-    (option) =>
-      values.includes(option) || values.includes(toComparableOption(option)),
-  );
+  (Array.isArray(values) &&
+    selected.some(
+      (option) =>
+        values.includes(option) || values.includes(toComparableOption(option)),
+    ));
 
 export const cafeMatchesFilters = (
   cafe: CafeWithFeatures,

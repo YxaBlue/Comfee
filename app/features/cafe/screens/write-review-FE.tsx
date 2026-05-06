@@ -351,8 +351,8 @@ function StarRatingInput({
         ? "star-half"
         : "star-border";
 
-    const setHalf = () => onChange(Math.max(0, Math.min(5, index - 0.5)));
-    const setFull = () => onChange(Math.max(0, Math.min(5, index)));
+    const setHalf = () => onChange(Math.max(1, Math.min(5, index - 0.5)));
+    const setFull = () => onChange(Math.max(1, Math.min(5, index)));
 
     return (
       <View

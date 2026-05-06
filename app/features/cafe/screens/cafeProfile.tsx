@@ -73,13 +73,18 @@ type Amenities = {
 
 type Coffee = {
   BeanType: ("Arabica" | "Robusta" | "Liberica (Barako)" | "Excelsa")[];
-  BrewMethod: ("Espresso" | "Drip" | "French Press" | "Pour Over" | "Cold Brew")[];
-}
+  BrewMethod: (
+    | "Espresso"
+    | "Drip"
+    | "French Press"
+    | "Pour Over"
+    | "Cold Brew"
+  )[];
+};
 
 type PriceLevel = {
   PriceRange: "P" | "PP" | "PPP" | null;
-}
-
+};
 
 // ============== MOCK DATA ==============
 const MOCK_POSTS: Post[] = [
@@ -104,7 +109,6 @@ const MOCK_POSTS: Post[] = [
     likes: 34,
   },
 ];
-
 
 const ALL_DAYS = [
   "Monday",
@@ -585,7 +589,7 @@ function CafeInfoTab({ cafe }: { cafe: CafeProfileInformation }) {
       <View style={infoStyles.statsRow}>
         <View style={infoStyles.statCard}>
           <Text style={infoStyles.statNum}>
-            {cafe.averageRating.toFixed(1)}
+            {cafe.averageRating > 0 ? cafe.averageRating.toFixed(1) : "—"}
           </Text>
           <Text style={infoStyles.statLabel}>Rating</Text>
         </View>
@@ -709,18 +713,67 @@ function AmenityCard({
   );
 }
 
-function AmenitiesMenuTab({ amenities, menuURLs, coffee, price }: AmenitiesMenuTabProps) {
-  const rows: { label: string; icon: keyof typeof MaterialIcons.glyphMap; options: string[]; value: string | null }[] = [
-    { label: "WiFi", icon: "wifi", options: ["None", "Slow", "Moderate", "Fast"], value: amenities.WiFi ?? null },
-    { label: "Sockets", icon: "electrical-services", options: ["None", "Some", "Many"], value: amenities.Sockets ?? null },
-    { label: "Parking", icon: "local-parking", options: ["None", "Limited", "Plenty"], value: amenities.Parking ?? null },
-    { label: "Lighting", icon: "light-mode", options: ["Dim", "Balanced", "Bright"], value: amenities.Lighting ?? null },
-    { label: "Seating", icon: "chair", options: ["Inside", "Outside"], value: amenities.Seating ?? null },
-    { label: "Tables", icon: "table-bar", options: ["Bar type", "Individual Tables", "Large tables (>6)"], value: amenities.Tables ?? null },
-    { label: "Music", icon: "music-note", options: ["Quiet", "Normal", "Blaring"], value: amenities.Music ?? null },
+function AmenitiesMenuTab({
+  amenities,
+  menuURLs,
+  coffee,
+  price,
+}: AmenitiesMenuTabProps) {
+  const rows: {
+    label: string;
+    icon: keyof typeof MaterialIcons.glyphMap;
+    options: string[];
+    value: string | null;
+  }[] = [
+    {
+      label: "WiFi",
+      icon: "wifi",
+      options: ["None", "Slow", "Moderate", "Fast"],
+      value: amenities.WiFi ?? null,
+    },
+    {
+      label: "Sockets",
+      icon: "electrical-services",
+      options: ["None", "Some", "Many"],
+      value: amenities.Sockets ?? null,
+    },
+    {
+      label: "Parking",
+      icon: "local-parking",
+      options: ["None", "Limited", "Plenty"],
+      value: amenities.Parking ?? null,
+    },
+    {
+      label: "Lighting",
+      icon: "light-mode",
+      options: ["Dim", "Balanced", "Bright"],
+      value: amenities.Lighting ?? null,
+    },
+    {
+      label: "Seating",
+      icon: "chair",
+      options: ["Inside", "Outside"],
+      value: amenities.Seating ?? null,
+    },
+    {
+      label: "Tables",
+      icon: "table-bar",
+      options: ["Bar type", "Individual Tables", "Large tables (>6)"],
+      value: amenities.Tables ?? null,
+    },
+    {
+      label: "Music",
+      icon: "music-note",
+      options: ["Quiet", "Normal", "Blaring"],
+      value: amenities.Music ?? null,
+    },
   ];
 
-  const PRICE_OPTIONS: { symbol: string; value: "P" | "PP" | "PPP"; label: string }[] = [
+  const PRICE_OPTIONS: {
+    symbol: string;
+    value: "P" | "PP" | "PPP";
+    label: string;
+  }[] = [
     { symbol: "₱", value: "P", label: "Below ₱150" },
     { symbol: "₱₱", value: "PP", label: "₱150-300" },
     { symbol: "₱₱₱", value: "PPP", label: "Above ₱300" },
@@ -733,17 +786,28 @@ function AmenitiesMenuTab({ amenities, menuURLs, coffee, price }: AmenitiesMenuT
 
       {menuURLs && Array.isArray(menuURLs) && menuURLs.length > 0 ? (
         menuURLs.map((url: string, i: number) => (
-          <Image key={i} source={{ uri: url }} style={amenityStyles.menuImage} resizeMode="contain" />
+          <Image
+            key={i}
+            source={{ uri: url }}
+            style={amenityStyles.menuImage}
+            resizeMode="contain"
+          />
         ))
       ) : (
         <View style={amenityStyles.menuPlaceholder}>
           <MaterialIcons name="menu-book" size={32} color="#C4A882" />
-          <Text style={amenityStyles.menuPlaceholderText}>No menu uploaded yet</Text>
+          <Text style={amenityStyles.menuPlaceholderText}>
+            No menu uploaded yet
+          </Text>
         </View>
       )}
 
-            {/* ── Price Level ── */}
-      <SectionCard icon="local-offer" title="Price Level" subtitle="Based on average drink prices">
+      {/* ── Price Level ── */}
+      <SectionCard
+        icon="local-offer"
+        title="Price Level"
+        subtitle="Based on average drink prices"
+      >
         <View style={priceCoffeeStyles.priceRow}>
           {PRICE_OPTIONS.map((opt) => (
             <PricePill
@@ -757,7 +821,11 @@ function AmenitiesMenuTab({ amenities, menuURLs, coffee, price }: AmenitiesMenuT
       </SectionCard>
 
       {/* ── Coffee ── */}
-      <SectionCard icon="coffee" title="Coffee" subtitle="Bean type, brewing methods, etc.">
+      <SectionCard
+        icon="coffee"
+        title="Coffee"
+        subtitle="Bean type, brewing methods, etc."
+      >
         <CoffeeSubCard
           label="Bean Type"
           options={["Arabica", "Robusta", "Liberica (Barako)", "Excelsa"]}
@@ -765,13 +833,20 @@ function AmenitiesMenuTab({ amenities, menuURLs, coffee, price }: AmenitiesMenuT
         />
         <CoffeeSubCard
           label="Brew Method"
-          options={["Espresso", "Drip", "French Press", "Pour Over", "Cold Brew"]}
+          options={[
+            "Espresso",
+            "Drip",
+            "French Press",
+            "Pour Over",
+            "Cold Brew",
+          ]}
           selected={coffee.BrewMethod}
         />
       </SectionCard>
 
-
-      <Text style={[amenityCardStyles.sectionLabel, { marginTop: 20 }]}>Amenities</Text>
+      <Text style={[amenityCardStyles.sectionLabel, { marginTop: 20 }]}>
+        Amenities
+      </Text>
 
       {rows.map((row) => (
         <AmenityCard
@@ -794,8 +869,19 @@ function AmenitiesMenuTab({ amenities, menuURLs, coffee, price }: AmenitiesMenuT
             {(["Student", "Work", "Group", "Vibes"] as const).map((cond) => {
               const isSelected = amenities.SuitableConditions.includes(cond);
               return (
-                <View key={cond} style={[amenityCardStyles.optionPill, isSelected && amenityCardStyles.optionPillSelected]}>
-                  <Text style={[amenityCardStyles.optionText, isSelected && amenityCardStyles.optionTextSelected]}>
+                <View
+                  key={cond}
+                  style={[
+                    amenityCardStyles.optionPill,
+                    isSelected && amenityCardStyles.optionPillSelected,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      amenityCardStyles.optionText,
+                      isSelected && amenityCardStyles.optionTextSelected,
+                    ]}
+                  >
                     {cond}
                   </Text>
                 </View>
@@ -813,10 +899,23 @@ function AmenitiesMenuTab({ amenities, menuURLs, coffee, price }: AmenitiesMenuT
         </View>
         <View style={amenityCardStyles.optionsRow}>
           {(["Yes", "No"] as const).map((opt) => {
-            const isSelected = (opt === "Yes" && amenities.PetFriendly) || (opt === "No" && !amenities.PetFriendly);
+            const isSelected =
+              (opt === "Yes" && amenities.PetFriendly) ||
+              (opt === "No" && !amenities.PetFriendly);
             return (
-              <View key={opt} style={[amenityCardStyles.optionPill, isSelected && amenityCardStyles.optionPillSelected]}>
-                <Text style={[amenityCardStyles.optionText, isSelected && amenityCardStyles.optionTextSelected]}>
+              <View
+                key={opt}
+                style={[
+                  amenityCardStyles.optionPill,
+                  isSelected && amenityCardStyles.optionPillSelected,
+                ]}
+              >
+                <Text
+                  style={[
+                    amenityCardStyles.optionText,
+                    isSelected && amenityCardStyles.optionTextSelected,
+                  ]}
+                >
                   {opt}
                 </Text>
               </View>
@@ -884,7 +983,9 @@ function SectionCard({
         <View>
           <Text style={priceCoffeeStyles.sectionCardTitle}>{title}</Text>
           {subtitle ? (
-            <Text style={priceCoffeeStyles.sectionCardSubtitle}>{subtitle}</Text>
+            <Text style={priceCoffeeStyles.sectionCardSubtitle}>
+              {subtitle}
+            </Text>
           ) : null}
         </View>
       </View>
@@ -932,8 +1033,6 @@ function CoffeeSubCard({
     </View>
   );
 }
-
-
 
 // ─── Write Review CTA ─────────────────────────────────────────────────────────
 
@@ -990,7 +1089,7 @@ function StarRatingInput({
         <MaterialIcons name={name} size={30} color="#3B2A1A" />
         <Pressable
           style={starInputStyles.leftHalf}
-          onPress={() => onChange(Math.max(1, index - 0.5))}
+          onPress={() => onChange(index === 1 ? 1 : Math.max(1, index - 0.5))}
         />
         <Pressable
           style={starInputStyles.rightHalf}
@@ -1478,7 +1577,8 @@ export default function CafeProfileScreen({ navigation }: Props) {
                   Tables: (cafe.tables_type[0] as Amenities["Tables"]) ?? null,
                   Music: cafe.music as Amenities["Music"],
                   PetFriendly: cafe.pet_friendly,
-                  SuitableConditions: cafe.suitable_for as Amenities["SuitableConditions"],
+                  SuitableConditions:
+                    cafe.suitable_for as Amenities["SuitableConditions"],
                 }}
                 menuURLs={cafe.menu_urls}
                 coffee={{
@@ -1508,8 +1608,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
     </View>
   );
 }
-
-
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
