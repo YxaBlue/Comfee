@@ -14,6 +14,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 
@@ -24,16 +25,22 @@ import {
   getUserLocation,
 } from "../services/cafeService";
 import {
+  cafeMatchesFilters,
   FILTER_CATEGORIES,
   FilterSelectionState,
-  cafeMatchesFilters,
   normalizeFilterSelections,
 } from "../services/filtering";
 
 type NavProps = NativeStackNavigationProp<RootStackParamList>;
 type SearchScreenRouteProp = RouteProp<RootStackParamList, "Search">;
 
-function DiscoverMore({ allCafes }: { allCafes: CafeWithFeatures[] }) {
+function DiscoverMore({
+  allCafes,
+  cardWidth,
+}: {
+  allCafes: CafeWithFeatures[];
+  cardWidth: number;
+}) {
   const navigation = useNavigation<NavProps>();
   if (allCafes.length === 0) return null;
   return (
@@ -46,9 +53,9 @@ function DiscoverMore({ allCafes }: { allCafes: CafeWithFeatures[] }) {
             onPress={() =>
               navigation.navigate("CafeProfile", { cafeId: String(item.id) })
             }
-            style={{ flex: 1 }}
+            style={[styles.discoverCardWrapper, { width: cardWidth }]}
           >
-            <View key={item.id} style={styles.cafeHolder}>
+            <View style={styles.cafeHolder}>
               {item.main_photo_url ? (
                 <Image
                   source={{ uri: item.main_photo_url }}
@@ -107,6 +114,21 @@ export default function SearchScreen() {
   } | null>(route.params?.userCoords ?? null);
   const [selectedFilters, setSelectedFilters] = useState<FilterSelectionState>(
     () => normalizeFilterSelections(route.params?.selectedFilters),
+  );
+
+  const { width: screenWidth } = useWindowDimensions();
+  const columns = screenWidth >= 760 ? 3 : 2;
+  const cardSpacing = 16;
+  const horizontalPadding = 20;
+  const cardWidth = Math.floor(
+    Math.min(
+      260,
+      Math.max(
+        160,
+        (screenWidth - horizontalPadding * 2 - cardSpacing * (columns - 1)) /
+          columns,
+      ),
+    ),
   );
 
   // Ref to always access latest allCafes inside async callbacks
@@ -436,13 +458,13 @@ export default function SearchScreen() {
                 Use the search bar, tap Near Me, or apply filters to find cafés.
               </Text>
             </View>
-            <DiscoverMore allCafes={allCafes} />
+            <DiscoverMore allCafes={allCafes} cardWidth={cardWidth} />
           </ScrollView>
         ) : (
           <FlatList
             data={filteredCafes}
             keyExtractor={(item) => item.id.toString()}
-            numColumns={2}
+            numColumns={columns}
             columnWrapperStyle={styles.columnWrapper}
             contentContainerStyle={styles.listContent}
             ListHeaderComponent={
@@ -463,7 +485,7 @@ export default function SearchScreen() {
             }
             ListFooterComponent={
               filteredCafes.length > 0 ? (
-                <DiscoverMore allCafes={allCafes} />
+                <DiscoverMore allCafes={allCafes} cardWidth={cardWidth} />
               ) : null
             }
             renderItem={({ item }) => (
@@ -473,7 +495,7 @@ export default function SearchScreen() {
                     cafeId: String(item.id),
                   })
                 }
-                style={{ flex: 1 }}
+                style={[styles.cardWrapper, { width: cardWidth }]}
               >
                 <View style={styles.cafeHolder}>
                   {item.main_photo_url ? (
@@ -534,7 +556,7 @@ export default function SearchScreen() {
                   </Text>
                 </View>
 
-                <DiscoverMore allCafes={allCafes} />
+                <DiscoverMore allCafes={allCafes} cardWidth={cardWidth} />
               </View>
             }
           />
@@ -558,16 +580,17 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   cafeHolder: {
-    flex: 1,
     height: 136,
     backgroundColor: "#FFFAF3",
     borderRadius: 10,
-    margin: 8,
     overflow: "hidden",
     shadowColor: "#A97C4E",
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 4,
     elevation: 20,
+  },
+  cardWrapper: {
+    margin: 8,
   },
   cafeImage: {
     width: "100%",
@@ -749,5 +772,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
+  },
+  discoverCardWrapper: {
+    marginBottom: 12,
   },
 });

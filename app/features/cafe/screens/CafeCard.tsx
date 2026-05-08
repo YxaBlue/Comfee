@@ -10,6 +10,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 
@@ -30,6 +31,11 @@ const CEBU_CITIES = ["Cebu", "Mandaue", "Lapu-Lapu", "Talisay"];
 
 export default function CafeCard() {
   const navigation = useNavigation<NavProps>();
+  const { width: screenWidth } = useWindowDimensions();
+  const cardWidth = Math.floor(
+    Math.min(200, Math.max(160, (screenWidth - 40) / 2.3)),
+  );
+  const cardHeight = Math.round(cardWidth * 0.95);
 
   // --- State ---
   const [search, setSearch] = useState("");
@@ -104,7 +110,7 @@ export default function CafeCard() {
 
   const renderCafeCard = ({ item }: { item: Cafe }) => (
     <Pressable
-      style={styles.cafeHolder}
+      style={[styles.cafeHolder, { width: cardWidth, height: cardHeight }]}
       onPress={() => {
         navigation.navigate("CafeProfile", { cafeId: String(item.id) });
       }}
@@ -407,8 +413,6 @@ const styles = StyleSheet.create({
   },
 
   cafeHolder: {
-    width: 143,
-    height: 136,
     backgroundColor: "#FFFAF3",
     borderRadius: 10,
     margin: 10,
