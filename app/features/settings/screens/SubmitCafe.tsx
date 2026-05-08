@@ -131,12 +131,15 @@ export default function SubmitCafeScreen({ navigation }: Props) {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [telephone, setTelephone] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
   const [open247, setOpen247] = useState(false);
   const [hours, setHours] = useState<DayHours[]>(initialHours);
   const [priceLevel, setPriceLevel] = useState("PHP");
   const [beanTypes, setBeanTypes] = useState<string[]>([]);
   const [brewMethods, setBrewMethods] = useState<string[]>([]);
   const [amenities, setAmenities] = useState<Record<string, string[]>>({});
+  const [petFriendly, setPetFriendly] = useState<boolean | null>(null);
   const [conditionTags, setConditionTags] = useState("");
   const [profileImageUri, setProfileImageUri] = useState<string | null>(null);
   const [coverImageUri, setCoverImageUri] = useState<string | null>(null);
@@ -302,6 +305,8 @@ export default function SubmitCafeScreen({ navigation }: Props) {
         email: !email.trim(),
         phone: !phone.trim(),
         telephone: !telephone.trim(),
+        address: !address.trim(),
+        city: !city.trim(),
         profileImage: !profileImageUri,
         coverImage: !coverImageUri,
       };
@@ -348,9 +353,10 @@ export default function SubmitCafeScreen({ navigation }: Props) {
         "Music",
       ];
 
-      const hasMissingAmenity = requiredAmenityGroups.some(
-        (group) => (amenities[group] ?? []).length === 0,
-      );
+      const hasMissingAmenity =
+        requiredAmenityGroups.some(
+          (group) => (amenities[group] ?? []).length === 0,
+        ) || petFriendly === null;
       const nextMissingFields = {
         beanTypes: beanTypes.length === 0,
         brewMethods: brewMethods.length === 0,
@@ -363,6 +369,7 @@ export default function SubmitCafeScreen({ navigation }: Props) {
         SuitableConditions:
           (amenities["Suitable Conditions"] ?? []).length === 0,
         Music: (amenities.Music ?? []).length === 0,
+        PetFriendly: petFriendly === null,
         menuImages: menuImageUris.length === 0,
       };
 
@@ -404,6 +411,8 @@ export default function SubmitCafeScreen({ navigation }: Props) {
         email: normalizeString(email) || base?.email || email,
         phone: normalizeString(phone) || base?.phone || phone,
         telephone: normalizeString(telephone) || base?.telephone || telephone,
+        address: normalizeString(address) || base?.address || address,
+        city: normalizeString(city) || base?.city || city,
         priceLevel,
         conditionTags,
         open247,
@@ -411,6 +420,7 @@ export default function SubmitCafeScreen({ navigation }: Props) {
         amenities,
         beanTypes,
         brewMethods,
+        petFriendly: petFriendly ?? false,
         profileImageUri,
         coverImageUri,
         menuImageUris,
@@ -539,6 +549,7 @@ export default function SubmitCafeScreen({ navigation }: Props) {
     setBeanTypes([]);
     setBrewMethods([]);
     setAmenities({});
+    setPetFriendly(null);
     setConditionTags("");
     setProfileImageUri(null);
     setCoverImageUri(null);
@@ -557,10 +568,13 @@ export default function SubmitCafeScreen({ navigation }: Props) {
       setEmail("");
       setPhone("");
       setTelephone("");
+      setAddress(defaults.address);
+      setCity(defaults.city);
       setPriceLevel(defaults.priceLevel);
       setOpen247(defaults.open247);
       setHours(defaults.hours);
       setAmenities(defaults.amenities);
+      setPetFriendly(defaults.petFriendly);
       setBeanTypes(defaults.beanTypes);
       setBrewMethods(defaults.brewMethods);
       setConditionTags("");
@@ -648,6 +662,10 @@ export default function SubmitCafeScreen({ navigation }: Props) {
               setPhone={setPhone}
               telephone={telephone}
               setTelephone={setTelephone}
+              address={address}
+              setAddress={setAddress}
+              city={city}
+              setCity={setCity}
               profileImageUri={profileImageUri}
               coverImageUri={coverImageUri}
               onPickProfile={() => {
@@ -679,6 +697,8 @@ export default function SubmitCafeScreen({ navigation }: Props) {
               amenities={amenities}
               conditionTags={conditionTags}
               setConditionTags={setConditionTags}
+              petFriendly={petFriendly}
+              setPetFriendly={setPetFriendly}
               menuImageUris={menuImageUris}
               onPickMenuImages={pickMenuImages}
               onRemoveMenuImage={removeMenuImage}
@@ -910,6 +930,10 @@ function DetailsStep({
   setPhone,
   telephone,
   setTelephone,
+  address,
+  setAddress,
+  city,
+  setCity,
   profileImageUri,
   coverImageUri,
   onPickProfile,
@@ -929,6 +953,10 @@ function DetailsStep({
   setPhone: (value: string) => void;
   telephone: string;
   setTelephone: (value: string) => void;
+  address: string;
+  setAddress: (value: string) => void;
+  city: string;
+  setCity: (value: string) => void;
   profileImageUri: string | null;
   coverImageUri: string | null;
   onPickProfile: () => void;
@@ -998,6 +1026,20 @@ function DetailsStep({
         placeholder={placeholders?.telephone || "e.g. 123-4567"}
         keyboardType="phone-pad"
         error={missingFields.telephone}
+      />
+      <Field
+        label="Address"
+        value={address}
+        onChangeText={setAddress}
+        placeholder={placeholders?.address || "Street address"}
+        error={missingFields.address}
+      />
+      <Field
+        label="City"
+        value={city}
+        onChangeText={setCity}
+        placeholder={placeholders?.city || "City"}
+        error={missingFields.city}
       />
       <View style={styles.divider} />
       <UploadPair
@@ -1331,6 +1373,8 @@ function AmenitiesStep({
   amenities,
   conditionTags,
   setConditionTags,
+  petFriendly,
+  setPetFriendly,
   menuImageUris,
   onPickMenuImages,
   onRemoveMenuImage,
@@ -1347,6 +1391,8 @@ function AmenitiesStep({
   amenities: Record<string, string[]>;
   conditionTags: string;
   setConditionTags: (value: string) => void;
+  petFriendly: boolean | null;
+  setPetFriendly: (value: boolean | null) => void;
   menuImageUris: string[];
   onPickMenuImages: () => void;
   onRemoveMenuImage: (uri: string) => void;
@@ -1472,6 +1518,18 @@ function AmenitiesStep({
           selected={amenities.Music ?? []}
           onToggle={toggleAmenity}
           error={!optional && missingFields.Music}
+        />
+        <AmenityGroup
+          name="Pet Friendly"
+          icon="dog-side"
+          options={["Yes", "No"]}
+          selected={petFriendly === null ? [] : [petFriendly ? "Yes" : "No"]}
+          onToggle={(_, value) => {
+            const currentValue =
+              petFriendly === null ? null : petFriendly ? "Yes" : "No";
+            setPetFriendly(currentValue === value ? null : value === "Yes");
+          }}
+          error={!optional && missingFields.PetFriendly}
         />
       </FeatureCard>
       <View style={styles.divider} />

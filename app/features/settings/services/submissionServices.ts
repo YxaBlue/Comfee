@@ -38,12 +38,15 @@ export type ExistingCafeSubmissionDefaults = {
   email: string;
   phone: string;
   telephone: string;
+  address: string;
+  city: string;
   priceLevel: string;
   open247: boolean;
   hours: SubmissionDayHours[];
   amenities: Record<string, string[]>;
   beanTypes: string[];
   brewMethods: string[];
+  petFriendly: boolean;
 };
 
 export const searchExistingCafes = async (
@@ -82,6 +85,8 @@ export type CafeSubmissionInput = {
   email: string;
   phone: string;
   telephone: string;
+  address: string;
+  city: string;
   priceLevel: string;
   conditionTags: string;
   open247: boolean;
@@ -89,6 +94,7 @@ export type CafeSubmissionInput = {
   amenities: Record<string, string[]>;
   beanTypes: string[];
   brewMethods: string[];
+  petFriendly: boolean;
   profileImageUri?: string | null;
   coverImageUri?: string | null;
   menuImageUris: string[];
@@ -163,7 +169,7 @@ export const getExistingCafeSubmissionDefaults = async (
 ): Promise<ExistingCafeSubmissionDefaults> => {
   const { data: cafe, error: cafeError } = await supabase
     .from("cafe")
-    .select("id, name, email, phone, landline, info")
+    .select("id, name, email, phone, landline, info, address, city")
     .eq("id", cafeId)
     .single();
 
@@ -174,7 +180,7 @@ export const getExistingCafeSubmissionDefaults = async (
   const { data: amenity, error: amenityError } = await supabase
     .from("cafe_amenities")
     .select(
-      "wifi_speed, sockets, parking, lighting, seating, tables_type, suitable_for, music, coffee_bean_type, coffee_brew_method, price_level, operating_24h",
+      "wifi_speed, sockets, parking, lighting, seating, tables_type, suitable_for, music, coffee_bean_type, coffee_brew_method, price_level, operating_24h, pet_friendly",
     )
     .eq("cafe_id", cafeId)
     .maybeSingle();
@@ -219,6 +225,8 @@ export const getExistingCafeSubmissionDefaults = async (
     email: cafe.email ?? "",
     phone: cafe.phone ?? "",
     telephone: cafe.landline ?? "",
+    address: cafe.address ?? "",
+    city: cafe.city ?? "",
     priceLevel: amenity?.price_level ?? "PHP",
     open247,
     hours,
@@ -238,6 +246,7 @@ export const getExistingCafeSubmissionDefaults = async (
     },
     beanTypes: amenity?.coffee_bean_type ?? [],
     brewMethods: amenity?.coffee_brew_method ?? [],
+    petFriendly: Boolean(amenity?.pet_friendly),
   };
 };
 
@@ -295,7 +304,9 @@ export const submitCafeSubmission = async (input: CafeSubmissionInput) => {
         description: input.description.trim(),
         email: input.email.trim(),
         phone: input.phone.trim(),
-        telephone: input.telephone.trim(),
+        landline: input.telephone.trim(),
+        address: input.address.trim(),
+        city: input.city.trim(),
         price_level: input.priceLevel.trim(),
         condition_tags: input.conditionTags.trim(),
         open_247: input.open247,
@@ -346,6 +357,7 @@ export const submitCafeSubmission = async (input: CafeSubmissionInput) => {
         tables_type: input.amenities.Tables ?? [],
         suitable_for: input.amenities["Suitable Conditions"]?.[0] ?? "",
         music: input.amenities.Music?.[0] ?? "",
+        pet_friendly: input.petFriendly,
         coffee_bean_type: input.beanTypes,
         coffee_brew_method: input.brewMethods,
       },
