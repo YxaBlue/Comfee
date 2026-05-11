@@ -141,7 +141,7 @@ export const FILTER_CATEGORIES: FilterCategory[] = [
     title: "Suitable Conditions",
     icon: "groups",
     options: [
-      { id: "students", label: "Student" },
+      { id: "student", label: "Student" },
       { id: "work", label: "Work" },
       { id: "group", label: "Group" },
       { id: "vibes", label: "Vibes" },
