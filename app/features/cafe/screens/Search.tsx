@@ -84,9 +84,12 @@ function DiscoverMore({
                       </Text>
                     </View>
                   </View>
-                  <Text style={styles.rating}>
-                    {item.average_rating?.toFixed(1) ?? "New"}
-                  </Text>
+                  <View style={styles.ratingContainer}>
+                    <MaterialIcons name="star" size={12} color="#D4A017" />
+                    <Text style={styles.rating}>
+                      {item.average_rating?.toFixed(1) ?? "New"}
+                    </Text>
+                  </View>
                 </View>
               </View>
             </View>
@@ -612,7 +615,10 @@ const styles = StyleSheet.create({
   cafeText: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-end",
+    alignItems: "flex-start",
+    width: "100%",
+    fontFamily: "SourceSerifPro-Bold",
+    padding: 5,
   },
   locationRow: {
     flexDirection: "row",
@@ -620,18 +626,28 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   cafeName: {
-    fontSize: 11,
+    fontSize: 13,
     color: "#4B2C11",
-    fontWeight: "600",
+    fontFamily: "SourceSerifPro-Bold",
+    marginBottom: 0,
   },
   location: {
-    fontSize: 7,
+    fontSize: 12,
     color: "#E9D0A2",
     marginLeft: 2,
+    fontFamily: "SourceSerifPro-Regular",
   },
   rating: {
     fontSize: 12,
     color: "#4B2C11",
+    marginBottom: 0,
+    fontFamily: "SourceSerifPro-Regular",
+    marginLeft: 3,
+    marginTop: 1,
+  },
+  ratingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   noResult: {
     textAlign: "center",
@@ -646,7 +662,7 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: "600",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#8C6D4F",
     marginTop: 12,
   },
@@ -751,7 +767,7 @@ const styles = StyleSheet.create({
   },
   quickFilterText: {
     fontSize: 12,
-    fontWeight: "600",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#A97C4E",
   },
   quickFilterTextActive: {
@@ -764,7 +780,7 @@ const styles = StyleSheet.create({
   },
   discoverTitle: {
     fontSize: 18,
-    fontWeight: "700",
+    fontFamily: "SourceSerifPro-Bold",
     marginBottom: 10,
     color: "#4B2C11",
   },

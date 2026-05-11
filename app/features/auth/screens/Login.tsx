@@ -6,6 +6,8 @@ import { useState } from "react";
 import {
   Image,
   ImageBackground,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -56,96 +58,107 @@ export default function LoginScreen({ navigation }: Props) {
       style={styles.background}
       resizeMode="cover"
     >
-      <ScrollView contentContainerStyle={styles.container}>
-        <Image
-          source={require("../../../../assets/images/logo-name.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView contentContainerStyle={styles.container}>
+          <Image
+            source={require("../../../../assets/images/logo-name.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
 
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Email</Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Email</Text>
 
-          <View
-            style={[styles.input, errors.email && { borderColor: "#670718" }]}
-          >
-            <MaterialIcons
-              name="email"
-              size={24}
-              color="#C8AA7A"
-              style={{ marginRight: 10 }}
-            />
-            <TextInput
-              style={styles.inputWithIcon}
-              placeholder="Enter your email address"
-              placeholderTextColor="#C8AA7A"
-              value={email}
-              onChangeText={setEmail}
-            />
-          </View>
-          {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-        </View>
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Password</Text>
-
-          <View
-            style={[
-              styles.input,
-              errors.password && { borderColor: "#670718" },
-            ]}
-          >
-            <MaterialIcons
-              name="lock"
-              size={24}
-              color="#C8AA7A"
-              style={{ marginRight: 10 }}
-            />
-
-            <TextInput
-              style={styles.inputWithIcon}
-              placeholder="Enter your password"
-              placeholderTextColor="#C8AA7A"
-              secureTextEntry={!showPassword} // toggle visibility
-              value={password}
-              onChangeText={setPassword}
-            />
-
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <View
+              style={[styles.input, errors.email && { borderColor: "#670718" }]}
+            >
               <MaterialIcons
-                name={showPassword ? "visibility" : "visibility-off"}
+                name="email"
                 size={24}
                 color="#C8AA7A"
+                style={{ marginRight: 10 }}
               />
-            </TouchableOpacity>
+              <TextInput
+                style={styles.inputWithIcon}
+                placeholder="Enter your email address"
+                placeholderTextColor="#C8AA7A"
+                value={email}
+                onChangeText={setEmail}
+              />
+            </View>
+            {errors.email && (
+              <Text style={styles.errorText}>{errors.email}</Text>
+            )}
           </View>
-          {errors.password && (
-            <Text style={styles.errorText}>{errors.password}</Text>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Password</Text>
+
+            <View
+              style={[
+                styles.input,
+                errors.password && { borderColor: "#670718" },
+              ]}
+            >
+              <MaterialIcons
+                name="lock"
+                size={24}
+                color="#C8AA7A"
+                style={{ marginRight: 10 }}
+              />
+
+              <TextInput
+                style={styles.inputWithIcon}
+                placeholder="Enter your password"
+                placeholderTextColor="#C8AA7A"
+                secureTextEntry={!showPassword} // toggle visibility
+                value={password}
+                onChangeText={setPassword}
+              />
+
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <MaterialIcons
+                  name={showPassword ? "visibility" : "visibility-off"}
+                  size={24}
+                  color="#C8AA7A"
+                />
+              </TouchableOpacity>
+            </View>
+            {errors.password && (
+              <Text style={styles.errorText}>{errors.password}</Text>
+            )}
+          </View>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate("ForgotPassword")}
+          >
+            <Text style={styles.forgotLabel}>Forgot Password?</Text>
+          </TouchableOpacity>
+
+          {errors.general && (
+            <Text style={styles.errorText}>{errors.general}</Text>
           )}
-        </View>
 
-        <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")}>
-          <Text style={styles.forgotLabel}>Forgot Password?</Text>
-        </TouchableOpacity>
+          {successMessage ? (
+            <Text style={styles.successText}>{successMessage}</Text>
+          ) : null}
 
-        {errors.general && (
-          <Text style={styles.errorText}>{errors.general}</Text>
-        )}
+          <TouchableOpacity style={styles.button} onPress={handleLogin}>
+            <Text style={styles.buttonText}>LOGIN</Text>
+          </TouchableOpacity>
 
-        {successMessage ? (
-          <Text style={styles.successText}>{successMessage}</Text>
-        ) : null}
+          <Text style={styles.dont}>Don't have account?</Text>
 
-        <TouchableOpacity style={styles.button} onPress={handleLogin}>
-          <Text style={styles.buttonText}>LOGIN</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.dont}>Don't have account?</Text>
-
-        <TouchableOpacity onPress={() => navigation.navigate("CreateAccount")}>
-          <Text style={styles.sign}>Sign Up</Text>
-        </TouchableOpacity>
-      </ScrollView>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("CreateAccount")}
+          >
+            <Text style={styles.sign}>Sign Up</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </ImageBackground>
   );
 }
@@ -161,20 +174,18 @@ const styles = StyleSheet.create({
 
   label: {
     fontSize: 14,
-    fontWeight: "700",
     marginBottom: 2,
     color: "#4B2C11",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Semibold",
     marginLeft: 40,
   },
 
   forgotLabel: {
     fontSize: 11,
-    fontWeight: "400",
     marginBottom: 7,
     alignSelf: "flex-end",
     color: "#4B2C11",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Semibold",
     marginRight: 40,
     marginTop: -15,
   },
@@ -195,11 +206,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
 
-  inputWithIcon: { flex: 1, fontSize: 14, color: "#4B2C11", padding: 0 },
+  inputWithIcon: {
+    flex: 1,
+    fontSize: 14,
+    color: "#4B2C11",
+    padding: 0,
+    fontFamily: "SourceSerifPro-Regular",
+  },
 
   button: {
     backgroundColor: "#A97C4E",
-    padding: 10,
+    padding: 5,
     borderRadius: 8,
     alignItems: "center",
     marginTop: 55,
@@ -210,7 +227,6 @@ const styles = StyleSheet.create({
 
   buttonText: {
     color: "#FFEFD5",
-    fontWeight: "bold",
     fontSize: 20,
     fontFamily: "SourceSerifPro-Regular",
     alignSelf: "center",
@@ -228,11 +244,10 @@ const styles = StyleSheet.create({
 
   sign: {
     fontSize: 17,
-    fontWeight: "700",
     marginBottom: 7,
     marginTop: 1,
     textAlign: "center",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#4B2C11",
   },
 

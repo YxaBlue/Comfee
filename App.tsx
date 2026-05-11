@@ -24,6 +24,13 @@ import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword
 import SettingsScreen from "./app/features/settings/screens/Settings";
 import SubmitCafeScreen from "./app/features/settings/screens/SubmitCafe";
 
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
+
+SplashScreen.preventAutoHideAsync();
+
+console.log(Linking.createURL("/"));
+
 export type RootStackParamList = {
   Login: undefined;
   CreateAccount: undefined;
@@ -66,7 +73,11 @@ export type RootStackParamList = {
 };
 
 const linking = {
-  prefixes: ["comfeeproject://", "exp+ComfeeProject://"],
+  prefixes: [
+    "comfeeproject://",
+    "exp+ComfeeProject://",
+    Linking.createURL("/"),
+  ],
   config: {
     screens: {
       ResetPassword: "reset-password",
@@ -81,6 +92,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 function isRecoveryUrl(url: string): boolean {
   try {
+    const fullUrl = decodeURIComponent(url);
     const hash = url.split("#")[1] ?? "";
     const hashParams = new URLSearchParams(hash);
     if (hashParams.get("type") === "recovery") return true;
@@ -95,10 +107,21 @@ function isRecoveryUrl(url: string): boolean {
 }
 
 export default function App() {
+  const [fontsLoaded, error] = useFonts({
+    "SourceSerifPro-Regular": require("./assets/fonts/SourceSerifPro-Regular.otf"),
+    "SourceSerifPro-Bold": require("./assets/fonts/SourceSerifPro-Bold.otf"),
+    "SourceSerifPro-Semibold": require("./assets/fonts/SourceSerifPro-Semibold.otf"),
+  });
+
   const navigationRef =
     useRef<NavigationContainerRef<RootStackParamList>>(null);
 
   const isRecoveryFlow = useRef(false);
+
+  // Hide splash screen once fonts are ready
+  useEffect(() => {
+    if (fontsLoaded || error) SplashScreen.hideAsync();
+  }, [fontsLoaded, error]);
 
   useEffect(() => {
     let isMounted = true;
@@ -143,6 +166,7 @@ export default function App() {
     syncInitialRoute();
 
     const linkingSub = Linking.addEventListener("url", ({ url }) => {
+      console.log("incoming URL:", url);
       if (isRecoveryUrl(url)) {
         isRecoveryFlow.current = true;
         navigationRef.current?.reset({
@@ -154,7 +178,7 @@ export default function App() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
       if (event === "INITIAL_SESSION") return;
 
@@ -170,9 +194,21 @@ export default function App() {
       }
 
       if (event === "SIGNED_IN" && session) {
-        if (isRecoveryFlow.current || currentRoute === "ResetPassword") {
+        if (isRecoveryFlow.current) return;
+
+        const url = await Linking.getInitialURL();
+
+        if (url && isRecoveryUrl(url)) {
+          isRecoveryFlow.current = true;
+          navigationRef.current?.reset({
+            index: 0,
+            routes: [{ name: "ResetPassword" }],
+          });
           return;
         }
+        const currentRoute = navigationRef.current?.getCurrentRoute()?.name;
+        if (currentRoute === "ResetPassword") return;
+
         navigationRef.current?.reset({
           index: 0,
           routes: [{ name: "Dashboard" }],
@@ -204,6 +240,8 @@ export default function App() {
       subscription.unsubscribe();
     };
   }, []);
+
+  if (!fontsLoaded && !error) return null;
 
   return (
     <NavigationContainer linking={linking} ref={navigationRef}>

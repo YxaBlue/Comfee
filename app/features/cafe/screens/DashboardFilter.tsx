@@ -181,7 +181,12 @@ export default function FilteredCafes() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 5 },
-  title: { fontSize: 18, fontWeight: "bold", marginBottom: 10, marginTop: 15 },
+  title: {
+    fontSize: 18,
+    fontFamily: "SourceSerifPro-Bold",
+    marginBottom: 10,
+    marginTop: 15,
+  },
   container2: { flex: 1 },
   card: {
     padding: 5,
@@ -189,7 +194,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderRadius: 8,
   },
-  name: { fontWeight: "bold" },
+  name: { fontFamily: "SourceSerifPro-Bold" },
   location: { fontSize: 12 },
   rating: { fontSize: 12 },
 
@@ -266,7 +271,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#4B2C11",
     marginLeft: 25,
-    fontWeight: "bold",
+    fontFamily: "SourceSerifPro-Bold",
   },
   searchBar: {
     position: "absolute",
@@ -314,7 +319,7 @@ const styles = StyleSheet.create({
 
   filterText: {
     color: "#C8AA7A",
-    fontWeight: "500",
+    fontFamily: "SourceSerifPro-Bold",
     fontSize: 11,
   },
 
@@ -349,7 +354,7 @@ const styles = StyleSheet.create({
   cafeName: {
     fontSize: 11,
     color: "#4B2C11",
-    fontWeight: 600,
+    fontFamily: "SourceSerifPro-Bold",
     marginBottom: 0,
   },
 });

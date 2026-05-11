@@ -8,10 +8,10 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-    createInitialSelections,
-    FILTER_CATEGORIES,
-    FilterSelectionState,
-    normalizeFilterSelections,
+  createInitialSelections,
+  FILTER_CATEGORIES,
+  FilterSelectionState,
+  normalizeFilterSelections,
 } from "../services/filtering";
 
 type FilterRouteProp = RouteProp<RootStackParamList, "Filter">;
@@ -224,8 +224,8 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: 28,
-    fontWeight: "700",
     color: "#4B2C11",
+    fontFamily: "SourceSerifPro-Bold",
   },
 
   subtitle: {
@@ -233,6 +233,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     color: "#966A0C",
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   resetButton: {
@@ -244,7 +245,7 @@ const styles = StyleSheet.create({
   resetText: {
     color: "#A97C4E",
     fontSize: 13,
-    fontWeight: "600",
+    fontFamily: "SourceSerifPro-Bold",
   },
 
   selectionSummary: {
@@ -262,7 +263,7 @@ const styles = StyleSheet.create({
   selectionSummaryText: {
     color: "#4B2C11",
     fontSize: 13,
-    fontWeight: "600",
+    fontFamily: "SourceSerifPro-Bold",
   },
 
   scrollView: {
@@ -290,7 +291,7 @@ const styles = StyleSheet.create({
 
   sectionTitle: {
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#4B2C11",
   },
 
@@ -324,6 +325,7 @@ const styles = StyleSheet.create({
     paddingRight: 16,
     fontSize: 15,
     color: "#4B2C11",
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   checkbox: {
@@ -365,7 +367,7 @@ const styles = StyleSheet.create({
   applyButtonText: {
     color: "#FFFAF3",
     fontSize: 15,
-    fontWeight: "700",
+    fontFamily: "SourceSerifPro-Bold",
     letterSpacing: 0.3,
   },
 });

@@ -25,17 +25,34 @@ export default function ResetPasswordScreen() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [isValidSession, setIsValidSession] = useState(false);
+  const [checking, setChecking] = useState(true);
 
-  // Listen for PASSWORD_RECOVERY event from Supabase.
-  // This fires when the user arrives via the reset email link.
   useEffect(() => {
+    console.log("ResetPassword mounted");
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("session on mount:", session);
+
+      if (session) setIsValidSession(true);
+      setChecking(false);
+    });
+
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      console.log("auth event in ResetPassword:", event);
       if (event === "PASSWORD_RECOVERY") {
         setIsValidSession(true);
+        setChecking(false);
       }
     });
 
-    return () => listener.subscription.unsubscribe();
+    const timeout = setTimeout(() => {
+      console.log("timeout fired — no PASSWORD_RECOVERY received");
+      setChecking(false);
+    }, 3000);
+
+    return () => {
+      listener.subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   async function handleSubmit() {
@@ -60,7 +77,22 @@ export default function ResetPasswordScreen() {
     }
   }
 
-  // User arrived without a valid reset link
+  // Loading state
+  if (checking) {
+    return (
+      <ImageBackground
+        source={require("../../../../assets/images/bg1.png")}
+        style={styles.background}
+        resizeMode="cover"
+      >
+        <View style={styles.centeredContent}>
+          <ActivityIndicator size="large" color="#A97C4E" />
+        </View>
+      </ImageBackground>
+    );
+  }
+
+  // Invalid or expired link
   if (!isValidSession) {
     return (
       <ImageBackground
@@ -100,7 +132,7 @@ export default function ResetPasswordScreen() {
     );
   }
 
-  //Set new pass
+  // Set new password
   return (
     <ImageBackground
       source={require("../../../../assets/images/bg1.png")}
@@ -110,7 +142,6 @@ export default function ResetPasswordScreen() {
       <Text style={styles.title}>Set a new password</Text>
       <Text style={styles.subtitle}>Must be at least 8 characters.</Text>
 
-      {/* New password */}
       <Text style={styles.label}>New password</Text>
       <TextInput
         style={[styles.input, error && { borderColor: "#670718" }]}
@@ -123,7 +154,6 @@ export default function ResetPasswordScreen() {
         autoCorrect={false}
       />
 
-      {/* Confirm password */}
       <Text style={styles.label}>Confirm new password</Text>
       <TextInput
         style={[styles.input, error && { borderColor: "#670718" }]}
@@ -136,10 +166,8 @@ export default function ResetPasswordScreen() {
         autoCorrect={false}
       />
 
-      {/* Error message */}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      {/* Submit button */}
       <TouchableOpacity
         style={[styles.button, loading && styles.buttonDisabled]}
         onPress={handleSubmit}
@@ -161,30 +189,25 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-
-  // Shared centered layout for invalid-link and success states
   centeredContent: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
   },
-
   title: {
     fontSize: 38,
-    fontWeight: "700",
     color: "#4B2C11",
     marginBottom: 6,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
     textAlign: "center",
     marginTop: 56,
   },
   title2: {
     fontSize: 38,
-    fontWeight: "700",
     color: "#4B2C11",
     marginBottom: 6,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
     textAlign: "center",
   },
   subtitle: {
@@ -197,11 +220,10 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: "500",
     color: "#4B2C11",
     marginTop: 20,
     marginLeft: 42,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
   input: {
     borderRadius: 10,
@@ -238,15 +260,13 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#FFEFD5",
-    fontWeight: "500",
     fontSize: 20,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
   resetText: {
     color: "#FFEFD5",
-    fontWeight: "500",
     fontSize: 15,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
     paddingHorizontal: 50,
   },
 });

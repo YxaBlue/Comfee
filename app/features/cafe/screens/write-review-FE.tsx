@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   headerTitleWrap: { flex: 1, minWidth: 0 },
   headerTitle: {
     fontSize: 18,
-    fontWeight: "700",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#3B2A1A",
   },
   headerSubtitle: {
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
   },
   postText: {
     fontSize: 14,
-    fontWeight: "700",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#3B2A1A",
   },
   postTextDisabled: { opacity: 0.35 },
@@ -443,7 +443,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#3B2A1A",
     marginBottom: 2,
   },
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
   photosSection: { gap: 10 },
   photosLabel: {
     fontSize: 13,
-    fontWeight: "700",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#6B4F2E",
   },
   photosRow: {
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
   addPhotoText: {
     fontSize: 11,
     color: "#A97C4E",
-    fontWeight: "600",
+    fontFamily: "SourceSerifPro-Bold",
   },
 });
 

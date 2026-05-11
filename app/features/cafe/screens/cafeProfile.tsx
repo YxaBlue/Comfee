@@ -1635,7 +1635,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 15,
-    fontWeight: "600",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#8C6D4F",
     marginTop: 10,
   },
@@ -1692,9 +1692,8 @@ const filterStyles = StyleSheet.create({
   pillDisabled: { opacity: 0.45 },
   pillText: {
     fontSize: 12,
-    fontWeight: "600",
     color: "#6B4F2E",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
   pillTextActive: { color: "#FFF7EA" },
   pillTextDisabled: { color: "#B09070" },
@@ -1747,9 +1746,8 @@ const cafeDetailsStyles = StyleSheet.create({
   },
   userName: {
     fontSize: 22,
-    fontWeight: "700",
     color: "#3B2A1A",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
     flexShrink: 1,
     flexWrap: "wrap",
   },
@@ -1825,7 +1823,11 @@ const writeReviewStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  buttonText: { color: "#FFF7EA", fontSize: 18, fontWeight: "700" },
+  buttonText: {
+    color: "#FFF7EA",
+    fontSize: 18,
+    fontFamily: "SourceSerifPro-Bold",
+  },
 });
 
 const starInputStyles = StyleSheet.create({
@@ -1872,8 +1874,16 @@ const reviewCardStyles = StyleSheet.create({
     overflow: "hidden",
   },
   meta: { flex: 1, gap: 1 },
-  userName: { fontSize: 13, fontWeight: "600", color: "#3B2A1A" },
-  youBadge: { fontSize: 11, fontWeight: "400", color: "#8C6D4F" },
+  userName: {
+    fontSize: 13,
+    fontFamily: "SourceSerifPro-Bold",
+    color: "#3B2A1A",
+  },
+  youBadge: {
+    fontSize: 11,
+    fontFamily: "SourceSerifPro-Semibold",
+    color: "#8C6D4F",
+  },
   date: { fontSize: 11, color: "#8C6D4F", marginTop: 1 },
   comment: {
     fontSize: 12,
@@ -1908,7 +1918,7 @@ const reviewCardStyles = StyleSheet.create({
     paddingBottom: 10,
   },
   likesCount: { fontSize: 12, color: "#8C6D4F" },
-  likesCountActive: { color: "#6B4F2E", fontWeight: "600" },
+  likesCountActive: { color: "#6B4F2E", fontFamily: "SourceSerifPro-Bold" },
   dropdownMenu: {
     position: "absolute",
     top: 24,
@@ -1964,7 +1974,7 @@ const postCardStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  moreText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  moreText: { color: "#fff", fontSize: 16, fontFamily: "SourceSerifPro-Bold" },
   body: { padding: 10 },
   caption: { fontSize: 13, color: "#4A3220", lineHeight: 19, marginBottom: 8 },
   footer: {
@@ -1988,9 +1998,8 @@ const infoStyles = StyleSheet.create({
   },
   statNum: {
     fontSize: 20,
-    fontWeight: "700",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#6B4F2E",
-    fontFamily: "SourceSerifPro-Regular",
   },
   statLabel: {
     fontSize: 10,
@@ -2000,7 +2009,7 @@ const infoStyles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 11,
-    fontWeight: "600",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#8C6D4F",
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -2030,7 +2039,11 @@ const infoStyles = StyleSheet.create({
     paddingVertical: 4,
   },
   dayPillClosed: { backgroundColor: "#EDE0CE" },
-  dayPillText: { fontSize: 11, fontWeight: "600", color: "#5A3E28" },
+  dayPillText: {
+    fontSize: 11,
+    fontFamily: "SourceSerifPro-Bold",
+    color: "#5A3E28",
+  },
   dayPillTextClosed: { color: "#B09070", textDecorationLine: "line-through" },
   section: {
     paddingVertical: 8,
@@ -2041,11 +2054,10 @@ const infoStyles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 12,
-    fontWeight: "700",
     color: "#3B2A1A",
     marginBottom: 2,
     marginLeft: 10,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
   sectionIntro: {
     fontSize: 14,
@@ -2072,7 +2084,7 @@ const infoStyles = StyleSheet.create({
 const amenityStyles = StyleSheet.create({
   sectionLabel: {
     fontSize: 11,
-    fontWeight: "600",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#8C6D4F",
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -2098,7 +2110,11 @@ const amenityStyles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  otherPillText: { fontSize: 11, color: "#5A3E28", fontWeight: "500" },
+  otherPillText: {
+    fontSize: 11,
+    color: "#5A3E28",
+    fontFamily: "SourceSerifPro-Semibold",
+  },
   menuImage: {
     width: "100%",
     height: 200,
@@ -2122,7 +2138,7 @@ const amenityStyles = StyleSheet.create({
 const amenityCardStyles = StyleSheet.create({
   sectionLabel: {
     fontSize: 11,
-    fontWeight: "600",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#8C6D4F",
     textTransform: "uppercase",
     letterSpacing: 0.5,
@@ -2143,9 +2159,8 @@ const amenityCardStyles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 13,
-    fontWeight: "700",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#3B2A1A",
-    fontFamily: "SourceSerifPro-Regular",
   },
   optionsRow: {
     flexDirection: "row",
@@ -2171,7 +2186,7 @@ const amenityCardStyles = StyleSheet.create({
   },
   optionTextSelected: {
     color: "#FFF7EA",
-    fontWeight: "600",
+    fontFamily: "SourceSerifPro-Bold",
   },
 });
 
@@ -2191,9 +2206,8 @@ const priceCoffeeStyles = StyleSheet.create({
   },
   sectionCardTitle: {
     fontSize: 16,
-    fontWeight: "700",
     color: "#3B2A1A",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
     lineHeight: 20,
   },
   sectionCardSubtitle: {
@@ -2224,9 +2238,8 @@ const priceCoffeeStyles = StyleSheet.create({
   },
   priceSymbol: {
     fontSize: 15,
-    fontWeight: "700",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#6B4F2E",
-    fontFamily: "SourceSerifPro-Regular",
     textDecorationLine: "line-through",
     textDecorationColor: "#6B4F2E",
   },
@@ -2253,10 +2266,9 @@ const priceCoffeeStyles = StyleSheet.create({
   },
   coffeeSubCardTitle: {
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#3B2A1A",
     marginBottom: 8,
-    fontFamily: "SourceSerifPro-Regular",
   },
   optionsRow: {
     flexDirection: "row",
@@ -2282,6 +2294,6 @@ const priceCoffeeStyles = StyleSheet.create({
   },
   coffeePillTextSelected: {
     color: "#FFF7EA",
-    fontWeight: "600",
+    fontFamily: "SourceSerifPro-Bold",
   },
 });

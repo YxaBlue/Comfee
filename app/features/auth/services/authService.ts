@@ -54,7 +54,7 @@ export async function signUp(data: signUpData) {
 
 export async function forgotPassword(email: string) {
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: "comfeeproject://reset-password",
+    redirectTo: "comfeeproject://",
   });
 
   if (error) throw error;

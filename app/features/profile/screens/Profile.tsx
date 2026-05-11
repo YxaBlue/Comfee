@@ -1380,7 +1380,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
   },
-  coverEditText: { color: "#fff", fontSize: 12, fontWeight: "600" },
+  coverEditText: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "SourceSerifPro-Bold",
+  },
   coverReportBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -1390,7 +1394,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
   },
-  coverReportText: { color: "#c83535", fontSize: 12, fontWeight: "600" },
+  coverReportText: {
+    color: "#c83535",
+    fontSize: 12,
+    fontFamily: "SourceSerifPro-Bold",
+  },
   removeBtn: { backgroundColor: "rgba(192,57,43,0.8)" },
   avatarWrapper: {
     alignSelf: "flex-end",
@@ -1445,15 +1453,13 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 22,
-    fontWeight: "700",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#3B2A1A",
     flexShrink: 1,
-    fontFamily: "SourceSerifPro-Regular",
   },
   usernameInput: {
     flex: 1,
     fontSize: 20,
-    fontWeight: "700",
     color: "#3B2A1A",
     minWidth: 120,
     paddingHorizontal: 0,
@@ -1462,7 +1468,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
     borderBottomWidth: 1,
     borderBottomColor: "#C8A97A",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
   joinedDate: {
     fontSize: 12,
@@ -1541,9 +1547,8 @@ const styles = StyleSheet.create({
   },
   reviewCafeName: {
     fontSize: 16,
-    fontWeight: "700",
     color: "#3B2A1A",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
   starsRow: { flexDirection: "row", marginTop: 3, marginLeft: -2 },
   reviewDate: {
@@ -1575,17 +1580,15 @@ const styles = StyleSheet.create({
   likesCount: {
     fontSize: 14,
     color: "#8C6D4F",
-    fontWeight: "500",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Semibold",
   },
   likesCountActive: { color: "#6B4F2E" },
   infoSection: { gap: 12 },
   infoLabel: {
     fontSize: 14,
-    fontWeight: "600",
     color: "#A97C4E",
     marginBottom: 4,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
   infoRow: { flexDirection: "row", gap: 10 },
   infoField: { flex: 1, gap: 4 },
@@ -1595,7 +1598,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
-  infoValue: { fontSize: 13, color: "#3B2A1A" },
+  infoValue: {
+    fontSize: 13,
+    color: "#3B2A1A",
+    fontFamily: "SourceSerifPro-Regular",
+  },
   infoInput: {
     backgroundColor: "#FDF6EC",
     borderRadius: 8,
@@ -1624,7 +1631,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#C4A882",
   },
-  cancelBtnText: { fontSize: 14, fontWeight: "600", color: "#8C6D4F" },
+  cancelBtnText: {
+    fontSize: 14,
+    fontFamily: "SourceSerifPro-Bold",
+    color: "#8C6D4F",
+  },
   saveBtn: {
     flex: 1,
     paddingVertical: 11,
@@ -1633,7 +1644,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   saveBtnDisabled: { opacity: 0.6 },
-  saveBtnText: { fontSize: 14, fontWeight: "600", color: "#FDF6EC" },
+  saveBtnText: {
+    fontSize: 14,
+    fontFamily: "SourceSerifPro-Bold",
+    color: "#FDF6EC",
+  },
   emptyState: {
     alignItems: "center",
     paddingVertical: 50,
@@ -1641,10 +1656,9 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 18,
-    fontWeight: "600",
     color: "#8C6D4F",
     marginTop: 10,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
   emptySubText: {
     fontSize: 12,
@@ -1719,9 +1733,8 @@ const styles = StyleSheet.create({
   },
   favoriteName: {
     fontSize: 15,
-    fontWeight: "700",
     color: "#3B2A1A",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
     flexWrap: "wrap",
   },
   favoriteLocation: {
@@ -1747,8 +1760,7 @@ const styles = StyleSheet.create({
   removeFromFavText: {
     fontSize: 11,
     color: "#C0392B",
-    fontWeight: "600",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
   modalOverlay: {
     position: "absolute",
@@ -1773,10 +1785,9 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: "700",
     color: "#3B2A1A",
     marginBottom: 4,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
   modalCafeName: {
     fontSize: 13,

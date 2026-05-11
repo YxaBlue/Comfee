@@ -90,7 +90,10 @@ export default function SettingsScreen({ navigation }: Props) {
 
   return (
     <View style={styles.wrapper}>
-      <TopBar navigation={navigation} profilePicture={profile?.profile_picture} />
+      <TopBar
+        navigation={navigation}
+        profilePicture={profile?.profile_picture}
+      />
 
       <ScrollView
         contentContainerStyle={[
@@ -178,7 +181,7 @@ const styles = StyleSheet.create({
   optionText: {
     fontSize: 18,
     color: "#5A3720",
-    fontWeight: "500",
+    fontFamily: "SourceSerifPro-Bold",
   },
   destructiveOptionText: {
     color: "#71452A",
@@ -201,7 +204,7 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: 19,
-    fontWeight: "500",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#FFFFFF",
     letterSpacing: 0.8,
   },

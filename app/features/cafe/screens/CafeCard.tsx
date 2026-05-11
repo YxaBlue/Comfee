@@ -51,6 +51,24 @@ export default function CafeCard() {
 
   const featuredCafes = allCafes.filter((c) => c.featured);
   const discoverCafes = allCafes.filter((c) => !c.featured);
+  const [latestCafe, setLatestCafe] = useState<Cafe | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from("cafe")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!error && data) setLatestCafe(data);
+      } catch (err) {
+        console.error("Failed to load latest cafe:", err);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -138,7 +156,12 @@ export default function CafeCard() {
             </Text>
           </View>
         </View>
-        <Text style={styles.cafeRating}>{item.average_rating}</Text>
+        <View style={styles.ratingContainer}>
+          <MaterialIcons name="star" size={12} color="#D4A017" />
+          <Text style={styles.cafeRating}>
+            {item.average_rating?.toFixed(1) ?? "New"}
+          </Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -213,9 +236,34 @@ export default function CafeCard() {
         contentContainerStyle={{ paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.promo}>
-          <Text style={styles.promoText}>Today's Special Promo</Text>
-        </View>
+        <Pressable
+          style={styles.promo}
+          onPress={() => {
+            if (latestCafe) {
+              navigation.navigate("CafeProfile", {
+                cafeId: String(latestCafe.id),
+              });
+            }
+          }}
+        >
+          {latestCafe?.main_photo_url ? (
+            <Image
+              source={{ uri: latestCafe.main_photo_url }}
+              style={StyleSheet.absoluteFill}
+              resizeMode="cover"
+            />
+          ) : null}
+
+          {/* dark gradient overlay so text stays readable */}
+          <View style={styles.promoOverlay} />
+
+          {latestCafe && (
+            <Text style={styles.promoName} numberOfLines={1}>
+              {latestCafe.name}
+            </Text>
+          )}
+          <Text style={styles.promoLabel}>Latest Café</Text>
+        </Pressable>
 
         <Text style={styles.labelText}>Featured Cafés</Text>
         <View style={{ marginTop: 3 }}>
@@ -339,9 +387,8 @@ const styles = StyleSheet.create({
   locText2: {
     fontSize: 12,
     color: "#4B2C11",
-    fontWeight: "bold",
     marginTop: 2,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
 
   searchBar: {
@@ -385,23 +432,35 @@ const styles = StyleSheet.create({
     padding: 10,
   },
 
-  promoText: {
+  promoOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.30)",
+    borderRadius: 8,
+  },
+  promoLabel: {
     position: "absolute",
-    color: "#E9D6B9",
-    fontWeight: "bold",
+    color: "#FFFAF3",
+    left: 15,
     bottom: 10,
     fontSize: 15,
-    left: 15,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
+    letterSpacing: 1,
+  },
+  promoName: {
+    position: "absolute",
+    color: "#FFFAF3",
+    top: 10,
+    right: 13,
+    fontSize: 18,
+    fontFamily: "SourceSerifPro-Bold",
   },
 
   labelText: {
     color: "#4B2C11",
-    fontWeight: "bold",
     fontSize: 18,
     marginLeft: 15,
     top: 5,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
 
   emptyText: {
@@ -427,9 +486,9 @@ const styles = StyleSheet.create({
   cafeText: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-end",
+    alignItems: "flex-start",
     width: "100%",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
     padding: 10,
   },
 
@@ -440,25 +499,32 @@ const styles = StyleSheet.create({
   },
 
   cafeName: {
-    fontSize: 11,
+    fontSize: 13,
     color: "#4B2C11",
-    fontWeight: 600,
     marginBottom: 0,
+    fontFamily: "SourceSerifPro-Bold",
   },
 
   cafeLocation: {
-    fontSize: 7,
+    fontSize: 11,
     color: "#E9D0A2",
     fontWeight: "400",
     marginBottom: 0,
     marginLeft: 2,
+    fontFamily: "SourceSerifPro-Regular",
   },
 
   cafeRating: {
     fontSize: 12,
     color: "#4B2C11",
     marginBottom: 0,
-    fontWeight: 400,
+    fontFamily: "SourceSerifPro-Regular",
+    marginLeft: 3,
+    marginTop: 1,
+  },
+  ratingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
   },
   androidShadow: {
     elevation: 15,

@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import {
   Image,
   ImageBackground,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -104,231 +106,244 @@ export default function CreateAccountScreen({ navigation }: Props) {
       style={styles.background}
       resizeMode="stretch"
     >
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.logoCont}>
-          <Image
-            source={require("../../../../assets/images/logo.png")}
-            style={styles.logo}
-          />
-          <Text style={styles.title}>reate Account</Text>
-        </View>
-
-        {/* Name Inputs */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Name</Text>
-          <View style={styles.nameRow}>
-            <View style={styles.wrap1}>
-              <TextInput
-                style={[
-                  styles.nameInput,
-                  errors.firstName && { borderColor: "#670718" },
-                ]}
-                placeholder="First name"
-                placeholderTextColor="#C8AA7A"
-                value={firstName}
-                onChangeText={setFirstName}
-              />
-              {errors.firstName && (
-                <Text style={styles.errorText1}>{errors.firstName}</Text>
-              )}
-            </View>
-            <View style={styles.wrap2}>
-              <TextInput
-                style={[
-                  styles.nameInput,
-                  errors.lastName && { borderColor: "#670718" },
-                ]}
-                placeholder="Last name"
-                placeholderTextColor="#C8AA7A"
-                value={lastName}
-                onChangeText={setLastName}
-              />
-              {errors.lastName && (
-                <Text style={styles.errorText1}>{errors.lastName}</Text>
-              )}
-            </View>
-          </View>
-        </View>
-
-        {/* Username */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Username</Text>
-          <TextInput
-            style={[
-              styles.input,
-              errors.username && { borderColor: "#670718" },
-            ]}
-            placeholder="Enter username"
-            placeholderTextColor="#C8AA7A"
-            value={username}
-            onChangeText={setUsername}
-          />
-          {errors.username && (
-            <Text style={styles.errorText2}>{errors.username}</Text>
-          )}
-        </View>
-
-        {/* Email */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Email</Text>
-          <TextInput
-            style={[styles.input, errors.email && { borderColor: "#670718" }]}
-            placeholder="Enter email address"
-            placeholderTextColor="#C8AA7A"
-            value={email}
-            onChangeText={setEmail}
-          />
-          {errors.email && (
-            <Text style={styles.errorText2}>{errors.email}</Text>
-          )}
-        </View>
-
-        {/* Password */}
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Password</Text>
-          <View
-            style={[
-              styles.passCtnr,
-              errors.password && { borderColor: "#670718" },
-            ]}
-          >
-            <TextInput
-              style={styles.passInput}
-              placeholder="Enter password"
-              placeholderTextColor="#C8AA7A"
-              secureTextEntry={!showPassword} // toggle visibility
-              value={password}
-              onChangeText={setPassword}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView contentContainerStyle={styles.container}>
+          <View style={styles.logoCont}>
+            <Image
+              source={require("../../../../assets/images/logo.png")}
+              style={styles.logo}
             />
-
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-              <MaterialIcons
-                name={showPassword ? "visibility" : "visibility-off"}
-                size={22}
-                color="#C8AA7A"
-              />
-            </TouchableOpacity>
+            <Text style={styles.title}>reate Account</Text>
           </View>
 
-          {errors.password && (
-            <Text style={styles.errorText2}>{errors.password}</Text>
-          )}
-        </View>
+          {/* Name Inputs */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Name</Text>
+            <View style={styles.nameRow}>
+              <View style={styles.wrap1}>
+                <TextInput
+                  style={[
+                    styles.nameInput,
+                    errors.firstName && { borderColor: "#670718" },
+                  ]}
+                  placeholder="First name"
+                  placeholderTextColor="#C8AA7A"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                />
+                {errors.firstName && (
+                  <Text style={styles.errorText1}>{errors.firstName}</Text>
+                )}
+              </View>
+              <View style={styles.wrap2}>
+                <TextInput
+                  style={[
+                    styles.nameInput,
+                    errors.lastName && { borderColor: "#670718" },
+                  ]}
+                  placeholder="Last name"
+                  placeholderTextColor="#C8AA7A"
+                  value={lastName}
+                  onChangeText={setLastName}
+                />
+                {errors.lastName && (
+                  <Text style={styles.errorText1}>{errors.lastName}</Text>
+                )}
+              </View>
+            </View>
+          </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Confirm Password</Text>
-
-          <View
-            style={[
-              styles.passCtnr,
-              errors.confirmPassword && { borderColor: "#670718" },
-            ]}
-          >
+          {/* Username */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Username</Text>
             <TextInput
-              style={styles.passInput}
-              placeholder="Enter password again"
+              style={[
+                styles.input,
+                errors.username && { borderColor: "#670718" },
+              ]}
+              placeholder="Enter username"
               placeholderTextColor="#C8AA7A"
-              secureTextEntry={!showConPass} // toggle visibility
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
+              value={username}
+              onChangeText={setUsername}
             />
+            {errors.username && (
+              <Text style={styles.errorText2}>{errors.username}</Text>
+            )}
+          </View>
 
-            <TouchableOpacity onPress={() => setShowConPass(!showConPass)}>
-              <MaterialIcons
-                name={showConPass ? "visibility" : "visibility-off"}
-                size={22}
-                color="#C8AA7A"
+          {/* Email */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Email</Text>
+            <TextInput
+              style={[styles.input, errors.email && { borderColor: "#670718" }]}
+              placeholder="Enter email address"
+              placeholderTextColor="#C8AA7A"
+              value={email}
+              onChangeText={setEmail}
+            />
+            {errors.email && (
+              <Text style={styles.errorText2}>{errors.email}</Text>
+            )}
+          </View>
+
+          {/* Password */}
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Password</Text>
+            <View
+              style={[
+                styles.passCtnr,
+                errors.password && { borderColor: "#670718" },
+              ]}
+            >
+              <TextInput
+                style={styles.passInput}
+                placeholder="Enter password"
+                placeholderTextColor="#C8AA7A"
+                secureTextEntry={!showPassword} // toggle visibility
+                value={password}
+                onChangeText={setPassword}
               />
-            </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <MaterialIcons
+                  name={showPassword ? "visibility" : "visibility-off"}
+                  size={22}
+                  color="#C8AA7A"
+                />
+              </TouchableOpacity>
+            </View>
+
+            {errors.password && (
+              <Text style={styles.errorText2}>{errors.password}</Text>
+            )}
           </View>
-          {errors.confirmPassword && (
-            <Text style={styles.errorText2}>{errors.confirmPassword}</Text>
-          )}
-        </View>
 
-        {/* Birthdate Picker */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Birth date</Text>
-          <View style={styles.birthRow}>
-            <View style={[styles.birthCtnr, styles.mnth]}>
-              <Picker
-                selectedValue={birthMonth}
-                style={[
-                  styles.birthPicker,
-                  errors.birthDate && { borderColor: "#670718" },
-                ]}
-                onValueChange={(itemValue) => setBirthMonth(itemValue)}
-                mode="dropdown"
-                dropdownIconColor="#A97C4E"
-              >
-                <Picker.Item label="Month" value="" />
-                {months.map((month, i) => (
-                  <Picker.Item key={i} label={month} value={month} />
-                ))}
-              </Picker>
-            </View>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Confirm Password</Text>
 
-            <View style={styles.birthCtnr}>
-              <Picker
-                selectedValue={birthDay}
-                style={[
-                  styles.birthPicker,
-                  errors.birthDate && { borderColor: "#670718" },
-                ]}
-                onValueChange={(itemValue) => setBirthDay(itemValue)}
-              >
-                <Picker.Item label="Day" value="" />
-                {Array.from({ length: 31 }, (_, i) => (
-                  <Picker.Item key={i} label={`${i + 1}`} value={`${i + 1}`} />
-                ))}
-              </Picker>
-            </View>
+            <View
+              style={[
+                styles.passCtnr,
+                errors.confirmPassword && { borderColor: "#670718" },
+              ]}
+            >
+              <TextInput
+                style={styles.passInput}
+                placeholder="Enter password again"
+                placeholderTextColor="#C8AA7A"
+                secureTextEntry={!showConPass} // toggle visibility
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
 
-            <View style={[styles.birthCtnr, styles.year]}>
-              <Picker
-                selectedValue={birthYear}
-                style={[
-                  styles.birthPicker,
-                  errors.birthDate && { borderColor: "#670718" },
-                ]}
-                onValueChange={(itemValue) => setBirthYear(itemValue)}
-              >
-                <Picker.Item label="Year" value="" />
-                {Array.from({ length: 100 }, (_, i) => {
-                  const year = new Date().getFullYear() - i;
-                  return (
-                    <Picker.Item key={i} label={`${year}`} value={`${year}`} />
-                  );
-                })}
-              </Picker>
+              <TouchableOpacity onPress={() => setShowConPass(!showConPass)}>
+                <MaterialIcons
+                  name={showConPass ? "visibility" : "visibility-off"}
+                  size={22}
+                  color="#C8AA7A"
+                />
+              </TouchableOpacity>
             </View>
+            {errors.confirmPassword && (
+              <Text style={styles.errorText2}>{errors.confirmPassword}</Text>
+            )}
           </View>
-          {errors.birthDate && (
-            <Text style={styles.errorText3}>{errors.birthDate}</Text>
+
+          {/* Birthdate Picker */}
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Birth date</Text>
+            <View style={styles.birthRow}>
+              <View style={[styles.birthCtnr, styles.mnth]}>
+                <Picker
+                  selectedValue={birthMonth}
+                  style={[
+                    styles.birthPicker,
+                    errors.birthDate && { borderColor: "#670718" },
+                  ]}
+                  onValueChange={(itemValue) => setBirthMonth(itemValue)}
+                  mode="dropdown"
+                  dropdownIconColor="#A97C4E"
+                >
+                  <Picker.Item label="Month" value="" />
+                  {months.map((month, i) => (
+                    <Picker.Item key={i} label={month} value={month} />
+                  ))}
+                </Picker>
+              </View>
+
+              <View style={styles.birthCtnr}>
+                <Picker
+                  selectedValue={birthDay}
+                  style={[
+                    styles.birthPicker,
+                    errors.birthDate && { borderColor: "#670718" },
+                  ]}
+                  onValueChange={(itemValue) => setBirthDay(itemValue)}
+                >
+                  <Picker.Item label="Day" value="" />
+                  {Array.from({ length: 31 }, (_, i) => (
+                    <Picker.Item
+                      key={i}
+                      label={`${i + 1}`}
+                      value={`${i + 1}`}
+                    />
+                  ))}
+                </Picker>
+              </View>
+
+              <View style={[styles.birthCtnr, styles.year]}>
+                <Picker
+                  selectedValue={birthYear}
+                  style={[
+                    styles.birthPicker,
+                    errors.birthDate && { borderColor: "#670718" },
+                  ]}
+                  onValueChange={(itemValue) => setBirthYear(itemValue)}
+                >
+                  <Picker.Item label="Year" value="" />
+                  {Array.from({ length: 100 }, (_, i) => {
+                    const year = new Date().getFullYear() - i;
+                    return (
+                      <Picker.Item
+                        key={i}
+                        label={`${year}`}
+                        value={`${year}`}
+                      />
+                    );
+                  })}
+                </Picker>
+              </View>
+            </View>
+            {errors.birthDate && (
+              <Text style={styles.errorText3}>{errors.birthDate}</Text>
+            )}
+          </View>
+          {errors.general && (
+            <Text style={styles.errorText3}>{errors.general}</Text>
           )}
-        </View>
-        {errors.general && (
-          <Text style={styles.errorText3}>{errors.general}</Text>
-        )}
-        {successMessage && (
-          <Text style={styles.successText}>{successMessage}</Text>
-        )}
-        <Text style={styles.label2}>
-          By clicking Sign Up, you agree to our Terms, {"\n"}
-          Privacy Policy and Cookies Policy.
-        </Text>
+          {successMessage && (
+            <Text style={styles.successText}>{successMessage}</Text>
+          )}
+          <Text style={styles.label2}>
+            By clicking Sign Up, you agree to our Terms, {"\n"}
+            Privacy Policy and Cookies Policy.
+          </Text>
 
-        <TouchableOpacity style={styles.button} onPress={handleCreateAccount}>
-          <Text style={styles.buttonText}>SIGN UP</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.button} onPress={handleCreateAccount}>
+            <Text style={styles.buttonText}>SIGN UP</Text>
+          </TouchableOpacity>
 
-        <Text style={styles.haveAcc}>Have an account?</Text>
+          <Text style={styles.haveAcc}>Have an account?</Text>
 
-        <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-          <Text style={styles.back}>Log In</Text>
-        </TouchableOpacity>
-      </ScrollView>
+          <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+            <Text style={styles.back}>Log In</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </ImageBackground>
   );
 }
@@ -342,11 +357,10 @@ const styles = StyleSheet.create({
 
   title: {
     fontSize: 38,
-    fontWeight: "700",
     marginBottom: 40,
     textAlign: "center",
     color: "#4B2C11",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
     marginLeft: -5,
   },
 
@@ -385,9 +399,8 @@ const styles = StyleSheet.create({
 
   label: {
     marginBottom: 5,
-    fontWeight: "700",
     color: "#4B2C11",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
     marginLeft: 40,
   },
   label2: {
@@ -395,9 +408,8 @@ const styles = StyleSheet.create({
     marginBottom: 1,
     fontSize: 12,
     color: "#BD9165",
-    fontWeight: "200",
     textAlign: "center",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Semibold",
   },
   nameRow: {
     flexDirection: "row",
@@ -466,11 +478,10 @@ const styles = StyleSheet.create({
 
   haveAcc: {
     fontSize: 14,
-    fontWeight: "400",
     textAlign: "center",
     marginBottom: 3,
     marginTop: 25,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Semibold",
     color: "#4B2C11",
   },
 
@@ -487,17 +498,15 @@ const styles = StyleSheet.create({
 
   buttonText: {
     color: "#FFEFD5",
-    fontWeight: "bold",
     fontSize: 20,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
 
   back: {
     marginTop: 1,
     fontSize: 17,
     textAlign: "center",
-    fontWeight: "700",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
     color: "#4B2C11",
   },
 

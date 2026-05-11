@@ -133,26 +133,23 @@ const styles = StyleSheet.create({
   backButtonText: {
     fontSize: 15,
     color: "#4B2C11",
-    fontFamily: "SourceSerifPro-Regular",
-    fontWeight: "600",
+    fontFamily: "SourceSerifPro-Bold",
     textAlign: "center",
     marginTop: 35,
   },
   title: {
     fontSize: 38,
-    fontWeight: "700",
     color: "#4B2C11",
     marginBottom: 6,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
     textAlign: "center",
     marginTop: 56,
   },
   title2: {
     fontSize: 38,
-    fontWeight: "700",
     color: "#4B2C11",
     marginBottom: 6,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
     textAlign: "center",
   },
   subtitle: {
@@ -164,16 +161,15 @@ const styles = StyleSheet.create({
     marginTop: 15,
   },
   emailHighlight: {
-    fontWeight: "500",
     color: "#4B2C11",
+    fontFamily: "SourceSerifPro-Bold",
   },
   label: {
     fontSize: 16,
-    fontWeight: "500",
     color: "#4B2C11",
     marginTop: 80,
     marginLeft: 42,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Semibold",
   },
   input: {
     borderRadius: 10,
@@ -210,9 +206,8 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#FFEFD5",
-    fontWeight: "500",
     fontSize: 20,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
   linkText: {
     fontSize: 13,
@@ -224,14 +219,12 @@ const styles = StyleSheet.create({
   },
   linkTextBold: {
     color: "#4B2C11",
-    fontWeight: "600",
     textAlign: "center",
     borderRadius: 10,
     paddingVertical: 10,
     backgroundColor: "#F0D8B4",
-    marginLeft: 100,
-    marginRight: 100,
-    fontFamily: "SourceSerifPro-Regular",
+    paddingHorizontal: 50,
+    fontFamily: "SourceSerifPro-Bold",
     fontSize: 15,
   },
 });
