@@ -61,6 +61,7 @@ const COLORS = {
   buttonAlt: "#A97845",
   border: "#DFC392",
   teal: "#1E8A78",
+  required: "#C0392B",
 };
 
 const STEPS = ["Start", "Cafe Details", "Opening Time", "Amenities & Menu"];
@@ -175,7 +176,6 @@ export default function SubmitCafeScreen({ navigation }: Props) {
 
   const hasEditChanges = useMemo(() => {
     if (!existingCafeDefaults) return true;
-
     return (
       Boolean(cafeName.trim()) ||
       Boolean(description.trim()) ||
@@ -268,9 +268,7 @@ export default function SubmitCafeScreen({ navigation }: Props) {
         setSearchResults([]);
         setSearchError("Unable to search cafes right now.");
       } finally {
-        if (isActive) {
-          setSearchLoading(false);
-        }
+        if (isActive) setSearchLoading(false);
       }
     }, 300);
 
@@ -285,7 +283,6 @@ export default function SubmitCafeScreen({ navigation }: Props) {
       setStep((current) => current - 1);
       return;
     }
-
     navigation.goBack();
   };
 
@@ -299,12 +296,12 @@ export default function SubmitCafeScreen({ navigation }: Props) {
     setSubmissionMessage("");
 
     if (step === 2 && !isEditSuggestion) {
+      // Required: cafeName, email, phone, address, city, profileImage, coverImage
+      // Optional: description, telephone
       const nextMissingFields = {
         cafeName: !cafeName.trim(),
-        description: !description.trim(),
         email: !email.trim(),
         phone: !phone.trim(),
-        telephone: !telephone.trim(),
         address: !address.trim(),
         city: !city.trim(),
         profileImage: !profileImageUri,
@@ -315,7 +312,7 @@ export default function SubmitCafeScreen({ navigation }: Props) {
         setMissingFields(nextMissingFields);
         Alert.alert(
           "Missing required fields",
-          "Please complete all Cafe Details fields before continuing.",
+          "Please fill in all required (*) fields before continuing.",
         );
         return;
       }
@@ -342,52 +339,7 @@ export default function SubmitCafeScreen({ navigation }: Props) {
     }
 
     if (step === 4 && !isEditSuggestion) {
-      const requiredAmenityGroups = [
-        "WiFi",
-        "Sockets",
-        "Parking",
-        "Lighting",
-        "Seating",
-        "Tables",
-        "Suitable Conditions",
-        "Music",
-      ];
-
-      const hasMissingAmenity =
-        requiredAmenityGroups.some(
-          (group) => (amenities[group] ?? []).length === 0,
-        ) || petFriendly === null;
-      const nextMissingFields = {
-        beanTypes: beanTypes.length === 0,
-        brewMethods: brewMethods.length === 0,
-        WiFi: (amenities.WiFi ?? []).length === 0,
-        Sockets: (amenities.Sockets ?? []).length === 0,
-        Parking: (amenities.Parking ?? []).length === 0,
-        Lighting: (amenities.Lighting ?? []).length === 0,
-        Seating: (amenities.Seating ?? []).length === 0,
-        Tables: (amenities.Tables ?? []).length === 0,
-        SuitableConditions:
-          (amenities["Suitable Conditions"] ?? []).length === 0,
-        Music: (amenities.Music ?? []).length === 0,
-        PetFriendly: petFriendly === null,
-        menuImages: menuImageUris.length === 0,
-      };
-
-      if (
-        !priceLevel.trim() ||
-        beanTypes.length === 0 ||
-        brewMethods.length === 0 ||
-        hasMissingAmenity ||
-        menuImageUris.length === 0
-      ) {
-        setMissingFields(nextMissingFields);
-        Alert.alert(
-          "Missing required fields",
-          "Please complete all Amenities and Menu fields before submitting.",
-        );
-        return;
-      }
-
+      // All fields on final page are optional
       setMissingFields({});
     }
 
@@ -465,12 +417,8 @@ export default function SubmitCafeScreen({ navigation }: Props) {
     setAmenities((current) => {
       const selected = current[name] ?? [];
       if (SINGLE_SELECT_AMENITIES.has(name)) {
-        return {
-          ...current,
-          [name]: selected.includes(value) ? [] : [value],
-        };
+        return { ...current, [name]: selected.includes(value) ? [] : [value] };
       }
-
       return {
         ...current,
         [name]: selected.includes(value)
@@ -495,13 +443,11 @@ export default function SubmitCafeScreen({ navigation }: Props) {
   const pickSingleImage = async (onSelected: (uri: string) => void) => {
     const hasPermission = await ensurePhotoPermission();
     if (!hasPermission) return;
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
       quality: 0.8,
     });
-
     if (result.canceled || result.assets.length === 0) return;
     onSelected(result.assets[0].uri);
   };
@@ -511,19 +457,15 @@ export default function SubmitCafeScreen({ navigation }: Props) {
       Alert.alert("Limit reached", "You can upload up to 10 menu photos.");
       return;
     }
-
     const hasPermission = await ensurePhotoPermission();
     if (!hasPermission) return;
-
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsMultipleSelection: true,
       selectionLimit: 10 - menuImageUris.length,
       quality: 0.8,
     });
-
     if (result.canceled || result.assets.length === 0) return;
-
     setMenuImageUris((current) => {
       const merged = [...current, ...result.assets.map((asset) => asset.uri)];
       return Array.from(new Set(merged)).slice(0, 10);
@@ -603,10 +545,7 @@ export default function SubmitCafeScreen({ navigation }: Props) {
       <View
         style={[
           styles.header,
-          {
-            paddingTop: insets.top + 16,
-            paddingBottom: 20,
-          },
+          { paddingTop: insets.top + 16, paddingBottom: 20 },
         ]}
       >
         <Pressable
@@ -668,12 +607,8 @@ export default function SubmitCafeScreen({ navigation }: Props) {
               setCity={setCity}
               profileImageUri={profileImageUri}
               coverImageUri={coverImageUri}
-              onPickProfile={() => {
-                pickSingleImage(setProfileImageUri);
-              }}
-              onPickCover={() => {
-                pickSingleImage(setCoverImageUri);
-              }}
+              onPickProfile={() => pickSingleImage(setProfileImageUri)}
+              onPickCover={() => pickSingleImage(setCoverImageUri)}
               missingFields={missingFields}
               placeholders={existingCafeDefaults}
               optional={isEditSuggestion}
@@ -969,6 +904,7 @@ function DetailsStep({
     <>
       <Field
         label="Cafe Name"
+        required={!optional}
         note={
           <Text style={styles.counter}>
             For chain brands, add the location. Brand - Branch (e.g. Starbucks -
@@ -980,18 +916,19 @@ function DetailsStep({
         placeholder={placeholders?.cafeName || "Cafe Name"}
         error={missingFields.cafeName}
       />
+      {/* Description — always optional */}
       <Text style={styles.label}>
-        Description{" "}
+        Description
+        <Text style={styles.optionalTag}>
+          (optional - leave blank if unsure)
+        </Text>
+        {"  "}
         <Text style={styles.counter}>
           {characterCount} characters remaining
         </Text>
       </Text>
       <TextInput
-        style={[
-          styles.input,
-          styles.textArea,
-          missingFields.description && styles.inputError,
-        ]}
+        style={[styles.input, styles.textArea]}
         value={description}
         onChangeText={(value) => setDescription(value.slice(0, 500))}
         placeholder={
@@ -1005,6 +942,7 @@ function DetailsStep({
       <View style={styles.divider} />
       <Field
         label="Email Address"
+        required={!optional}
         value={email}
         onChangeText={setEmail}
         placeholder={placeholders?.email || "Email Address"}
@@ -1013,22 +951,30 @@ function DetailsStep({
       />
       <Field
         label="Phone"
+        required={!optional}
         value={phone}
         onChangeText={setPhone}
         placeholder={placeholders?.phone || "e.g. 0912 345 6789"}
         keyboardType="phone-pad"
         error={missingFields.phone}
       />
+      {/* Telephone / landline — always optional */}
       <Field
-        label="Telephone"
+        label="Landline/Telephone"
+        required={false}
+        note={
+          <Text style={styles.counter}>
+            Leave blank if the cafe doesn't have a landline
+          </Text>
+        }
         value={telephone}
         onChangeText={setTelephone}
-        placeholder={placeholders?.telephone || "e.g. 123-4567"}
+        placeholder={placeholders?.telephone || "e.g. 123-4567 (optional)"}
         keyboardType="phone-pad"
-        error={missingFields.telephone}
       />
       <Field
         label="Address"
+        required={!optional}
         value={address}
         onChangeText={setAddress}
         placeholder={placeholders?.address || "Street address"}
@@ -1036,6 +982,7 @@ function DetailsStep({
       />
       <Field
         label="City"
+        required={!optional}
         value={city}
         onChangeText={setCity}
         placeholder={placeholders?.city || "City"}
@@ -1044,6 +991,7 @@ function DetailsStep({
       <View style={styles.divider} />
       <UploadPair
         title="Profile Picture"
+        required={!optional}
         uploaded={Boolean(profileImageUri)}
         previewUri={profileImageUri}
         onUpload={onPickProfile}
@@ -1051,6 +999,7 @@ function DetailsStep({
       />
       <UploadWide
         title="Cover Picture"
+        required={!optional}
         uploaded={Boolean(coverImageUri)}
         previewUri={coverImageUri}
         onUpload={onPickCover}
@@ -1062,6 +1011,7 @@ function DetailsStep({
 
 function Field({
   label,
+  required,
   note,
   value,
   onChangeText,
@@ -1070,6 +1020,7 @@ function Field({
   error,
 }: {
   label: string;
+  required?: boolean;
   note?: ReactNode;
   value: string;
   onChangeText: (value: string) => void;
@@ -1079,7 +1030,14 @@ function Field({
 }) {
   return (
     <View style={styles.fieldGroup}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label}>
+        {label}{" "}
+        {required ? (
+          <Text style={styles.requiredStar}>*</Text>
+        ) : (
+          <Text style={styles.optionalTag}>(optional)</Text>
+        )}
+      </Text>
       {note ? <View style={styles.fieldNote}>{note}</View> : null}
       <TextInput
         style={[styles.input, error && styles.inputError]}
@@ -1089,18 +1047,23 @@ function Field({
         placeholderTextColor="#B9966D"
         keyboardType={keyboardType}
       />
+      {error ? (
+        <Text style={styles.fieldError}>This field is required.</Text>
+      ) : null}
     </View>
   );
 }
 
 function UploadPair({
   title,
+  required,
   uploaded,
   previewUri,
   onUpload,
   error,
 }: {
   title: string;
+  required?: boolean;
   uploaded: boolean;
   previewUri: string | null;
   onUpload: () => void;
@@ -1108,7 +1071,14 @@ function UploadPair({
 }) {
   return (
     <View style={styles.uploadGroup}>
-      <Text style={styles.label}>{title}</Text>
+      <Text style={styles.label}>
+        {title}{" "}
+        {required ? (
+          <Text style={styles.requiredStar}>*</Text>
+        ) : (
+          <Text style={styles.optionalTag}>(optional)</Text>
+        )}
+      </Text>
       <View style={styles.uploadPair}>
         <UploadBox
           compact
@@ -1131,18 +1101,23 @@ function UploadPair({
           )}
         </View>
       </View>
+      {error ? (
+        <Text style={styles.fieldError}>This image is required.</Text>
+      ) : null}
     </View>
   );
 }
 
 function UploadWide({
   title,
+  required,
   uploaded,
   previewUri,
   onUpload,
   error,
 }: {
   title: string;
+  required?: boolean;
   uploaded: boolean;
   previewUri: string | null;
   onUpload: () => void;
@@ -1150,7 +1125,14 @@ function UploadWide({
 }) {
   return (
     <View style={styles.uploadGroup}>
-      <Text style={styles.label}>{title}</Text>
+      <Text style={styles.label}>
+        {title}{" "}
+        {required ? (
+          <Text style={styles.requiredStar}>*</Text>
+        ) : (
+          <Text style={styles.optionalTag}>(optional)</Text>
+        )}
+      </Text>
       <View style={[styles.previewWide, error && styles.inputError]}>
         {previewUri ? (
           <Image
@@ -1170,6 +1152,9 @@ function UploadWide({
         )}
       </View>
       <UploadBox uploaded={uploaded} onPress={onUpload} error={error} />
+      {error ? (
+        <Text style={styles.fieldError}>This image is required.</Text>
+      ) : null}
     </View>
   );
 }
@@ -1421,14 +1406,18 @@ function AmenitiesStep({
         title="Coffee"
         subtitle="Bean type, brewing methods, etc."
       >
-        <Text style={styles.miniLabel}>Bean Type</Text>
+        <Text style={styles.miniLabel}>
+          Bean Type <Text style={styles.optionalTag}>(optional)</Text>
+        </Text>
         <ToggleGroup
           options={["Arabica", "Robusta", "Liberica (Barako)", "Excelsa"]}
           selected={beanTypes}
           onToggle={toggleBeanType}
-          error={!optional && missingFields.beanTypes}
+          error={false}
         />
-        <Text style={styles.miniLabel}>Brew Method</Text>
+        <Text style={styles.miniLabel}>
+          Brew Method <Text style={styles.optionalTag}>(optional)</Text>
+        </Text>
         <ToggleGroup
           options={[
             "Espresso",
@@ -1439,7 +1428,7 @@ function AmenitiesStep({
           ]}
           selected={brewMethods}
           onToggle={toggleBrewMethod}
-          error={!optional && missingFields.brewMethods}
+          error={false}
         />
       </FeatureCard>
       <FeatureCard
@@ -1453,7 +1442,8 @@ function AmenitiesStep({
           options={["None", "Slow", "Moderate", "Fast"]}
           selected={amenities.WiFi ?? []}
           onToggle={toggleAmenity}
-          error={!optional && missingFields.WiFi}
+          required={false}
+          error={false}
         />
         <AmenityGroup
           name="Sockets"
@@ -1461,7 +1451,8 @@ function AmenitiesStep({
           options={["None", "Some", "Many"]}
           selected={amenities.Sockets ?? []}
           onToggle={toggleAmenity}
-          error={!optional && missingFields.Sockets}
+          required={false}
+          error={false}
         />
         <AmenityGroup
           name="Parking"
@@ -1469,7 +1460,8 @@ function AmenitiesStep({
           options={["None", "Limited", "Plenty"]}
           selected={amenities.Parking ?? []}
           onToggle={toggleAmenity}
-          error={!optional && missingFields.Parking}
+          required={false}
+          error={false}
         />
         <AmenityGroup
           name="Lighting"
@@ -1477,7 +1469,8 @@ function AmenitiesStep({
           options={["Dim", "Balanced", "Bright"]}
           selected={amenities.Lighting ?? []}
           onToggle={toggleAmenity}
-          error={!optional && missingFields.Lighting}
+          required={false}
+          error={false}
         />
         <AmenityGroup
           name="Seating"
@@ -1485,7 +1478,8 @@ function AmenitiesStep({
           options={["Inside", "Outside"]}
           selected={amenities.Seating ?? []}
           onToggle={toggleAmenity}
-          error={!optional && missingFields.Seating}
+          required={false}
+          error={false}
         />
         <AmenityGroup
           name="Tables"
@@ -1493,7 +1487,8 @@ function AmenitiesStep({
           options={["Bar type", "Individual Tables", "Large tables (>6)"]}
           selected={amenities.Tables ?? []}
           onToggle={toggleAmenity}
-          error={!optional && missingFields.Tables}
+          required={false}
+          error={false}
         />
         <AmenityGroup
           name="Suitable Conditions"
@@ -1501,7 +1496,8 @@ function AmenitiesStep({
           options={["Student", "Work", "Group", "Vibes"]}
           selected={amenities["Suitable Conditions"] ?? []}
           onToggle={toggleAmenity}
-          error={!optional && missingFields.SuitableConditions}
+          required={false}
+          error={false}
         >
           <TextInput
             style={styles.smallInput}
@@ -1517,7 +1513,8 @@ function AmenitiesStep({
           options={["Quiet", "Normal", "Blaring"]}
           selected={amenities.Music ?? []}
           onToggle={toggleAmenity}
-          error={!optional && missingFields.Music}
+          required={false}
+          error={false}
         />
         <AmenityGroup
           name="Pet Friendly"
@@ -1529,21 +1526,20 @@ function AmenitiesStep({
               petFriendly === null ? null : petFriendly ? "Yes" : "No";
             setPetFriendly(currentValue === value ? null : value === "Yes");
           }}
+          required={!optional}
           error={!optional && missingFields.PetFriendly}
         />
       </FeatureCard>
       <View style={styles.divider} />
+      {/* Menu images — always optional */}
       <Text style={styles.label}>
-        Menu{" "}
-        <Text style={styles.counter}>
-          {menuImageUris.length}/10 uploaded{" "}
-          {optional ? "(optional)" : "(at least 1 required)"}
-        </Text>
+        Menu <Text style={styles.optionalTag}>(optional)</Text>
+        {"  "}
+        <Text style={styles.counter}>{menuImageUris.length}/10 uploaded</Text>
       </Text>
       <UploadBox
         uploaded={menuImageUris.length > 0}
         onPress={onPickMenuImages}
-        error={!optional && missingFields.menuImages}
       />
       {menuImageUris.length > 0 ? (
         <ScrollView
@@ -1626,6 +1622,7 @@ function AmenityGroup({
   selected,
   onToggle,
   children,
+  required,
   error,
 }: {
   name: string;
@@ -1634,13 +1631,21 @@ function AmenityGroup({
   selected: string[];
   onToggle: (name: string, value: string) => void;
   children?: ReactNode;
+  required?: boolean;
   error?: boolean;
 }) {
   return (
-    <View style={[styles.amenityBlock]}>
+    <View style={styles.amenityBlock}>
       <View style={styles.amenityTitleRow}>
         <MaterialCommunityIcons name={icon} size={16} color={COLORS.text} />
-        <Text style={styles.miniLabel}>{name}</Text>
+        <Text style={styles.miniLabel}>
+          {name}{" "}
+          {required ? (
+            <Text style={styles.requiredStar}>*</Text>
+          ) : (
+            <Text style={styles.optionalTag}>(optional)</Text>
+          )}
+        </Text>
       </View>
       <ToggleGroup
         options={options}
@@ -1648,16 +1653,16 @@ function AmenityGroup({
         onToggle={(value) => onToggle(name, value)}
         error={error}
       />
+      {error ? (
+        <Text style={styles.fieldError}>Please select an option.</Text>
+      ) : null}
       {children}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
+  wrapper: { flex: 1, backgroundColor: COLORS.background },
   header: {
     backgroundColor: "#E4C79E",
     alignItems: "center",
@@ -1678,35 +1683,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  backButtonText: {
-    color: "#4A2A0D",
-    fontSize: 16,
-    fontWeight: "500",
-  },
+  backButtonText: { color: "#4A2A0D", fontSize: 16, fontWeight: "500" },
   headerTitle: {
     fontSize: 23,
     fontWeight: "700",
     color: "#4A2A0D",
     letterSpacing: 0.3,
   },
-  keyboardContainer: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 22,
-    paddingTop: 24,
-  },
+  keyboardContainer: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: 22, paddingTop: 24 },
   progressRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 16,
   },
-  progressItem: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
+  progressItem: { flexDirection: "row", alignItems: "center" },
   progressCircle: {
     width: 42,
     height: 42,
@@ -1715,18 +1707,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#E9D8B9",
   },
-  progressCircleActive: {
-    backgroundColor: "#C4A36F",
-  },
+  progressCircleActive: { backgroundColor: "#C4A36F" },
   progressText: {
     color: "#C7B28D",
     fontFamily: "serif",
     fontSize: 16,
     fontWeight: "700",
   },
-  progressTextActive: {
-    color: "#FFF8EB",
-  },
+  progressTextActive: { color: "#FFF8EB" },
   progressLine: {
     width: 38,
     height: 3,
@@ -1827,11 +1815,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  loadingText: {
-    color: COLORS.secondary,
-    fontFamily: "serif",
-    fontSize: 13,
-  },
+  loadingText: { color: COLORS.secondary, fontFamily: "serif", fontSize: 13 },
   inlineMessage: {
     color: COLORS.secondary,
     fontFamily: "serif",
@@ -1855,19 +1839,14 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 10,
   },
-  resultRowSelected: {
-    borderWidth: 1.5,
-    borderColor: COLORS.teal,
-  },
+  resultRowSelected: { borderWidth: 1.5, borderColor: COLORS.teal },
   thumbnail: {
     width: 40,
     height: 40,
     borderRadius: 5,
     backgroundColor: "#E1E1DE",
   },
-  resultCopy: {
-    flex: 1,
-  },
+  resultCopy: { flex: 1 },
   resultName: {
     color: COLORS.secondary,
     fontFamily: "serif",
@@ -1887,13 +1866,16 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginBottom: 5,
   },
-  counter: {
-    color: "#A97845",
-    fontSize: 10,
+  requiredStar: { color: COLORS.required, fontSize: 15, fontWeight: "800" },
+  optionalTag: { color: "#A97845", fontSize: 12, fontWeight: "400" },
+  fieldError: {
+    color: COLORS.required,
+    fontFamily: "serif",
+    fontSize: 12,
+    marginTop: 4,
   },
-  fieldGroup: {
-    marginBottom: 12,
-  },
+  counter: { color: "#A97845", fontSize: 10 },
+  fieldGroup: { marginBottom: 12 },
   fieldNote: {
     color: COLORS.text,
     fontFamily: "serif",
@@ -1910,22 +1892,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     paddingVertical: 12,
   },
-  inputError: {
-    borderWidth: 1.5,
-    borderColor: "rgb(209, 145, 138)",
-  },
-  textArea: {
-    minHeight: 132,
-    marginBottom: 18,
-  },
-  divider: {
-    height: 2,
-    backgroundColor: COLORS.border,
-    marginVertical: 18,
-  },
-  uploadGroup: {
-    marginBottom: 18,
-  },
+  inputError: { borderWidth: 1.5, borderColor: "rgb(209, 145, 138)" },
+  textArea: { minHeight: 132, marginBottom: 18 },
+  divider: { height: 2, backgroundColor: COLORS.border, marginVertical: 18 },
+  uploadGroup: { marginBottom: 18 },
   uploadPair: {
     flexDirection: "row",
     gap: 20,
@@ -1944,11 +1914,7 @@ const styles = StyleSheet.create({
     padding: 14,
     marginTop: 10,
   },
-  uploadBoxCompact: {
-    width: 126,
-    minHeight: 116,
-    marginTop: 0,
-  },
+  uploadBoxCompact: { width: 126, minHeight: 116, marginTop: 0 },
   previewBox: {
     width: 126,
     minHeight: 116,
@@ -1959,10 +1925,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  previewImage: {
-    width: "100%",
-    height: "100%",
-  },
+  previewImage: { width: "100%", height: "100%" },
   previewWide: {
     height: 120,
     borderWidth: 1,
@@ -1974,9 +1937,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     overflow: "hidden",
   },
-  previewWideImage: {
-    ...StyleSheet.absoluteFillObject,
-  },
+  previewWideImage: { ...StyleSheet.absoluteFillObject },
   uploadText: {
     color: "#C19B61",
     fontFamily: "serif",
@@ -2000,11 +1961,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 24,
   },
-  bodyText: {
-    color: COLORS.secondary,
-    fontFamily: "serif",
-    fontSize: 16,
-  },
+  bodyText: { color: COLORS.secondary, fontFamily: "serif", fontSize: 16 },
   subheading: {
     color: COLORS.text,
     fontFamily: "serif",
@@ -2028,19 +1985,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "800",
   },
-  dayOptions: {
-    flex: 1,
-    gap: 10,
-    marginRight: 80,
-  },
-  checkRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  disabledRow: {
-    opacity: 0.5,
-  },
+  dayOptions: { flex: 1, gap: 10, marginRight: 80 },
+  checkRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  disabledRow: { opacity: 0.5 },
   checkbox: {
     width: 17,
     height: 17,
@@ -2051,19 +1998,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#FFF6E8",
   },
-  checkboxChecked: {
-    backgroundColor: COLORS.teal,
-    borderColor: COLORS.teal,
-  },
-  timeColumn: {
-    width: 130,
-    gap: 8,
-  },
-  timeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-  },
+  checkboxChecked: { backgroundColor: COLORS.teal, borderColor: COLORS.teal },
+  timeColumn: { width: 130, gap: 8 },
+  timeRow: { flexDirection: "row", alignItems: "center", gap: 2 },
   timeLabel: {
     width: 42,
     color: COLORS.secondary,
@@ -2144,15 +2081,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.buttonAlt,
     borderColor: COLORS.buttonAlt,
   },
-  choiceText: {
-    color: COLORS.secondary,
-    fontFamily: "serif",
-    fontSize: 13,
-  },
-  choiceTextActive: {
-    color: "#FFF8EC",
-    fontWeight: "800",
-  },
+  choiceText: { color: COLORS.secondary, fontFamily: "serif", fontSize: 13 },
+  choiceTextActive: { color: "#FFF8EC", fontWeight: "800" },
   amenityBlock: {
     backgroundColor: COLORS.inset,
     borderRadius: 6,
@@ -2160,11 +2090,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     marginBottom: 4,
   },
-  amenityTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
+  amenityTitleRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   smallInput: {
     minHeight: 40,
     borderWidth: 1,
@@ -2183,11 +2109,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 16,
   },
-  menuPreviewRow: {
-    gap: 10,
-    marginTop: 12,
-    paddingRight: 4,
-  },
+  menuPreviewRow: { gap: 10, marginTop: 12, paddingRight: 4 },
   menuPreviewCard: {
     width: 88,
     height: 88,
@@ -2197,10 +2119,7 @@ const styles = StyleSheet.create({
     borderColor: "#D8B783",
     backgroundColor: "#FFF8EC",
   },
-  menuPreviewImage: {
-    width: "100%",
-    height: "100%",
-  },
+  menuPreviewImage: { width: "100%", height: "100%" },
   menuPreviewRemove: {
     position: "absolute",
     top: 4,
@@ -2243,10 +2162,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 18,
   },
-  nextButtonDisabled: {
-    backgroundColor: "#D8B783",
-    opacity: 0.75,
-  },
+  nextButtonDisabled: { backgroundColor: "#D8B783", opacity: 0.75 },
   nextText: {
     color: "#FFF6E8",
     fontFamily: "serif",
