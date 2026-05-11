@@ -68,32 +68,53 @@ const PAGE_SIZE = 10;
 export const DASHBOARD_PAGE_SIZE = 4;
 
 // ─── Normalization helpers ────────────────────────────────────────────────────
-
-/**
- * Maps raw DB strings (e.g. "cold-brew", "fast", "french_press")
- * to the display labels used in the UI pills.
- */
 const DISPLAY_OVERRIDES: Record<string, string> = {
-  // Coffee bean types
-  "Liberica (Barako)": "Liberica (Barako)",
-  "Liberica (barako)": "Liberica (Barako)",
-  // Brew methods
+  // ── Bean Type ──
+  Arabica: "Arabica",
+  Robusta: "Robusta",
+  Excelsa: "Excelsa",
+
+  // Handles both old + new DB values
+  Liberica: "Liberica",
+  "Liberica (Barako)": "Liberica",
+
+  // ── Brew Method ──
+  Expresso: "Espresso",
+  Espresso: "Espresso",
+
   "French Press": "French Press",
   "Pour Over": "Pour Over",
   "Cold Brew": "Cold Brew",
-  // Tables
-  "Bar Type": "Bar type",
+  Drip: "Drip",
+
+  // ── Tables ──
+  "Bar Type": "Bar Type",
   "Individual Tables": "Individual Tables",
-  "Large Tables (>6)": "Large tables (>6)",
-  "Large Tables (> 6)": "Large tables (>6)",
+
+  // Handles all possible DB variants
+  "Large Tables": "Large Tables",
+  "Large Tables (>6)": "Large Tables",
+  "Large Tables (> 6)": "Large Tables",
+
+  // ── Price ──
+  "Low Price": "P",
+  "Medium Price": "PP",
+  "High Price": "PPP",
+
+  "low_price": "P",
+  "medium_price": "PP",
+  "high_price": "PPP",
 };
+
 
 function toDisplay(val: string | null | undefined): string | null {
   if (!val) return null;
+
   const normalized = val
-    .replace(/_/g, " ")                          // snake_case → spaces
-    .replace(/-/g, " ")                          // kebab-case → spaces
-    .replace(/\b\w/g, (c) => c.toUpperCase());   // title Case
+    .replace(/_/g, " ")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+
   return DISPLAY_OVERRIDES[normalized] ?? normalized;
 }
 
@@ -135,45 +156,17 @@ export async function getCafesByCity(
 
   const { data, error } = await supabase
     .from("cafe")
-    .select(
-      "id, name, address, city, main_photo_url, featured, review (rating)",
-    )
+    .select("id, name, address, city, main_photo_url, featured, review (rating)")
     .eq("city", city)
     .neq("is_deleted", true)
     .range(from, to);
 
   if (error) throw error;
-  return (data ?? []).map((cafe) => {
-    const ratings = (cafe.review ?? []).map(
-      (r: { rating: number }) => r.rating,
-    );
-    const average_rating =
-      ratings.length > 0
-        ? Math.round(
-            (ratings.reduce((a: number, b: number) => a + b, 0) /
-              ratings.length) *
-              10,
-          ) / 10
-        : 0;
-
-    return {
-      id: cafe.id,
-      name: cafe.name,
-      address: cafe.address,
-      city: cafe.city,
-      main_photo_url: cafe.main_photo_url,
-      featured: cafe.featured,
-      average_rating,
-    };
-  });
+  return (data ?? []).map((cafe) => mapCafeWithRatings(cafe));
 }
 
 // ─── Dashboard sections (Featured / Discover) ────────────────────────────────
 
-/**
- * Fetches featured cafes for the dashboard Featured section.
- * Returns up to DASHBOARD_PAGE_SIZE (8) results per page.
- */
 export async function getFeaturedCafes(
   city: string,
   page: number = 0,
@@ -190,30 +183,9 @@ export async function getFeaturedCafes(
     .range(from, to);
 
   if (error) throw error;
-  return (data ?? []).map((cafe) => {
-    const ratings = (cafe.review ?? []).map((r: { rating: number }) => r.rating);
-    const average_rating =
-      ratings.length > 0
-        ? Math.round(
-            (ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length) * 10,
-          ) / 10
-        : 0;
-    return {
-      id: cafe.id,
-      name: cafe.name,
-      address: cafe.address,
-      city: cafe.city,
-      main_photo_url: cafe.main_photo_url,
-      featured: cafe.featured,
-      average_rating,
-    };
-  });
+  return (data ?? []).map((cafe) => mapCafeWithRatings(cafe));
 }
 
-/**
- * Fetches non-featured cafes for the dashboard Discover section.
- * Returns up to DASHBOARD_PAGE_SIZE (8) results per page.
- */
 export async function getDiscoverCafes(
   city: string,
   page: number = 0,
@@ -230,40 +202,13 @@ export async function getDiscoverCafes(
     .range(from, to);
 
   if (error) throw error;
-  return (data ?? []).map((cafe) => {
-    const ratings = (cafe.review ?? []).map((r: { rating: number }) => r.rating);
-    const average_rating =
-      ratings.length > 0
-        ? Math.round(
-            (ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length) * 10,
-          ) / 10
-        : 0;
-    return {
-      id: cafe.id,
-      name: cafe.name,
-      address: cafe.address,
-      city: cafe.city,
-      main_photo_url: cafe.main_photo_url,
-      featured: cafe.featured,
-      average_rating,
-    };
-  });
+  return (data ?? []).map((cafe) => mapCafeWithRatings(cafe));
 }
 
 export async function getCafesWithFeatures(): Promise<CafeWithFeatures[]> {
   const { data: cafes, error: cafeError } = await supabase
     .from("cafe")
-    .select(
-      `
-      id,
-      name,
-      address,
-      city,
-      avatar_url,
-      featured,
-      review ( rating )
-    `,
-    )
+    .select("id, name, address, city, avatar_url, featured, review ( rating )")
     .neq("is_deleted", true);
 
   if (cafeError) throw cafeError;
@@ -288,30 +233,10 @@ export async function getCafesWithFeatures(): Promise<CafeWithFeatures[]> {
     featuresByCafeId.set(feature.cafe_id, feature);
   }
 
-  return cafeList.map((cafe) => {
-    const ratings = (cafe.review ?? []).map(
-      (r: { rating: number }) => r.rating,
-    );
-    const average_rating =
-      ratings.length > 0
-        ? Math.round(
-            (ratings.reduce((a: number, b: number) => a + b, 0) /
-              ratings.length) *
-              10,
-          ) / 10
-        : 0;
-
-    return {
-      id: cafe.id,
-      name: cafe.name,
-      address: cafe.address,
-      city: cafe.city,
-      main_photo_url: cafe.avatar_url,
-      featured: cafe.featured,
-      average_rating,
-      features: featuresByCafeId.get(cafe.id) ?? null,
-    };
-  });
+  return cafeList.map((cafe) => ({
+    ...mapCafeWithRatings({ ...cafe, main_photo_url: cafe.avatar_url }),
+    features: featuresByCafeId.get(cafe.id) ?? null,
+  }));
 }
 
 export async function getNearbyCafes(
@@ -364,32 +289,19 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
       .maybeSingle(),
   ]);
 
-  if (error) {
-    console.log("Supabase error:", JSON.stringify(error));
-    throw error;
-  }
+  if (error) throw error;
   if (!data) return null;
 
   // ── Ratings ──
   const ratings = (data.review ?? []).map((r: { rating: number }) => r.rating);
-  const average_rating =
-    ratings.length > 0
-      ? Math.round(
-          (ratings.reduce((a: number, b: number) => a + b, 0) /
-            ratings.length) *
-            10,
-        ) / 10
-      : 0;
+  const average_rating = computeAverageRating(ratings);
 
   // ── Opening hours ──
   const hours: { weekday: number; open_time: string; close_time: string }[] =
     data.cafe_hours ?? [];
   const opening_days = hours.map((h) => WEEKDAY_MAP[h.weekday]).filter(Boolean);
-  const opening_time = hours[0]?.open_time?.slice(0, 5) ?? null;
-  const closing_time = hours[0]?.close_time?.slice(0, 5) ?? null;
-
-  // ── Debug: remove once values are confirmed correct ──
-  console.log("RAW amenitiesData:", JSON.stringify(amenitiesData, null, 2));
+  const opening_time = to12Hour(hours[0]?.open_time?.slice(0, 5)) ?? null;
+  const closing_time = to12Hour(hours[0]?.close_time?.slice(0, 5)) ?? null;
 
   return {
     id: data.id,
@@ -398,6 +310,7 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
     email: data.email ?? null,
     phone: data.phone ?? null,
     avatar_url: data.avatar_url ?? null,
+    // main_photo_url is used as the cover/banner image on the profile screen
     cover_photo_url: data.main_photo_url ?? null,
     menu_urls: null,
     average_rating,
@@ -419,6 +332,49 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
     suitable_for: toDisplayArr(amenitiesData?.suitable_for),
     coffee_bean_type: toDisplayArr(amenitiesData?.coffee_bean_type),
     coffee_brew_method: toDisplayArr(amenitiesData?.coffee_brew_method),
-    price_level: (amenitiesData?.price_level ?? null) as CafeDetail["price_level"],
+    price_level: (toDisplay(amenitiesData?.price_level) ?? null) as CafeDetail["price_level"],
+  };
+}
+
+// ─── Shared helpers ───────────────────────────────────────────────────────────
+
+function computeAverageRating(ratings: number[]): number {
+  if (ratings.length === 0) return 0;
+  const sum = ratings.reduce((a, b) => a + b, 0);
+  return Math.round((sum / ratings.length) * 10) / 10;
+}
+
+/**
+ * Converts a "HH:MM" 24-hour string to "H:MM AM/PM" format.
+ * Returns null if input is null/undefined.
+ */
+function to12Hour(time: string | null | undefined): string | null {
+  if (!time) return null;
+  const [hStr, mStr] = time.split(":");
+  const h = parseInt(hStr, 10);
+  const m = mStr ?? "00";
+  const period = h >= 12 ? "PM" : "AM";
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return `${hour}:${m} ${period}`;
+}
+
+function mapCafeWithRatings(cafe: {
+  id: number;
+  name: string;
+  address: string;
+  city: string;
+  main_photo_url: string | null;
+  featured: boolean;
+  review?: { rating: number }[];
+}): Cafe {
+  const ratings = (cafe.review ?? []).map((r) => r.rating);
+  return {
+    id: cafe.id,
+    name: cafe.name,
+    address: cafe.address,
+    city: cafe.city,
+    main_photo_url: cafe.main_photo_url,
+    featured: cafe.featured,
+    average_rating: computeAverageRating(ratings),
   };
 }
