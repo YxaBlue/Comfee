@@ -65,6 +65,7 @@ export type CafeDetail = {
 };
 
 const PAGE_SIZE = 10;
+export const DASHBOARD_PAGE_SIZE = 4;
 
 // ─── Normalization helpers ────────────────────────────────────────────────────
 
@@ -155,6 +156,88 @@ export async function getCafesByCity(
           ) / 10
         : 0;
 
+    return {
+      id: cafe.id,
+      name: cafe.name,
+      address: cafe.address,
+      city: cafe.city,
+      main_photo_url: cafe.main_photo_url,
+      featured: cafe.featured,
+      average_rating,
+    };
+  });
+}
+
+// ─── Dashboard sections (Featured / Discover) ────────────────────────────────
+
+/**
+ * Fetches featured cafes for the dashboard Featured section.
+ * Returns up to DASHBOARD_PAGE_SIZE (8) results per page.
+ */
+export async function getFeaturedCafes(
+  city: string,
+  page: number = 0,
+): Promise<Cafe[]> {
+  const from = page * DASHBOARD_PAGE_SIZE;
+  const to = from + DASHBOARD_PAGE_SIZE - 1;
+
+  const { data, error } = await supabase
+    .from("cafe")
+    .select("id, name, address, city, main_photo_url, featured, review (rating)")
+    .eq("city", city)
+    .eq("featured", true)
+    .neq("is_deleted", true)
+    .range(from, to);
+
+  if (error) throw error;
+  return (data ?? []).map((cafe) => {
+    const ratings = (cafe.review ?? []).map((r: { rating: number }) => r.rating);
+    const average_rating =
+      ratings.length > 0
+        ? Math.round(
+            (ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length) * 10,
+          ) / 10
+        : 0;
+    return {
+      id: cafe.id,
+      name: cafe.name,
+      address: cafe.address,
+      city: cafe.city,
+      main_photo_url: cafe.main_photo_url,
+      featured: cafe.featured,
+      average_rating,
+    };
+  });
+}
+
+/**
+ * Fetches non-featured cafes for the dashboard Discover section.
+ * Returns up to DASHBOARD_PAGE_SIZE (8) results per page.
+ */
+export async function getDiscoverCafes(
+  city: string,
+  page: number = 0,
+): Promise<Cafe[]> {
+  const from = page * DASHBOARD_PAGE_SIZE;
+  const to = from + DASHBOARD_PAGE_SIZE - 1;
+
+  const { data, error } = await supabase
+    .from("cafe")
+    .select("id, name, address, city, main_photo_url, featured, review (rating)")
+    .eq("city", city)
+    .eq("featured", false)
+    .neq("is_deleted", true)
+    .range(from, to);
+
+  if (error) throw error;
+  return (data ?? []).map((cafe) => {
+    const ratings = (cafe.review ?? []).map((r: { rating: number }) => r.rating);
+    const average_rating =
+      ratings.length > 0
+        ? Math.round(
+            (ratings.reduce((a: number, b: number) => a + b, 0) / ratings.length) * 10,
+          ) / 10
+        : 0;
     return {
       id: cafe.id,
       name: cafe.name,
