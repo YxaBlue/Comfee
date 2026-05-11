@@ -12,8 +12,8 @@ import ForgotPasswordScreen from "./app/features/auth/screens/ForgotPassword";
 import LoginScreen from "./app/features/auth/screens/Login";
 import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
 import BusinessProfile from "./app/features/business/screens/BusinessProfile";
-import CafeCard from "./app/features/cafe/screens/CafeCard";
 import CafeProfileScreen from "./app/features/cafe/screens/cafeProfile";
+import Dashboard from "./app/features/cafe/screens/Dashboard";
 import FilteredCafes from "./app/features/cafe/screens/DashboardFilter";
 import FilterScreen from "./app/features/cafe/screens/Filter";
 import SearchScreen from "./app/features/cafe/screens/Search";
@@ -219,7 +219,7 @@ export default function App() {
         <Stack.Screen name="SubmitCafe" component={SubmitCafeScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-        <Stack.Screen name="Dashboard" component={CafeCard} />
+        <Stack.Screen name="Dashboard" component={Dashboard} />
         <Stack.Screen name="Filter" component={FilterScreen} />
         <Stack.Screen name="Search" component={SearchScreen} />
         <Stack.Screen name="FilteredCafes" component={FilteredCafes} />

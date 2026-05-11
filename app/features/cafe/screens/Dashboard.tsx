@@ -21,15 +21,19 @@ import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Cafe, getCafesByCity, getUserLocation } from "../services/cafeService";
+import {
+  Cafe,
+  DASHBOARD_PAGE_SIZE,
+  getDiscoverCafes,
+  getFeaturedCafes,
+  getUserLocation,
+} from "../services/cafeService";
 
 type NavProps = NativeStackNavigationProp<RootStackParamList, "Dashboard">;
 
-const PAGE_SIZE = 10;
-
 const CEBU_CITIES = ["Cebu", "Mandaue", "Lapu-Lapu", "Talisay"];
 
-export default function CafeCard() {
+export default function Dashboard() {
   const navigation = useNavigation<NavProps>();
   const { width: screenWidth } = useWindowDimensions();
   const cardWidth = Math.floor(
@@ -44,13 +48,17 @@ export default function CafeCard() {
   const [city, setCity] = useState("Cebu");
   const [locationModalVisible, setLocationModalVisible] = useState(false);
 
-  const [allCafes, setAllCafes] = useState<Cafe[]>([]);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [cafesLoading, setCafesLoading] = useState(false);
+  // Featured section state
+  const [featuredCafes, setFeaturedCafes] = useState<Cafe[]>([]);
+  const [featuredPage, setFeaturedPage] = useState(0);
+  const [featuredHasMore, setFeaturedHasMore] = useState(true);
+  const [featuredLoading, setFeaturedLoading] = useState(false);
 
-  const featuredCafes = allCafes.filter((c) => c.featured);
-  const discoverCafes = allCafes.filter((c) => !c.featured);
+  // Discover section state
+  const [discoverCafes, setDiscoverCafes] = useState<Cafe[]>([]);
+  const [discoverPage, setDiscoverPage] = useState(0);
+  const [discoverHasMore, setDiscoverHasMore] = useState(true);
+  const [discoverLoading, setDiscoverLoading] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -86,26 +94,51 @@ export default function CafeCard() {
   }, []);
 
   useEffect(() => {
-    fetchCafes(0, true);
+    setFeaturedPage(0);
+    setFeaturedHasMore(true);
+    setDiscoverPage(0);
+    setDiscoverHasMore(true);
+    fetchFeatured(0, true);
+    fetchDiscover(0, true);
   }, [city]);
 
   // --- Functions ---
-  async function fetchCafes(pageNum: number, reset = false) {
-    setCafesLoading(true);
+  async function fetchFeatured(pageNum: number, reset = false) {
+    if (!reset && featuredLoading) return;
+    setFeaturedLoading(true);
     try {
-      const data = await getCafesByCity(city, pageNum);
-      setAllCafes((prev) => (reset ? data : [...prev, ...data]));
-      setHasMore(data.length === PAGE_SIZE);
-      setPage(pageNum);
+      const data = await getFeaturedCafes(city, pageNum);
+      setFeaturedCafes((prev) => (reset ? data : [...prev, ...data]));
+      setFeaturedHasMore(data.length === DASHBOARD_PAGE_SIZE);
+      setFeaturedPage(pageNum);
     } catch (err) {
-      console.error("Failed to load cafes:", err);
+      console.error("Failed to load featured cafes:", err);
     } finally {
-      setCafesLoading(false);
+      setFeaturedLoading(false);
     }
   }
 
-  function handleLoadMore() {
-    if (!cafesLoading && hasMore) fetchCafes(page + 1);
+  async function fetchDiscover(pageNum: number, reset = false) {
+    if (!reset && discoverLoading) return;
+    setDiscoverLoading(true);
+    try {
+      const data = await getDiscoverCafes(city, pageNum);
+      setDiscoverCafes((prev) => (reset ? data : [...prev, ...data]));
+      setDiscoverHasMore(data.length === DASHBOARD_PAGE_SIZE);
+      setDiscoverPage(pageNum);
+    } catch (err) {
+      console.error("Failed to load discover cafes:", err);
+    } finally {
+      setDiscoverLoading(false);
+    }
+  }
+
+  function handleLoadMoreFeatured() {
+    if (!featuredLoading && featuredHasMore) fetchFeatured(featuredPage + 1);
+  }
+
+  function handleLoadMoreDiscover() {
+    if (!discoverLoading && discoverHasMore) fetchDiscover(discoverPage + 1);
   }
 
   const renderCafeCard = ({ item }: { item: Cafe }) => (
@@ -219,7 +252,7 @@ export default function CafeCard() {
 
         <Text style={styles.labelText}>Featured Cafés</Text>
         <View style={{ marginTop: 3 }}>
-          {cafesLoading ? (
+          {featuredLoading && featuredCafes.length === 0 ? (
             <ActivityIndicator color="#A97C4E" style={{ marginVertical: 16 }} />
           ) : featuredCafes.length > 0 ? (
             <FlatList
@@ -229,6 +262,16 @@ export default function CafeCard() {
               keyExtractor={(item) => `featured-${item.id}`}
               renderItem={renderCafeCard}
               style={{ marginTop: 3, marginBottom: 14 }}
+              onEndReached={handleLoadMoreFeatured}
+              onEndReachedThreshold={0.4}
+              ListFooterComponent={
+                featuredLoading ? (
+                  <ActivityIndicator
+                    color="#A97C4E"
+                    style={{ marginHorizontal: 16, alignSelf: "center" }}
+                  />
+                ) : null
+              }
             />
           ) : (
             <Text style={styles.emptyText}>No featured cafés yet.</Text>
@@ -237,7 +280,7 @@ export default function CafeCard() {
 
         <Text style={styles.labelText}>Discover More</Text>
         <View style={{ marginTop: 3 }}>
-          {cafesLoading ? (
+          {discoverLoading && discoverCafes.length === 0 ? (
             <ActivityIndicator color="#A97C4E" style={{ marginVertical: 16 }} />
           ) : discoverCafes.length > 0 ? (
             <FlatList
@@ -247,6 +290,16 @@ export default function CafeCard() {
               keyExtractor={(item) => `discover-${item.id}`}
               renderItem={renderCafeCard}
               style={{ marginTop: 3, marginBottom: 14 }}
+              onEndReached={handleLoadMoreDiscover}
+              onEndReachedThreshold={0.4}
+              ListFooterComponent={
+                discoverLoading ? (
+                  <ActivityIndicator
+                    color="#A97C4E"
+                    style={{ marginHorizontal: 16, alignSelf: "center" }}
+                  />
+                ) : null
+              }
             />
           ) : (
             <Text style={styles.emptyText}>No cafés to discover yet.</Text>
@@ -511,4 +564,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
 });
