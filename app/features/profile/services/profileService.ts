@@ -5,7 +5,8 @@ import { validateEditProfile } from "../utils/profileValidation";
 // Re-export review-related types and functions from the canonical source
 export {
   deleteReview,
-  editReview, getReviewsByUser,
+  editReview,
+  getReviewsByUser,
   toggleUpvote
 } from "@/app/shared/modals/reviewService";
 export type { ProfileReview as Review } from "@/app/shared/modals/reviewService";
@@ -82,17 +83,39 @@ async function uploadToStorage(
   uri: string,
   ext: string,
 ): Promise<string> {
-  const response = await fetch(uri);
-  const blob = await response.blob();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
 
-  const { error: uploadError } = await supabase.storage
-    .from(bucket)
-    .upload(path, blob, { upsert: true, contentType: `image/${ext}` });
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${path}`;
 
-  if (uploadError) throw uploadError;
+  console.log("Uploading via raw fetch to:", uploadUrl);
+
+  const response = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      "Content-Type": `image/${ext}`,
+      "x-upsert": "true",
+    },
+    body: {
+      uri,
+      name: path.split("/").pop() ?? "upload",
+      type: `image/${ext}`,
+    } as any,
+  });
+
+  console.log("Raw fetch status:", response.status);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.log("Upload error body:", errorText);
+    throw new Error(`Upload failed: ${response.status} ${errorText}`);
+  }
 
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-  // Bust CDN cache with timestamp
   return `${data.publicUrl}?t=${Date.now()}`;
 }
 

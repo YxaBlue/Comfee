@@ -379,8 +379,12 @@ export default function ProfileScreen({ navigation }: Props) {
   const [removingFavoriteId, setRemovingFavoriteId] = useState<string | null>(
     null,
   );
-  const [pendingAvatarUri, setPendingAvatarUri] = useState<string | null>(null);
-  const [pendingCoverUri, setPendingCoverUri] = useState<string | null>(null);
+  const [pendingAvatarUri, setPendingAvatarUri] = useState<
+    string | null | undefined
+  >(undefined);
+  const [pendingCoverUri, setPendingCoverUri] = useState<
+    string | null | undefined
+  >(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -560,16 +564,22 @@ export default function ProfileScreen({ navigation }: Props) {
         const avatarPath = `avatars/${viewedUserId}.${profile.profile_picture.split(".").pop()?.split("?")[0] || "jpg"}`;
         await supabase.storage.from("profile").remove([avatarPath]);
         newAvatarUrl = null;
-      } else if (pendingAvatarUri) {
-        newAvatarUrl = await uploadAvatar(viewedUserId, pendingAvatarUri);
+      } else if (pendingAvatarUri !== undefined) {
+        newAvatarUrl = await uploadAvatar(
+          viewedUserId,
+          pendingAvatarUri as string,
+        );
       }
 
       if (pendingCoverUri === null && profile?.cover_photo) {
         const coverPath = `cover_photos/${viewedUserId}.${profile.cover_photo.split(".").pop()?.split("?")[0] || "jpg"}`;
         await supabase.storage.from("profile").remove([coverPath]);
         newCoverUrl = null;
-      } else if (pendingCoverUri) {
-        newCoverUrl = await uploadCoverPhoto(viewedUserId, pendingCoverUri);
+      } else if (pendingCoverUri !== undefined) {
+        newCoverUrl = await uploadCoverPhoto(
+          viewedUserId,
+          pendingCoverUri as string,
+        );
       }
 
       await editProfile(
@@ -747,11 +757,22 @@ export default function ProfileScreen({ navigation }: Props) {
           const ext = uri.split(".").pop()?.split("?")[0] ?? "jpg";
           const filename = `${editingReview.id}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
           const path = `reviews/${filename}`;
-          const response = await fetch(uri);
-          const blob = await response.blob();
+
+          // ✅ Use FormData with URI object — works on Android & iOS
+          const formData = new FormData();
+          formData.append("file", {
+            uri,
+            name: filename,
+            type: `image/${ext}`,
+          } as any);
+
           const { error } = await supabase.storage
             .from("posts")
-            .upload(path, blob, { upsert: false, contentType: `image/${ext}` });
+            .upload(path, formData, {
+              upsert: false,
+              contentType: `image/${ext}`,
+            });
+
           if (error) throw error;
           const { data } = supabase.storage.from("posts").getPublicUrl(path);
           return `${data.publicUrl}?t=${Date.now()}`;
