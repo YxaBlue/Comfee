@@ -8,19 +8,17 @@ import {
   ActivityIndicator,
   Animated,
   Image,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 import { supabase } from "@/app/shared/lib/supabaseClient";
 import { useRoute } from "@react-navigation/native";
 import {
   deleteReview,
-  formatReviewDate,
   getReviewsByCafe,
   ReviewWithMeta,
   toggleCafeReviewUpvote,
@@ -28,51 +26,29 @@ import {
 import { getProfile } from "../../profile/services/profileService";
 import { CafeDetail, getCafeById } from "../services/cafeService";
 
+import { ReviewCard } from "@/components/cafe/ReviewCard";
+import { WriteReviewCTA } from "@/components/cafe/WriteReview";
+
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "CafeProfile">;
 };
 
-type Tab = "Cafe-Info" | "Cafe-Reviews" | "Cafe-Posts" | "Cafe-Ammenities-Menu";
-
-type Post = {
-  id: string;
-  caption: string;
-  dateCreated: string;
-  imageURL: string[];
-  likes: number;
-};
-
-type CafeProfileInformation = {
-  name: string;
-  address: string;
-  email: string;
-  phone: string;
-  avatarURL: any;
-  coverPhotoURL: any;
-  menuURLs: any;
-  averageRating: number;
-  reviewCount: number;
-  favoritesCount: number;
-  openingTime: string;
-  closingTime: string;
-  openingDays: string[];
-  info: string | null;
-};
+type Tab = "Cafe-Info" | "Cafe-Reviews" | "Cafe-Ammenities-Menu";
 
 type Amenities = {
   WiFi: "None" | "Slow" | "Moderate" | "Fast" | null;
   Sockets: "None" | "Some" | "Many" | null;
   Parking: "None" | "Limited" | "Plenty" | null;
   Lighting: "Dim" | "Balanced" | "Bright" | null;
-  Seating: "Inside" | "Outside" | null;
-  Tables: "Bar Type" | "Individual Tables" | "Large tables (>6)" | null;
+  Seating: string[];
+  Tables: string[];
   Music: "Quiet" | "Normal" | "Blaring" | null;
   PetFriendly: boolean;
   SuitableConditions: ("Student" | "Work" | "Group" | "Vibes")[];
 };
 
 type Coffee = {
-  BeanType: ("Arabica" | "Robusta" | "Liberica (Barako)" | "Excelsa")[];
+  BeanType: ("Arabica" | "Robusta" | "Liberica" | "Excelsa")[];
   BrewMethod: (
     | "Espresso"
     | "Drip"
@@ -85,30 +61,6 @@ type Coffee = {
 type PriceLevel = {
   PriceRange: "P" | "PP" | "PPP" | null;
 };
-
-// ============== MOCK DATA ==============
-const MOCK_POSTS: Post[] = [
-  {
-    id: "1",
-    caption:
-      "New arrivals just in time for the weekend — our Ube Latte and Honey Calamansi Cold Brew. Come try them before they're gone! ☕",
-    dateCreated: "2026-02-10",
-    imageURL: [
-      "https://picsum.photos/300/200",
-      "https://picsum.photos/301/200",
-      "https://picsum.photos/302/200",
-    ],
-    likes: 83,
-  },
-  {
-    id: "2",
-    caption:
-      "We're open this Saturday until 8 PM! Stop by for your afternoon coffee fix. 🌤️",
-    dateCreated: "2026-01-28",
-    imageURL: ["https://picsum.photos/303/200"],
-    likes: 34,
-  },
-];
 
 const ALL_DAYS = [
   "Monday",
@@ -130,33 +82,7 @@ const DAY_SHORT: Record<string, string> = {
   Sunday: "Sun",
 };
 
-// ─── Star Rating (display only) ───────────────────────────────────────────────
-
-function StarRating({
-  rating,
-  size = 13,
-  color = "#C8863A",
-}: {
-  rating: number;
-  size?: number;
-  color?: string;
-}) {
-  return (
-    <View style={starStyles.row}>
-      {[1, 2, 3, 4, 5].map((star) => {
-        const name =
-          rating >= star
-            ? "star"
-            : rating >= star - 0.5
-              ? "star-half"
-              : "star-border";
-        return (
-          <MaterialIcons key={star} name={name} size={size} color={color} />
-        );
-      })}
-    </View>
-  );
-}
+// ─── Star Filter Bar ──────────────────────────────────────────────────────────
 
 function StarFilterBar({
   selected,
@@ -174,10 +100,7 @@ function StarFilterBar({
       contentContainerStyle={filterStyles.row}
     >
       <TouchableOpacity
-        style={[
-          filterStyles.pill,
-          selected === null && filterStyles.pillActive,
-        ]}
+        style={[filterStyles.pill, selected === null && filterStyles.pillActive]}
         onPress={() => onSelect(null)}
       >
         <Text
@@ -234,367 +157,29 @@ function StarFilterBar({
   );
 }
 
-// ─── Review Card ──────────────────────────────────────────────────────────────
-
-function ReviewCard({
-  review,
-  isOwn,
-  onToggleLike,
-  onReport,
-  onEdit,
-  onDelete,
-  onNavigateToProfile,
-}: {
-  review: ReviewWithMeta;
-  isOwn: boolean;
-  onToggleLike: (id: number, currentlyLiked: boolean) => void;
-  onReport: (review: ReviewWithMeta) => void;
-  onEdit?: (review: ReviewWithMeta) => void;
-  onDelete?: (id: number) => void;
-  onNavigateToProfile: (userId: string) => void;
-}) {
-  const [cardWidth, setCardWidth] = useState(0);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuAnim = useRef(new Animated.Value(0)).current;
-
-  const images = review.images_url ?? [];
-  const hasImages = images.length > 0;
-
-  const columns = cardWidth < 480 ? 1 : cardWidth < 800 ? 2 : 3;
-  const gap = 6;
-  const imageWidth =
-    cardWidth > 0 ? Math.floor((cardWidth - gap * (columns - 1)) / columns) : 0;
-  const imageHeight = Math.round(imageWidth * 0.68);
-  const isNarrow = columns === 1;
-
-  const displayDate = formatReviewDate(review.created_at, review.updated_at);
-
-  const openMenu = () => {
-    setMenuOpen(true);
-    Animated.spring(menuAnim, {
-      toValue: 1,
-      damping: 18,
-      stiffness: 250,
-      useNativeDriver: true,
-    }).start();
-  };
-  const closeMenu = () => {
-    Animated.timing(menuAnim, {
-      toValue: 0,
-      duration: 120,
-      useNativeDriver: true,
-    }).start(() => setMenuOpen(false));
-  };
-  const menuScale = menuAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.8, 1],
-  });
-
-  return (
-    <View
-      style={reviewCardStyles.container}
-      onLayout={(e) => setCardWidth(e.nativeEvent.layout.width)}
-    >
-      <View style={reviewCardStyles.header}>
-        <TouchableOpacity
-          onPress={() =>
-            review.user_id ? onNavigateToProfile(review.user_id) : undefined
-          }
-          disabled={!review.user_id}
-          activeOpacity={0.75}
-        >
-          <View style={reviewCardStyles.avatar}>
-            {review.profile?.profile_picture ? (
-              <Image
-                source={{ uri: review.profile.profile_picture }}
-                style={{ width: "100%", height: "100%", borderRadius: 17 }}
-                resizeMode="cover"
-              />
-            ) : (
-              <MaterialIcons name="person" size={20} color="#C8A97A" />
-            )}
-          </View>
-        </TouchableOpacity>
-
-        <View style={reviewCardStyles.meta}>
-          <TouchableOpacity
-            onPress={() =>
-              review.user_id ? onNavigateToProfile(review.user_id) : undefined
-            }
-            disabled={!review.user_id}
-            activeOpacity={0.75}
-          >
-            <Text style={reviewCardStyles.userName}>
-              {review.profile?.username ?? "Anonymous"}
-              {isOwn && <Text style={reviewCardStyles.youBadge}> (you)</Text>}
-            </Text>
-          </TouchableOpacity>
-          <StarRating rating={review.rating} />
-          <Text style={reviewCardStyles.date}>{displayDate}</Text>
-        </View>
-
-        <View>
-          <TouchableOpacity
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            onPress={menuOpen ? closeMenu : openMenu}
-          >
-            <MaterialIcons name="more-vert" size={18} color="#8C6D4F" />
-          </TouchableOpacity>
-          {menuOpen && (
-            <Pressable style={StyleSheet.absoluteFill} onPress={closeMenu} />
-          )}
-          {menuOpen && (
-            <Animated.View
-              style={[
-                reviewCardStyles.dropdownMenu,
-                { opacity: menuAnim, transform: [{ scale: menuScale }] },
-              ]}
-            >
-              {isOwn ? (
-                <>
-                  <TouchableOpacity
-                    style={reviewCardStyles.dropdownItem}
-                    onPress={() => {
-                      closeMenu();
-                      onEdit?.(review);
-                    }}
-                  >
-                    <MaterialIcons name="edit" size={15} color="#6B4F2E" />
-                    <Text style={reviewCardStyles.dropdownItemText}>Edit</Text>
-                  </TouchableOpacity>
-                  <View style={reviewCardStyles.dropdownDivider} />
-                  <TouchableOpacity
-                    style={reviewCardStyles.dropdownItem}
-                    onPress={() => {
-                      closeMenu();
-                      onDelete?.(review.id);
-                    }}
-                  >
-                    <MaterialIcons name="delete" size={15} color="#C0392B" />
-                    <Text
-                      style={[
-                        reviewCardStyles.dropdownItemText,
-                        { color: "#C0392B" },
-                      ]}
-                    >
-                      Delete
-                    </Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <TouchableOpacity
-                  style={reviewCardStyles.dropdownItem}
-                  onPress={() => {
-                    closeMenu();
-                    onReport(review);
-                  }}
-                >
-                  <MaterialIcons name="flag" size={15} color="#C0392B" />
-                  <Text
-                    style={[
-                      reviewCardStyles.dropdownItemText,
-                      { color: "#C0392B" },
-                    ]}
-                  >
-                    Report
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </Animated.View>
-          )}
-        </View>
-      </View>
-
-      {review.comment ? (
-        <Text style={reviewCardStyles.comment}>"{review.comment}"</Text>
-      ) : null}
-
-      {hasImages && cardWidth > 0 && (
-        <View style={reviewCardStyles.mediaWrapper}>
-          {isNarrow ? (
-            <>
-              <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onScroll={(e) =>
-                  setActiveIndex(
-                    Math.round(e.nativeEvent.contentOffset.x / cardWidth),
-                  )
-                }
-                scrollEventThrottle={16}
-              >
-                {images.map((uri, i) => (
-                  <Image
-                    key={i}
-                    source={{ uri }}
-                    style={{ width: cardWidth, height: imageHeight }}
-                    resizeMode="cover"
-                  />
-                ))}
-              </ScrollView>
-              {images.length > 1 && (
-                <View style={reviewCardStyles.dotsRow}>
-                  {images.map((_, i) => (
-                    <View
-                      key={i}
-                      style={[
-                        reviewCardStyles.dot,
-                        i === activeIndex && reviewCardStyles.dotActive,
-                      ]}
-                    />
-                  ))}
-                </View>
-              )}
-            </>
-          ) : (
-            <View style={[reviewCardStyles.imageGrid, { gap }]}>
-              {images.map((uri, i) => (
-                <Image
-                  key={i}
-                  source={{ uri }}
-                  style={{
-                    width: imageWidth,
-                    height: imageHeight,
-                    borderRadius: 8,
-                  }}
-                  resizeMode="cover"
-                />
-              ))}
-            </View>
-          )}
-        </View>
-      )}
-
-      <Pressable
-        style={({ pressed }) => [
-          reviewCardStyles.likesRow,
-          pressed && { opacity: 0.7 },
-        ]}
-        onPress={() => onToggleLike(review.id, review.isLiked)}
-        accessibilityRole="button"
-        accessibilityLabel={review.isLiked ? "Remove like" : "Like review"}
-      >
-        <MaterialIcons
-          name={review.isLiked ? "thumb-up" : "thumb-up-off-alt"}
-          size={16}
-          color={review.isLiked ? "#6B4F2E" : "#8C6D4F"}
-        />
-        <Text
-          style={[
-            reviewCardStyles.likesCount,
-            review.isLiked && reviewCardStyles.likesCountActive,
-          ]}
-        >
-          {review.likes}
-        </Text>
-      </Pressable>
-    </View>
-  );
-}
-
-// ─── Post Card ────────────────────────────────────────────────────────────────
-
-function PostCard({ post }: { post: Post }) {
-  const imageCount = post.imageURL.length;
-  return (
-    <View style={postCardStyles.container}>
-      {imageCount === 1 && (
-        <Image
-          source={{ uri: post.imageURL[0] }}
-          style={postCardStyles.imageSingle}
-          resizeMode="cover"
-        />
-      )}
-      {imageCount === 2 && (
-        <View style={postCardStyles.imageRow}>
-          {post.imageURL.map((url, i) => (
-            <Image
-              key={i}
-              source={{ uri: url }}
-              style={postCardStyles.imageHalf}
-              resizeMode="cover"
-            />
-          ))}
-        </View>
-      )}
-      {imageCount >= 3 && (
-        <View style={postCardStyles.imageGrid3}>
-          <Image
-            source={{ uri: post.imageURL[0] }}
-            style={postCardStyles.imageGrid3Main}
-            resizeMode="cover"
-          />
-          <View style={postCardStyles.imageGrid3Sub}>
-            <Image
-              source={{ uri: post.imageURL[1] }}
-              style={postCardStyles.imageGrid3SubItem}
-              resizeMode="cover"
-            />
-            <View style={{ position: "relative" }}>
-              <Image
-                source={{ uri: post.imageURL[2] }}
-                style={[
-                  postCardStyles.imageGrid3SubItem,
-                  imageCount > 3 && { opacity: 0.4 },
-                ]}
-                resizeMode="cover"
-              />
-              {imageCount > 3 && (
-                <View style={postCardStyles.moreOverlay}>
-                  <Text style={postCardStyles.moreText}>+{imageCount - 3}</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        </View>
-      )}
-      <View style={postCardStyles.body}>
-        <Text style={postCardStyles.caption}>{post.caption}</Text>
-        <View style={postCardStyles.footer}>
-          <Text style={postCardStyles.date}>
-            {new Date(post.dateCreated).toLocaleDateString("en-PH", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </Text>
-          <View style={postCardStyles.likesRow}>
-            <MaterialIcons name="thumb-up-off-alt" size={16} color="#8C6D4F" />
-            <Text style={postCardStyles.likesCount}>{post.likes}</Text>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
-
 // ─── Info Tab ─────────────────────────────────────────────────────────────────
 
-function CafeInfoTab({ cafe }: { cafe: CafeProfileInformation }) {
+function CafeInfoTab({ cafe }: { cafe: CafeDetail & { favoritesCount: number } }) {
   return (
     <View>
-      <>
-        <View style={infoStyles.section}>
-          <Text style={infoStyles.sectionTitle}>Description</Text>
-          <View style={infoStyles.line} />
-          <Text style={infoStyles.sectionIntro}>
-            {cafe.info ?? "No description available."}
-          </Text>
-        </View>
-        <View style={infoStyles.sectionDivider} />
-      </>
+      <View style={infoStyles.section}>
+        <Text style={infoStyles.sectionTitle}>Description</Text>
+        <View style={infoStyles.line} />
+        <Text style={infoStyles.sectionIntro}>
+          {cafe.info ?? "No description available."}
+        </Text>
+      </View>
+      <View style={infoStyles.sectionDivider} />
 
       <View style={infoStyles.statsRow}>
         <View style={infoStyles.statCard}>
           <Text style={infoStyles.statNum}>
-            {cafe.averageRating > 0 ? cafe.averageRating.toFixed(1) : "—"}
+            {cafe.average_rating > 0 ? cafe.average_rating.toFixed(1) : "—"}
           </Text>
           <Text style={infoStyles.statLabel}>Rating</Text>
         </View>
         <View style={infoStyles.statCard}>
-          <Text style={infoStyles.statNum}>{cafe.reviewCount}</Text>
+          <Text style={infoStyles.statNum}>{cafe.review_count}</Text>
           <Text style={infoStyles.statLabel}>Reviews</Text>
         </View>
         <View style={infoStyles.statCard}>
@@ -603,47 +188,46 @@ function CafeInfoTab({ cafe }: { cafe: CafeProfileInformation }) {
         </View>
       </View>
 
-      <Text style={infoStyles.sectionLabel}>Hours</Text>
-      <View style={infoStyles.infoRow}>
-        <MaterialIcons name="access-time" size={15} color="#8C6D4F" />
-        <View>
-          <Text style={infoStyles.infoText}>
-            {cafe.openingTime} – {cafe.closingTime}
-          </Text>
-          <Text style={infoStyles.infoSubText}>
-            Open {cafe.openingDays.length} days a week
-          </Text>
-        </View>
-      </View>
-      <View style={infoStyles.daysRow}>
-        {ALL_DAYS.map((day) => {
-          const isOpen = cafe.openingDays.includes(day);
-          return (
-            <View
-              key={day}
-              style={[infoStyles.dayPill, !isOpen && infoStyles.dayPillClosed]}
+      <Text style={infoStyles.sectionLabel}>Operating Hours</Text>
+      {ALL_DAYS.map((day) => {
+        const isOpen = (cafe.opening_days ?? []).includes(day);
+        return (
+          <View key={day} style={infoStyles.infoRow}>
+            <MaterialIcons
+              name="access-time"
+              size={15}
+              color={isOpen ? "#8C6D4F" : "#C4A882"}
+            />
+            <Text
+              style={[
+                infoStyles.infoText,
+                { width: 95, fontWeight: "700" },
+                !isOpen && { color: "#B09070" },
+              ]}
             >
-              <Text
-                style={[
-                  infoStyles.dayPillText,
-                  !isOpen && infoStyles.dayPillTextClosed,
-                ]}
-              >
-                {DAY_SHORT[day]}
+              {day}
+            </Text>
+            {isOpen ? (
+              <Text style={[infoStyles.infoText, { flex: 1 }]}>
+                {cafe.opening_time} – {cafe.closing_time}
               </Text>
-            </View>
-          );
-        })}
-      </View>
+            ) : (
+              <Text style={[infoStyles.infoText, { flex: 1, color: "#B09070", fontStyle: "italic" }]}>
+                Closed
+              </Text>
+            )}
+          </View>
+        );
+      })}
 
       <Text style={[infoStyles.sectionLabel, { marginTop: 16 }]}>Contact</Text>
       <View style={infoStyles.infoRow}>
         <MaterialIcons name="phone" size={15} color="#8C6D4F" />
-        <Text style={infoStyles.infoText}>{cafe.phone}</Text>
+        <Text style={infoStyles.infoText}>{cafe.phone ?? "—"}</Text>
       </View>
       <View style={infoStyles.infoRow}>
         <MaterialIcons name="email" size={15} color="#8C6D4F" />
-        <Text style={infoStyles.infoText}>{cafe.email}</Text>
+        <Text style={infoStyles.infoText}>{cafe.email ?? "—"}</Text>
       </View>
       <View style={infoStyles.infoRow}>
         <MaterialIcons name="place" size={15} color="#8C6D4F" />
@@ -657,16 +241,9 @@ function CafeInfoTab({ cafe }: { cafe: CafeProfileInformation }) {
 
 type AmenitiesMenuTabProps = {
   amenities: Amenities;
-  menuURLs: any;
+  menuURLs: string[] | null;
   coffee: Coffee;
   price: PriceLevel;
-};
-
-type AmenityRowDef<T extends string | boolean> = {
-  label: string;
-  icon: keyof typeof MaterialIcons.glyphMap;
-  options: string[];
-  value: T;
 };
 
 function AmenityCard({
@@ -678,7 +255,7 @@ function AmenityCard({
   label: string;
   icon: keyof typeof MaterialIcons.glyphMap;
   options: string[];
-  selected: string | null;
+  selected: string | string[] | null;
 }) {
   return (
     <View style={amenityCardStyles.card}>
@@ -688,7 +265,9 @@ function AmenityCard({
       </View>
       <View style={amenityCardStyles.optionsRow}>
         {options.map((opt) => {
-          const isSelected = selected === opt;
+          const isSelected = Array.isArray(selected)
+            ? selected.includes(opt)
+            : selected === opt;
           return (
             <View
               key={opt}
@@ -713,59 +292,54 @@ function AmenityCard({
   );
 }
 
-function AmenitiesMenuTab({
-  amenities,
-  menuURLs,
-  coffee,
-  price,
-}: AmenitiesMenuTabProps) {
-  const rows: {
+function AmenitiesMenuTab({ amenities, menuURLs, coffee, price }: AmenitiesMenuTabProps) {
+  const AMENITY_ROWS: {
     label: string;
     icon: keyof typeof MaterialIcons.glyphMap;
     options: string[];
-    value: string | null;
+    value: string | string[] | null;
   }[] = [
     {
       label: "WiFi",
       icon: "wifi",
       options: ["None", "Slow", "Moderate", "Fast"],
-      value: amenities.WiFi ?? null,
+      value: amenities.WiFi,
     },
     {
       label: "Sockets",
       icon: "electrical-services",
       options: ["None", "Some", "Many"],
-      value: amenities.Sockets ?? null,
+      value: amenities.Sockets,
     },
     {
       label: "Parking",
       icon: "local-parking",
       options: ["None", "Limited", "Plenty"],
-      value: amenities.Parking ?? null,
+      value: amenities.Parking,
     },
     {
       label: "Lighting",
       icon: "light-mode",
       options: ["Dim", "Balanced", "Bright"],
-      value: amenities.Lighting ?? null,
+      value: amenities.Lighting,
     },
     {
       label: "Seating",
       icon: "chair",
       options: ["Inside", "Outside"],
-      value: amenities.Seating ?? null,
+      value: amenities.Seating,
     },
     {
       label: "Tables",
       icon: "table-bar",
-      options: ["Bar type", "Individual Tables", "Large tables (>6)"],
-      value: amenities.Tables ?? null,
+      options: ["Bar Type", "Individual Tables", "Large Tables"],
+      value: amenities.Tables,
     },
     {
       label: "Music",
       icon: "music-note",
       options: ["Quiet", "Normal", "Blaring"],
-      value: amenities.Music ?? null,
+      value: amenities.Music,
     },
   ];
 
@@ -775,7 +349,7 @@ function AmenitiesMenuTab({
     label: string;
   }[] = [
     { symbol: "₱", value: "P", label: "Below ₱150" },
-    { symbol: "₱₱", value: "PP", label: "₱150-300" },
+    { symbol: "₱₱", value: "PP", label: "₱150–300" },
     { symbol: "₱₱₱", value: "PPP", label: "Above ₱300" },
   ];
 
@@ -783,9 +357,8 @@ function AmenitiesMenuTab({
     <View>
       {/* ── Menu ── */}
       <Text style={amenityCardStyles.sectionLabel}>Menu</Text>
-
-      {menuURLs && Array.isArray(menuURLs) && menuURLs.length > 0 ? (
-        menuURLs.map((url: string, i: number) => (
+      {menuURLs && menuURLs.length > 0 ? (
+        menuURLs.map((url, i) => (
           <Image
             key={i}
             source={{ uri: url }}
@@ -828,27 +401,21 @@ function AmenitiesMenuTab({
       >
         <CoffeeSubCard
           label="Bean Type"
-          options={["Arabica", "Robusta", "Liberica (Barako)", "Excelsa"]}
+          options={["Arabica", "Robusta", "Liberica", "Excelsa"]}
           selected={coffee.BeanType}
         />
         <CoffeeSubCard
           label="Brew Method"
-          options={[
-            "Espresso",
-            "Drip",
-            "French Press",
-            "Pour Over",
-            "Cold Brew",
-          ]}
+          options={["Espresso", "Drip", "French Press", "Pour Over", "Cold Brew"]}
           selected={coffee.BrewMethod}
         />
       </SectionCard>
 
+      {/* ── Amenities ── */}
       <Text style={[amenityCardStyles.sectionLabel, { marginTop: 20 }]}>
         Amenities
       </Text>
-
-      {rows.map((row) => (
+      {AMENITY_ROWS.map((row) => (
         <AmenityCard
           key={row.label}
           label={row.label}
@@ -858,7 +425,7 @@ function AmenitiesMenuTab({
         />
       ))}
 
-      {/* Suitable Conditions */}
+      {/* ── Suitable Conditions ── */}
       {amenities.SuitableConditions?.length > 0 && (
         <View style={amenityCardStyles.card}>
           <View style={amenityCardStyles.cardHeader}>
@@ -891,7 +458,7 @@ function AmenitiesMenuTab({
         </View>
       )}
 
-      {/* Pet Friendly */}
+      {/* ── Pet Friendly ── */}
       <View style={amenityCardStyles.card}>
         <View style={amenityCardStyles.cardHeader}>
           <MaterialIcons name="pets" size={17} color="#6B4F2E" />
@@ -927,7 +494,8 @@ function AmenitiesMenuTab({
   );
 }
 
-/** A large pill used for the Price Level selector */
+// ─── Price Pill ───────────────────────────────────────────────────────────────
+
 function PricePill({
   symbol,
   label,
@@ -964,7 +532,8 @@ function PricePill({
   );
 }
 
-/** Top-level section card (used for Price Level and Coffee) */
+// ─── Section Card ─────────────────────────────────────────────────────────────
+
 function SectionCard({
   icon,
   title,
@@ -983,9 +552,7 @@ function SectionCard({
         <View>
           <Text style={priceCoffeeStyles.sectionCardTitle}>{title}</Text>
           {subtitle ? (
-            <Text style={priceCoffeeStyles.sectionCardSubtitle}>
-              {subtitle}
-            </Text>
+            <Text style={priceCoffeeStyles.sectionCardSubtitle}>{subtitle}</Text>
           ) : null}
         </View>
       </View>
@@ -994,7 +561,8 @@ function SectionCard({
   );
 }
 
-/** Inner card used inside Coffee section for Bean Type / Brew Method */
+// ─── Coffee Sub Card ──────────────────────────────────────────────────────────
+
 function CoffeeSubCard({
   label,
   options,
@@ -1030,77 +598,6 @@ function CoffeeSubCard({
           );
         })}
       </View>
-    </View>
-  );
-}
-
-// ─── Write Review CTA ─────────────────────────────────────────────────────────
-
-function WriteReviewCTA({
-  navigation,
-  cafeName,
-  cafeId,
-  onReviewPosted,
-}: {
-  navigation: NativeStackNavigationProp<RootStackParamList, "CafeProfile">;
-  cafeName: string;
-  cafeId: string;
-  onReviewPosted: () => void;
-}) {
-  const [rating, setRating] = useState<number>(0);
-  return (
-    <View style={writeReviewStyles.container}>
-      <StarRatingInput value={rating} onChange={setRating} />
-      <TouchableOpacity
-        activeOpacity={0.9}
-        style={writeReviewStyles.button}
-        onPress={() =>
-          navigation.navigate("WriteReviewFE", {
-            cafeName,
-            cafeId: Number(cafeId),
-            initialRating: rating,
-            onReviewPosted,
-          })
-        }
-      >
-        <Text style={writeReviewStyles.buttonText}>Write a review</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-function StarRatingInput({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (next: number) => void;
-}) {
-  const renderStar = (index: number) => {
-    const full = value >= index;
-    const half = !full && value >= index - 0.5;
-    const name: keyof typeof MaterialIcons.glyphMap = full
-      ? "star"
-      : half
-        ? "star-half"
-        : "star-border";
-    return (
-      <View key={index} style={starInputStyles.starBox}>
-        <MaterialIcons name={name} size={30} color="#3B2A1A" />
-        <Pressable
-          style={starInputStyles.leftHalf}
-          onPress={() => onChange(index === 1 ? 1 : Math.max(1, index - 0.5))}
-        />
-        <Pressable
-          style={starInputStyles.rightHalf}
-          onPress={() => onChange(index)}
-        />
-      </View>
-    );
-  };
-  return (
-    <View style={writeReviewStyles.starsRow}>
-      {[1, 2, 3, 4, 5].map(renderStar)}
     </View>
   );
 }
@@ -1169,21 +666,13 @@ function FavoriteButton({
     setToggling(true);
 
     Animated.sequence([
-      Animated.spring(scaleAnim, {
-        toValue: 1.3,
-        useNativeDriver: true,
-        speed: 50,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        speed: 50,
-      }),
+      Animated.spring(scaleAnim, { toValue: 1.3, useNativeDriver: true, speed: 50 }),
+      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50 }),
     ]).start();
 
     const wasLiked = isFavorited;
     setIsFavorited(!wasLiked);
-    onToggle?.(!wasLiked); // ← optimistic count update
+    onToggle?.(!wasLiked);
 
     try {
       if (wasLiked && favoriteId) {
@@ -1220,9 +709,7 @@ function FavoriteButton({
       activeOpacity={0.8}
       style={favStyles.btn}
       accessibilityRole="button"
-      accessibilityLabel={
-        isFavorited ? "Remove from favorites" : "Add to favorites"
-      }
+      accessibilityLabel={isFavorited ? "Remove from favorites" : "Add to favorites"}
     >
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
         <MaterialIcons
@@ -1250,17 +737,13 @@ export default function CafeProfileScreen({ navigation }: Props) {
   const [currentUserProfile, setCurrentUserProfile] = useState<any>(null);
   const [cafeReviews, setCafeReviews] = useState<ReviewWithMeta[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
-
-  // ── Live favorites count (fetched from DB, kept in sync with button) ──
   const [favoritesCount, setFavoritesCount] = useState<number>(0);
-
   const [starFilter, setStarFilter] = useState<number | null>(null);
   const [reportTarget, setReportTarget] = useState<ReviewWithMeta | null>(null);
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: "Cafe-Info", icon: "info" },
     { key: "Cafe-Reviews", icon: "rate-review" },
-    { key: "Cafe-Posts", icon: "view-compact" },
     { key: "Cafe-Ammenities-Menu", icon: "list" },
   ];
 
@@ -1270,6 +753,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
         setCurrentUserId(session.user.id);
         try {
           const profile = await getProfile(session.user.id);
+          console.log("Profile data:", JSON.stringify(profile));
           setCurrentUserProfile(profile);
         } catch (err) {
           console.error("Failed to fetch user profile:", err);
@@ -1281,7 +765,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
   useEffect(() => {
     (async () => {
       try {
-        // Load cafe details and live favorites count in parallel
         const [cafeData, { count, error: countError }] = await Promise.all([
           getCafeById(cafeId),
           supabase
@@ -1289,12 +772,8 @@ export default function CafeProfileScreen({ navigation }: Props) {
             .select("*", { count: "exact", head: true })
             .eq("cafe_id", Number(cafeId)),
         ]);
-
         setCafe(cafeData);
-
-        if (!countError) {
-          setFavoritesCount(count ?? 0);
-        }
+        if (!countError) setFavoritesCount(count ?? 0);
       } catch (err) {
         console.error("Failed to load cafe:", err);
       } finally {
@@ -1323,8 +802,9 @@ export default function CafeProfileScreen({ navigation }: Props) {
   const starCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   for (const r of cafeReviews) {
     const bucket = Math.floor(r.rating);
-    if (bucket >= 1 && bucket <= 5)
+    if (bucket >= 1 && bucket <= 5) {
       starCounts[bucket] = (starCounts[bucket] ?? 0) + 1;
+    }
   }
 
   const filteredReviews =
@@ -1332,20 +812,13 @@ export default function CafeProfileScreen({ navigation }: Props) {
       ? cafeReviews
       : cafeReviews.filter((r) => Math.floor(r.rating) === starFilter);
 
-  const handleToggleLike = async (
-    reviewId: number,
-    currentlyLiked: boolean,
-  ) => {
+  const handleToggleLike = async (reviewId: number, currentlyLiked: boolean) => {
     if (!currentUserId) return;
     const previous = cafeReviews;
     setCafeReviews((prev) =>
       prev.map((r) =>
         r.id === reviewId
-          ? {
-              ...r,
-              isLiked: !currentlyLiked,
-              likes: r.likes + (currentlyLiked ? -1 : 1),
-            }
+          ? { ...r, isLiked: !currentlyLiked, likes: r.likes + (currentlyLiked ? -1 : 1) }
           : r,
       ),
     );
@@ -1401,7 +874,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={true}
       >
         {/* ── Header ── */}
-        <View style={{ backgroundColor: "#FFEFD5" }}>
+        <View style={{ backgroundColor: "#E9D0A2" }}>
           <View style={avatarStyles.headerBand}>
             {cafe.cover_photo_url ? (
               <Image
@@ -1425,18 +898,16 @@ export default function CafeProfileScreen({ navigation }: Props) {
             </View>
             <View style={cafeDetailsStyles.userInfoSection}>
               <View style={cafeDetailsStyles.nameRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={cafeDetailsStyles.userName}>{cafe.name}</Text>
-                </View>
-                <View style={{ flexShrink: 0 }}>
-                  <FavoriteButton
-                    cafeId={cafeId}
-                    userId={currentUserId}
-                    onToggle={(isFavorited) =>
-                      setFavoritesCount((prev) => prev + (isFavorited ? 1 : -1))
-                    }
-                  />
-                </View>
+                <Text style={[cafeDetailsStyles.userName, { flex: 1 }]}>
+                  {cafe.name}
+                </Text>
+                <FavoriteButton
+                  cafeId={cafeId}
+                  userId={currentUserId}
+                  onToggle={(isFavorited) =>
+                    setFavoritesCount((prev) => prev + (isFavorited ? 1 : -1))
+                  }
+                />
               </View>
               <View style={cafeDetailsStyles.metaRow}>
                 <MaterialIcons name="place" size={13} color="#8C6D4F" />
@@ -1471,25 +942,9 @@ export default function CafeProfileScreen({ navigation }: Props) {
         <View style={{ backgroundColor: "#FFEFD5" }}>
           <View style={cafeProfileNavStyles.tabContent}>
             {activeTab === "Cafe-Info" && (
-              <CafeInfoTab
-                cafe={{
-                  name: cafe.name,
-                  address: cafe.address,
-                  email: cafe.email ?? "—",
-                  phone: cafe.phone ?? "—",
-                  avatarURL: cafe.avatar_url,
-                  coverPhotoURL: cafe.cover_photo_url,
-                  menuURLs: cafe.menu_urls,
-                  averageRating: cafe.average_rating,
-                  reviewCount: cafe.review_count,
-                  favoritesCount: favoritesCount, // ← live count from state
-                  openingTime: cafe.opening_time ?? "",
-                  closingTime: cafe.closing_time ?? "",
-                  openingDays: cafe.opening_days ?? [],
-                  info: cafe.info ?? null,
-                }}
-              />
+              <CafeInfoTab cafe={{ ...cafe, favoritesCount }} />
             )}
+
             {activeTab === "Cafe-Reviews" && (
               <View>
                 <WriteReviewCTA
@@ -1498,7 +953,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
                   cafeId={cafeId}
                   onReviewPosted={fetchReviews}
                 />
-
                 {!reviewsLoading && cafeReviews.length > 0 && (
                   <StarFilterBar
                     selected={starFilter}
@@ -1506,7 +960,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
                     onSelect={setStarFilter}
                   />
                 )}
-
                 {reviewsLoading ? (
                   <ActivityIndicator
                     size="small"
@@ -1550,32 +1003,16 @@ export default function CafeProfileScreen({ navigation }: Props) {
               </View>
             )}
 
-            {activeTab === "Cafe-Posts" && (
-              <View>
-                {MOCK_POSTS.length === 0 ? (
-                  <EmptyState
-                    icon="photo-library"
-                    title="No posts yet..."
-                    subtitle="This café hasn't posted anything yet."
-                  />
-                ) : (
-                  MOCK_POSTS.map((post) => (
-                    <PostCard key={post.id} post={post} />
-                  ))
-                )}
-              </View>
-            )}
-
             {activeTab === "Cafe-Ammenities-Menu" && (
               <AmenitiesMenuTab
                 amenities={{
-                  WiFi: cafe.wifi_speed as Amenities["WiFi"],
-                  Sockets: cafe.sockets as Amenities["Sockets"],
-                  Parking: cafe.parking as Amenities["Parking"],
-                  Lighting: cafe.lighting as Amenities["Lighting"],
-                  Seating: (cafe.seating[0] as Amenities["Seating"]) ?? null,
-                  Tables: (cafe.tables_type[0] as Amenities["Tables"]) ?? null,
-                  Music: cafe.music as Amenities["Music"],
+                  WiFi: cafe.wifi_speed,
+                  Sockets: cafe.sockets,
+                  Parking: cafe.parking,
+                  Lighting: cafe.lighting,
+                  Seating: cafe.seating,
+                  Tables: cafe.tables_type,
+                  Music: cafe.music,
                   PetFriendly: cafe.pet_friendly,
                   SuitableConditions:
                     cafe.suitable_for as Amenities["SuitableConditions"],
@@ -1586,7 +1023,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
                   BrewMethod: cafe.coffee_brew_method as Coffee["BrewMethod"],
                 }}
                 price={{
-                  PriceRange: cafe.price_level as PriceLevel["PriceRange"],
+                  PriceRange: cafe.price_level,
                 }}
               />
             )}
@@ -1649,25 +1086,7 @@ const styles = StyleSheet.create({
 });
 
 const favStyles = StyleSheet.create({
-  btn: {
-    padding: 4,
-  },
-  inner: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 14,
-  },
-  innerActive: {},
-  label: {
-    fontSize: 11,
-    color: "#8C6D4F",
-  },
-  labelActive: {
-    color: "#C0392B",
-  },
+  btn: { padding: 4 },
 });
 
 const filterStyles = StyleSheet.create({
@@ -1760,9 +1179,10 @@ const cafeDetailsStyles = StyleSheet.create({
   },
   nameRow: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 6,
+    alignItems: "center",
+    justifyContent: "space-between",
     width: "100%",
+    marginBottom: 2,
   },
 });
 
@@ -1776,11 +1196,10 @@ const avatarStyles = StyleSheet.create({
   avatarWrapper: {
     marginTop: -40,
     marginLeft: 10,
+    marginRight: 10,
     flexDirection: "row",
     alignItems: "flex-start",
-    paddingRight: 16,
-    flexShrink: 1,
-    overflow: "hidden",
+    flex: 1,
   },
   avatarCircle: {
     width: 100,
@@ -2031,6 +1450,46 @@ const infoStyles = StyleSheet.create({
     fontFamily: "SourceSerifPro-Regular",
   },
   infoSubText: { fontSize: 11, color: "#8C6D4F", marginTop: 2 },
+  hoursRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EDE0CE",
+  },
+  hoursDay: {
+    width: 100,
+    alignItems: "flex-start",
+  },
+  hoursDayOpen: {
+    backgroundColor: "transparent",
+  },
+  hoursDayClosed: {
+    backgroundColor: "transparent",
+  },
+  hoursDayText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#4B2C11",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  hoursDayTextClosed: {
+    color: "#B09070",
+    fontWeight: "400",
+  },
+  hoursTime: {
+    flex: 1,
+    fontSize: 13,
+    color: "#4B2C11",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  hoursClosed: {
+    flex: 1,
+    fontSize: 13,
+    color: "#B09070",
+    fontStyle: "italic",
+    fontFamily: "SourceSerifPro-Regular",
+  },
   daysRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 4 },
   dayPill: {
     backgroundColor: "#D2BA94",
@@ -2191,7 +1650,6 @@ const amenityCardStyles = StyleSheet.create({
 });
 
 const priceCoffeeStyles = StyleSheet.create({
-  // Top-level section card (Price Level, Coffee)
   sectionCard: {
     backgroundColor: "#FFF7ED",
     borderRadius: 14,
@@ -2216,8 +1674,6 @@ const priceCoffeeStyles = StyleSheet.create({
     marginTop: 1,
     fontFamily: "SourceSerifPro-Regular",
   },
-
-  // Price pills row
   priceRow: {
     flexDirection: "row",
     gap: 8,
@@ -2236,6 +1692,7 @@ const priceCoffeeStyles = StyleSheet.create({
     backgroundColor: "#6B4F2E",
     borderColor: "#6B4F2E",
   },
+  // No line-through by default — only the selected state should be visually distinct
   priceSymbol: {
     fontSize: 15,
     fontFamily: "SourceSerifPro-Bold",
@@ -2245,7 +1702,6 @@ const priceCoffeeStyles = StyleSheet.create({
   },
   priceSymbolSelected: {
     color: "#FFF7EA",
-    textDecorationColor: "#FFF7EA",
   },
   priceLabel: {
     fontSize: 10,
@@ -2256,8 +1712,6 @@ const priceCoffeeStyles = StyleSheet.create({
   priceLabelSelected: {
     color: "#F0D8B8",
   },
-
-  // Coffee sub-cards
   coffeeSubCard: {
     backgroundColor: "#F5ECD8",
     borderRadius: 10,

@@ -276,24 +276,51 @@ const uploadSubmissionImage = async ({
     });
 
   if (error) {
-    throw new Error(formatSupabaseError(`Image upload failed (${kind})`, error));
+    throw new Error(
+      formatSupabaseError(`Image upload failed (${kind})`, error),
+    );
   }
   return path;
 };
 
 export const submitCafeSubmission = async (input: CafeSubmissionInput) => {
+  // ── 1. Get current user ──────────────────────────────────────────────────
   const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (sessionError) {
-    throw new Error(formatSupabaseError("Auth check failed", sessionError));
+  if (userError) {
+    throw new Error(formatSupabaseError("Auth check failed", userError));
   }
-  if (!session) throw new Error("Please sign in before submitting a cafe.");
+  if (!user) throw new Error("Please sign in before submitting a cafe.");
 
-  const userId = session.user.id;
+  const userId = user.id;
 
+  // ── 2. Rate limit check ──────────────────────────────────────────────────
+  const { count, error: countError } = await supabase
+    .from("cafe_submissions")
+    .select("*", { count: "exact", head: true })
+    .eq("submitted_by", userId)
+    .gte(
+      "created_at",
+      new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+    );
+
+  if (countError) {
+    throw new Error("Unable to verify submission limit.");
+  }
+
+  if (count && count >= 3) {
+    throw new Error(
+      "You have reached the maximum of 3 submissions per 24 hours. Please try again later.",
+    );
+  }
+
+  // ── 3. Validate required fields ──────────────────────────────────────────
+  // All fields are now optional
+
+  // ── 4. Insert main submission row ────────────────────────────────────────
   const { data: submission, error: submissionError } = await supabase
     .from("cafe_submissions")
     .insert([
@@ -316,12 +343,15 @@ export const submitCafeSubmission = async (input: CafeSubmissionInput) => {
     .single();
 
   if (submissionError) {
-    throw new Error(formatSupabaseError("Submission row failed", submissionError));
+    throw new Error(
+      formatSupabaseError("Submission row failed", submissionError),
+    );
   }
   if (!submission?.id) throw new Error("Unable to create cafe submission.");
 
   const submissionId = submission.id as string;
 
+  // ── 5. Insert hours ──────────────────────────────────────────────────────
   const submissionHours = input.hours.map((item) => {
     const is24Hours = input.open247 || item.is24Hours;
     const isClosed = !input.open247 && item.isClosed;
@@ -344,29 +374,48 @@ export const submitCafeSubmission = async (input: CafeSubmissionInput) => {
     throw new Error(formatSupabaseError("Hours row failed", hoursError));
   }
 
-  const { error: amenitiesError } = await supabase
-    .from("cafe_submission_amenities")
-    .insert([
-      {
-        submission_id: submissionId,
-        wifi_speed: input.amenities.WiFi?.[0] ?? "",
-        sockets: input.amenities.Sockets?.[0] ?? "",
-        parking: input.amenities.Parking?.[0] ?? "",
-        lighting: input.amenities.Lighting?.[0] ?? "",
-        seating: input.amenities.Seating ?? [],
-        tables_type: input.amenities.Tables ?? [],
-        suitable_for: input.amenities["Suitable Conditions"]?.[0] ?? "",
-        music: input.amenities.Music?.[0] ?? "",
-        pet_friendly: input.petFriendly,
-        coffee_bean_type: input.beanTypes,
-        coffee_brew_method: input.brewMethods,
-      },
-    ]);
+  // ── 6. Insert amenities (optional) ──────────────────────────────────────
+  const hasAmenityData =
+    input.amenities.WiFi?.length ||
+    input.amenities.Sockets?.length ||
+    input.amenities.Parking?.length ||
+    input.amenities.Lighting?.length ||
+    input.amenities.Seating?.length ||
+    input.amenities.Tables?.length ||
+    input.amenities["Suitable Conditions"]?.length ||
+    input.amenities.Music?.length ||
+    input.beanTypes.length ||
+    input.brewMethods.length ||
+    input.petFriendly;
 
-  if (amenitiesError) {
-    throw new Error(formatSupabaseError("Amenities row failed", amenitiesError));
+  if (hasAmenityData) {
+    const { error: amenitiesError } = await supabase
+      .from("cafe_submission_amenities")
+      .insert([
+        {
+          submission_id: submissionId,
+          wifi_speed: input.amenities.WiFi?.[0] ?? null,
+          sockets: input.amenities.Sockets?.[0] ?? null,
+          parking: input.amenities.Parking?.[0] ?? null,
+          lighting: input.amenities.Lighting?.[0] ?? null,
+          seating: input.amenities.Seating ?? [],
+          tables_type: input.amenities.Tables ?? [],
+          suitable_for: input.amenities["Suitable Conditions"]?.[0] ?? null,
+          music: input.amenities.Music?.[0] ?? null,
+          pet_friendly: input.petFriendly,
+          coffee_bean_type: input.beanTypes,
+          coffee_brew_method: input.brewMethods,
+        },
+      ]);
+
+    if (amenitiesError) {
+      throw new Error(
+        formatSupabaseError("Amenities row failed", amenitiesError),
+      );
+    }
   }
 
+  // ── 7. Upload and insert images ──────────────────────────────────────────
   const imageUploads = [
     ...(input.profileImageUri
       ? [
@@ -416,14 +465,16 @@ export const submitCafeSubmission = async (input: CafeSubmissionInput) => {
 
   const uploadedImages = await Promise.all(imageUploads);
 
-  if (uploadedImages.length === 0) return { id: submissionId };
+  if (uploadedImages.length > 0) {
+    const { error: imagesError } = await supabase
+      .from("cafe_submission_images")
+      .insert(uploadedImages);
 
-  const { error: imagesError } = await supabase
-    .from("cafe_submission_images")
-    .insert(uploadedImages);
-
-  if (imagesError) {
-    throw new Error(formatSupabaseError("Image metadata row failed", imagesError));
+    if (imagesError) {
+      throw new Error(
+        formatSupabaseError("Image metadata row failed", imagesError),
+      );
+    }
   }
 
   return { id: submissionId };
