@@ -54,8 +54,13 @@ export default function Dashboard() {
   const [featuredHasMore, setFeaturedHasMore] = useState(true);
   const [featuredLoading, setFeaturedLoading] = useState(false);
 
-  const featuredCafes = allCafes.filter((c) => c.featured);
-  const discoverCafes = allCafes.filter((c) => !c.featured);
+  //const featuredCafes = allCafes.filter((c) => c.featured);
+  //const discoverCafes = allCafes.filter((c) => !c.featured);
+  const [discoverCafes, setDiscoverCafes] = useState<Cafe[]>([]);
+  const [discoverPage, setDiscoverPage] = useState(0);
+  const [discoverHasMore, setDiscoverHasMore] = useState(true);
+  const [discoverLoading, setDiscoverLoading] = useState(false);
+
   const [latestCafe, setLatestCafe] = useState<Cafe | null>(null);
 
   useEffect(() => {
@@ -627,5 +632,4 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
 });
