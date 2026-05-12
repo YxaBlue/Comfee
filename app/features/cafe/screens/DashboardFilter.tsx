@@ -347,8 +347,8 @@ const styles = StyleSheet.create({
 
   locationRow: {
     flexDirection: "row",
-    alignItems: "center", // vertically centers icon & text
-    marginTop: 2, // optional spacing from name
+    alignItems: "center",
+    marginTop: 2,
   },
 
   cafeName: {

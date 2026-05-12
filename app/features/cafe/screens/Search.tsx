@@ -36,18 +36,32 @@ type SearchScreenRouteProp = RouteProp<RootStackParamList, "Search">;
 
 function DiscoverMore({
   allCafes,
+  filteredCafes,
   cardWidth,
 }: {
   allCafes: CafeWithFeatures[];
+  filteredCafes: CafeWithFeatures[];
   cardWidth: number;
 }) {
   const navigation = useNavigation<NavProps>();
+
+  const discoverCafes = useMemo(() => {
+    const filteredIds = new Set(filteredCafes.map((c) => c.id));
+    const pool = allCafes.filter((c) => !filteredIds.has(c.id));
+    // Fisher-Yates shuffle
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    return pool.slice(0, 8);
+  }, [allCafes, filteredCafes]);
+
   if (allCafes.length === 0) return null;
   return (
     <View style={styles.discoverSection}>
       <Text style={styles.discoverTitle}>Discover More</Text>
       <View style={styles.discoverGrid}>
-        {allCafes.slice(0, 4).map((item) => (
+        {discoverCafes.map((item) => (
           <Pressable
             key={item.id}
             onPress={() =>
@@ -461,7 +475,11 @@ export default function SearchScreen() {
                 Use the search bar, tap Near Me, or apply filters to find cafés.
               </Text>
             </View>
-            <DiscoverMore allCafes={allCafes} cardWidth={cardWidth} />
+            <DiscoverMore
+              allCafes={allCafes}
+              filteredCafes={[]}
+              cardWidth={cardWidth}
+            />
           </ScrollView>
         ) : (
           <FlatList
@@ -488,7 +506,11 @@ export default function SearchScreen() {
             }
             ListFooterComponent={
               filteredCafes.length > 0 ? (
-                <DiscoverMore allCafes={allCafes} cardWidth={cardWidth} />
+                <DiscoverMore
+                  allCafes={allCafes}
+                  filteredCafes={[]}
+                  cardWidth={cardWidth}
+                />
               ) : null
             }
             renderItem={({ item }) => (
@@ -559,7 +581,11 @@ export default function SearchScreen() {
                   </Text>
                 </View>
 
-                <DiscoverMore allCafes={allCafes} cardWidth={cardWidth} />
+                <DiscoverMore
+                  allCafes={allCafes}
+                  filteredCafes={[]}
+                  cardWidth={cardWidth}
+                />
               </View>
             }
           />

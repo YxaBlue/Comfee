@@ -1204,8 +1204,8 @@ function FavoriteButton({
       }
     } catch (err) {
       console.error("Failed to toggle favorite:", err);
-      setIsFavorited(wasLiked); // revert optimistic UI
-      onToggle?.(wasLiked); // revert optimistic count
+      setIsFavorited(wasLiked);
+      onToggle?.(wasLiked);
     } finally {
       setToggling(false);
     }
