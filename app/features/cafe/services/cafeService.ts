@@ -48,6 +48,11 @@ export type CafeDetail = {
   opening_time: string | null;
   closing_time: string | null;
   opening_days: string[] | null;
+  opening_hours: {
+    day: string;
+    opening_time: string | null;
+    closing_time: string | null;
+  }[];
   info: string | null;
   // ── Amenities ──
   wifi_speed: "None" | "Slow" | "Moderate" | "Fast" | null;
@@ -208,7 +213,7 @@ export async function getDiscoverCafes(
 export async function getCafesWithFeatures(): Promise<CafeWithFeatures[]> {
   const { data: cafes, error: cafeError } = await supabase
     .from("cafe")
-    .select("id, name, address, city, avatar_url, featured, review ( rating )")
+    .select("id, name, address, city, main_photo_url, featured, review ( rating )")
     .neq("is_deleted", true);
 
   if (cafeError) throw cafeError;
@@ -234,7 +239,7 @@ export async function getCafesWithFeatures(): Promise<CafeWithFeatures[]> {
   }
 
   return cafeList.map((cafe) => ({
-    ...mapCafeWithRatings({ ...cafe, main_photo_url: cafe.avatar_url }),
+    ...mapCafeWithRatings(cafe),
     features: featuresByCafeId.get(cafe.id) ?? null,
   }));
 }
@@ -300,6 +305,17 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
   const hours: { weekday: number; open_time: string; close_time: string }[] =
     data.cafe_hours ?? [];
   const opening_days = hours.map((h) => WEEKDAY_MAP[h.weekday]).filter(Boolean);
+  const opening_hours = hours
+    .map((h) => {
+      const day = WEEKDAY_MAP[h.weekday];
+      if (!day) return null;
+      return {
+        day,
+        opening_time: to12Hour(h.open_time?.slice(0, 5)) ?? null,
+        closing_time: to12Hour(h.close_time?.slice(0, 5)) ?? null,
+      };
+    })
+    .filter((h): h is NonNullable<typeof h> => Boolean(h));
   const opening_time = to12Hour(hours[0]?.open_time?.slice(0, 5)) ?? null;
   const closing_time = to12Hour(hours[0]?.close_time?.slice(0, 5)) ?? null;
 
@@ -319,6 +335,7 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
     opening_time,
     closing_time,
     opening_days,
+    opening_hours,
     info: data.info ?? null,
 
     wifi_speed: toDisplay(amenitiesData?.wifi_speed) as CafeDetail["wifi_speed"],

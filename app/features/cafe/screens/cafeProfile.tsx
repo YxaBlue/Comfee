@@ -190,7 +190,16 @@ function CafeInfoTab({ cafe }: { cafe: CafeDetail & { favoritesCount: number } }
 
       <Text style={infoStyles.sectionLabel}>Operating Hours</Text>
       {ALL_DAYS.map((day) => {
-        const isOpen = (cafe.opening_days ?? []).includes(day);
+        const dayHours = cafe.opening_hours.find((hours) => hours.day === day);
+        const isOpen = Boolean(dayHours);
+        const isOpen24Hours =
+          dayHours?.opening_time === "12:00 AM" &&
+          dayHours?.closing_time === "11:59 PM";
+        const hoursText = isOpen24Hours
+          ? "Open for 24 hours"
+          : `${dayHours?.opening_time ?? cafe.opening_time} - ${
+              dayHours?.closing_time ?? cafe.closing_time
+            }`;
         return (
           <View key={day} style={infoStyles.infoRow}>
             <MaterialIcons
@@ -209,7 +218,7 @@ function CafeInfoTab({ cafe }: { cafe: CafeDetail & { favoritesCount: number } }
             </Text>
             {isOpen ? (
               <Text style={[infoStyles.infoText, { flex: 1 }]}>
-                {cafe.opening_time} – {cafe.closing_time}
+                {hoursText}
               </Text>
             ) : (
               <Text style={[infoStyles.infoText, { flex: 1, color: "#B09070", fontStyle: "italic" }]}>
