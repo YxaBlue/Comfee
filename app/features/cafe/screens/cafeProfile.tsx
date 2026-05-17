@@ -27,6 +27,7 @@ import { getProfile } from "../../profile/services/profileService";
 import { CafeDetail, getCafeById } from "../services/cafeService";
 
 import { ReviewCard } from "@/components/cafe/ReviewCard";
+import { ReviewsSummaryStrip } from "@/components/cafe/ReviewsSummaryStrip";
 import { WriteReviewCTA } from "@/components/cafe/WriteReview";
 
 type Props = {
@@ -84,7 +85,7 @@ const DAY_SHORT: Record<string, string> = {
 
 // ─── Star Filter Bar ──────────────────────────────────────────────────────────
 
-function StarFilterBar({
+export function StarFilterBar({
   selected,
   counts,
   onSelect,
@@ -159,7 +160,7 @@ function StarFilterBar({
 
 // ─── Info Tab ─────────────────────────────────────────────────────────────────
 
-function CafeInfoTab({ cafe }: { cafe: CafeDetail & { favoritesCount: number } }) {
+export function CafeInfoTab({ cafe }: { cafe: CafeDetail & { favoritesCount: number } }) {
   return (
     <View>
       <View style={infoStyles.section}>
@@ -963,11 +964,18 @@ export default function CafeProfileScreen({ navigation }: Props) {
                   onReviewPosted={fetchReviews}
                 />
                 {!reviewsLoading && cafeReviews.length > 0 && (
-                  <StarFilterBar
-                    selected={starFilter}
-                    counts={starCounts}
-                    onSelect={setStarFilter}
-                  />
+                  <View style={reviewsHeaderStyles.block}>
+                    <ReviewsSummaryStrip
+                      averageRating={cafe.average_rating}
+                      reviewCount={cafeReviews.length}
+                      starCounts={starCounts}
+                    />
+                    <StarFilterBar
+                      selected={starFilter}
+                      counts={starCounts}
+                      onSelect={setStarFilter}
+                    />
+                  </View>
                 )}
                 {reviewsLoading ? (
                   <ActivityIndicator
@@ -1098,12 +1106,18 @@ const favStyles = StyleSheet.create({
   btn: { padding: 4 },
 });
 
+const reviewsHeaderStyles = StyleSheet.create({
+  block: {
+    marginTop: 4,
+  },
+});
+
 const filterStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
     gap: 6,
-    paddingHorizontal: 0,
-    paddingVertical: 10,
+    paddingHorizontal: 4,
+    paddingVertical: 6,
   },
   pill: {
     flexDirection: "row",
@@ -1442,6 +1456,7 @@ const infoStyles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 6,
+    marginLeft: 10,
   },
   infoRow: {
     flexDirection: "row",
@@ -1523,6 +1538,7 @@ const infoStyles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     color: "#3B2A1A",
+    marginTop: 5,
     marginBottom: 2,
     marginLeft: 10,
     fontFamily: "SourceSerifPro-Bold",
