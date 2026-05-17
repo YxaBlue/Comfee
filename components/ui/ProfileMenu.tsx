@@ -1,18 +1,11 @@
 import { MaterialIcons } from "@expo/vector-icons";
-import {
-  Image,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 export type ProfileMenuRoute =
   | "Profile"
   | "Settings"
   | "Dashboard"
-  | "ProfileBusi";
+  | "BusinessNavigation";
 
 type ProfileMenuProps = {
   visible: boolean;
@@ -30,7 +23,7 @@ const MENU_ITEMS: {
   { label: "Profile", route: "Profile", icon: "person-outline" },
   { label: "Settings", route: "Settings", icon: "settings" },
   { label: "Dashboard", route: "Dashboard", icon: "dashboard" },
-  { label: "Business", route: "ProfileBusi", icon: "storefront" },
+  { label: "Business", route: "BusinessNavigation", icon: "storefront" },
 ];
 
 export default function ProfileMenu({

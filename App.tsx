@@ -11,7 +11,7 @@ import CreateAccountScreen from "./app/features/auth/screens/CreateAccount";
 import ForgotPasswordScreen from "./app/features/auth/screens/ForgotPassword";
 import LoginScreen from "./app/features/auth/screens/Login";
 import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
-import BusinessProfile from "./app/features/business/screens/BusinessProfile";
+import BusinessNavigation from "./app/features/business/screens/BusinessNavigation";
 import CafeProfileScreen from "./app/features/cafe/screens/cafeProfile";
 import Dashboard from "./app/features/cafe/screens/Dashboard";
 import FilteredCafes from "./app/features/cafe/screens/DashboardFilter";
@@ -57,7 +57,7 @@ export type RootStackParamList = {
     userCoords?: { latitude: number; longitude: number };
   };
   FilteredCafes: { filterType: string };
-  ProfileBusi: undefined;
+  BusinessNavigation: undefined;
   CafeProfile: { cafeId: string };
   WriteReviewFE:
     | {
@@ -261,7 +261,10 @@ export default function App() {
         <Stack.Screen name="Filter" component={FilterScreen} />
         <Stack.Screen name="Search" component={SearchScreen} />
         <Stack.Screen name="FilteredCafes" component={FilteredCafes} />
-        <Stack.Screen name="ProfileBusi" component={BusinessProfile} />
+        <Stack.Screen
+          name="BusinessNavigation"
+          component={BusinessNavigation}
+        />
         <Stack.Screen name="CafeProfile" component={CafeProfileScreen} />
         <Stack.Screen name="WriteReviewFE" component={WriteReviewFEScreen} />
       </Stack.Navigator>

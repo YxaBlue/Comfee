@@ -91,7 +91,10 @@ const MOCK_REVIEWS = [
   },
 ];
 
-type NavProps = NativeStackNavigationProp<RootStackParamList, "ProfileBusi">;
+type NavProps = NativeStackNavigationProp<
+  RootStackParamList,
+  "BusinessNavigation"
+>;
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
