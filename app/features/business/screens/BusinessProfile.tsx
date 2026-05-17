@@ -43,8 +43,10 @@ import {
 } from "@/app/shared/modals/reviewService";
 import { CafePost, useCafePosts } from "@/hooks/useCafePosts";
 
-type NavProps = NativeStackNavigationProp<RootStackParamList, "ProfileBusi">;
-type Tab = "info" | "posts" | "reviews";
+type NavProps = NativeStackNavigationProp<
+  RootStackParamList,
+  "BusinessNavigation"
+>;
 
 type LoadStatus =
   | "loading"
