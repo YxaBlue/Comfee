@@ -2,19 +2,34 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useNavigation, type NavigationProp } from "@react-navigation/native";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Image,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Image,
+  ImageBackground,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import type { RootStackParamList } from "../../../../App";
 
 import { supabase } from "@/app/shared/lib/supabaseClient";
 import { getOwnedCafes, OwnedCafe } from "../services/cafeOwner";
+
+const COLORS = {
+  background: "#F3E6CF",
+  header: "#E9D0A2",
+  card: "#e4d1b5",
+  inset: "#FDF0DC",
+  text: "#3b1f0e",
+  secondary: "#74451F",
+  muted: "#7A5230",
+  accent: "#A0713A",
+  accentLight: "#C8A97A",
+  border: "#DFC392",
+  iconFg: "#FDF0DC",
+};
 
 interface BusinessNavigationProps {
   onSelectCafe?: (cafe: OwnedCafe) => void;
@@ -77,7 +92,7 @@ function CafeCard({
       </View>
 
       <StatusBadge status={cafe.status} />
-      <MaterialIcons name="chevron-right" size={20} color="#B8894A" />
+      <MaterialIcons name="chevron-right" size={20} color={COLORS.accent} />
     </Pressable>
   );
 }
@@ -122,97 +137,121 @@ export default function BusinessNavigation({
   };
 
   return (
-    <ScrollView style={styles.app} contentContainerStyle={styles.content}>
-      {/* Top bar */}
-      <View style={styles.topBar}>
-        <Pressable style={styles.backIconButton} onPress={handleBack}>
-          <MaterialIcons name="arrow-back-ios-new" size={20} color="#4A2A0D" />
-          <Text style={styles.backButtonText}>Back</Text>
-        </Pressable>
-        <Text style={styles.pageTitle}>My Cafés</Text>
-      </View>
-
-      {/* Cafes section header */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionLabel}>Cafés you manage</Text>
-      </View>
-
-      {/* States: loading / error / empty / list */}
-      {loading ? (
-        <View style={styles.centerState}>
-          <ActivityIndicator color="#C4A36F" />
-        </View>
-      ) : error ? (
-        <View style={styles.centerState}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      ) : cafes.length === 0 ? (
-        <View style={styles.emptyState}>
-          <MaterialIcons name="storefront" size={36} color="#C4A36F" />
-          <Text style={styles.emptyTitle}>No cafés linked</Text>
-          <Text style={styles.emptyDesc}>
-            Verify ownership of a café below to link it to your account and
-            unlock management tools.
-          </Text>
-        </View>
-      ) : (
-        <View style={styles.cafeList}>
-          {cafes.map((cafe) => (
-            <CafeCard
-              key={cafe.id}
-              cafe={cafe}
-              onSelect={onSelectCafe ?? (() => {})}
+    <ImageBackground
+      source={require("../../../../assets/images/bg1.png")}
+      style={styles.app}
+      resizeMode="cover"
+    >
+      <ScrollView contentContainerStyle={styles.content}>
+        {/* Top bar */}
+        <View style={styles.topBar}>
+          <Pressable style={styles.backIconButton} onPress={handleBack}>
+            <MaterialIcons
+              name="arrow-back-ios-new"
+              size={20}
+              color={COLORS.text}
             />
-          ))}
+            <Text style={styles.backButtonText}>Back</Text>
+          </Pressable>
+          <Text style={styles.pageTitle}>My Cafés</Text>
         </View>
-      )}
 
-      {/* Connector line hinting at the relationship */}
-      <View style={styles.connectorRow}>
-        <View style={styles.connectorLine} />
-        <View style={styles.connectorDot} />
-        <View style={styles.connectorLine} />
-      </View>
+        {/* Cafes section header */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionLabel}>Cafés you manage</Text>
+        </View>
 
-      {/* Verify strip */}
-      <View style={styles.verifyStrip}>
-        <View style={styles.verifyIconRow}>
-          <View style={styles.verifyIconBadge}>
-            <MaterialIcons name="verified" size={20} color="#B8894A" />
+        {/* States: loading / error / empty / list */}
+        {loading ? (
+          <View style={styles.centerState}>
+            <ActivityIndicator color={COLORS.accent} />
           </View>
-          <Text style={styles.verifyEyebrow}>Owner verification</Text>
+        ) : error ? (
+          <View style={styles.centerState}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : cafes.length === 0 ? (
+          <View style={styles.emptyState}>
+            <MaterialIcons
+              name="storefront"
+              size={36}
+              color={COLORS.accent}
+            />
+            <Text style={styles.emptyTitle}>No cafés linked</Text>
+            <Text style={styles.emptyDesc}>
+              Verify ownership of a café below to link it to your account and
+              unlock management tools.
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.cafeList}>
+            {cafes.map((cafe) => (
+              <CafeCard
+                key={cafe.id}
+                cafe={cafe}
+                onSelect={
+                  onSelectCafe ??
+                  ((c) =>
+                    navigation.navigate("BusinessProfile", {
+                      cafeId: String(c.cafeId),
+                    }))
+                }
+              />
+            ))}
+          </View>
+        )}
+
+        {/* Connector line hinting at the relationship */}
+        <View style={styles.connectorRow}>
+          <View style={styles.connectorLine} />
+          <View style={styles.connectorDot} />
+          <View style={styles.connectorLine} />
         </View>
 
-        <View style={styles.verifyTextBlock}>
-          <Text style={styles.verifyHeading}>Link a café you own</Text>
-          <Text style={styles.verifySub}>
-            Submit ownership documents to connect your account to a café. You'll
-            need to verify separately for each café you own.
-          </Text>
-        </View>
+        {/* Verify strip */}
+        <View style={styles.verifyStrip}>
+          <View style={styles.verifyIconRow}>
+            <View style={styles.verifyIconBadge}>
+              <MaterialIcons name="verified" size={20} color={COLORS.accent} />
+            </View>
+            <Text style={styles.verifyEyebrow}>Owner verification</Text>
+          </View>
 
-        <TouchableOpacity
-          style={styles.verifyCta}
-          onPress={onVerify}
-          activeOpacity={0.85}
-        >
-          <MaterialIcons
-            name="link"
-            size={16}
-            color="#FFF1D6"
-            style={{ marginRight: 8 }}
-          />
-          <Text style={styles.verifyCtaText}>Verify & link a café</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          <View style={styles.verifyTextBlock}>
+            <Text style={styles.verifyHeading}>Link a café you own</Text>
+            <Text style={styles.verifySub}>
+              Submit ownership documents to connect your account to a café.
+              You will need to verify separately for each café you own.
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.verifyCta}
+            onPress={
+              onVerify ?? (() => navigation.navigate("OwnerVerification"))
+            }
+            activeOpacity={0.85}
+          >
+            <MaterialIcons
+              name="link"
+              size={16}
+              color={COLORS.iconFg}
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.verifyCtaText}>Verify & link a café</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
   app: {
     flex: 1,
-    backgroundColor: "#FDF6EE",
+    width: "100%",
+    height: "100%",
+    backgroundColor: COLORS.background,
   },
   content: {
     paddingBottom: 40,
@@ -225,9 +264,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#E4C79E",
+    backgroundColor: COLORS.header,
     borderBottomLeftRadius: 18,
     borderBottomRightRadius: 18,
+    shadowColor: "#7A5A37",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.14,
+    shadowRadius: 8,
+    elevation: 6,
   },
   backIconButton: {
     position: "absolute",
@@ -238,7 +282,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   backButtonText: {
-    color: "#4A2A0D",
+    color: COLORS.text,
     fontSize: 16,
     fontWeight: "500",
   },
@@ -246,7 +290,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: "800",
     fontFamily: "serif",
-    color: "#4A2A0D",
+    color: COLORS.text,
   },
 
   // Section header row
@@ -262,7 +306,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: "serif",
     fontWeight: "700",
-    color: "#4A2A0D",
+    color: COLORS.text,
   },
   sectionHint: {
     flexDirection: "row",
@@ -272,7 +316,7 @@ const styles = StyleSheet.create({
   sectionHintText: {
     fontSize: 12,
     fontWeight: "500",
-    color: "#B8894A",
+    color: COLORS.accent,
     fontFamily: "serif",
     fontStyle: "italic",
   },
@@ -283,10 +327,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   cafeCard: {
-    backgroundColor: "#FFF1D6",
+    backgroundColor: "#e4d1b5",
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: "#E7CDA3",
+    borderColor: COLORS.border,
     padding: 14,
     flexDirection: "row",
     alignItems: "center",
@@ -351,14 +395,14 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 13,
-    color: "#A97845",
+    color: COLORS.accent,
     fontFamily: "serif",
   },
   emptyState: {
     marginHorizontal: 16,
-    backgroundColor: "#FFF1D6",
+    backgroundColor: "#e4d1b5",
     borderWidth: 1,
-    borderColor: "#E7CDA3",
+    borderColor: COLORS.border,
     borderStyle: "dashed",
     borderRadius: 14,
     paddingVertical: 40,
@@ -393,13 +437,13 @@ const styles = StyleSheet.create({
   connectorLine: {
     flex: 1,
     height: 1,
-    backgroundColor: "#E7CDA3",
+    backgroundColor: COLORS.border,
   },
   connectorDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: "#C4A36F",
+    backgroundColor: COLORS.accentLight,
     marginHorizontal: 6,
   },
 
@@ -407,9 +451,9 @@ const styles = StyleSheet.create({
   verifyStrip: {
     marginHorizontal: 16,
     marginTop: 12,
-    backgroundColor: "#FFF1D6",
+    backgroundColor: "#e4d1b5",
     borderWidth: 1,
-    borderColor: "#E7CDA3",
+    borderColor: COLORS.border,
     borderRadius: 16,
     padding: 20,
     gap: 14,
@@ -427,12 +471,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#E7CDA3",
+    borderColor: COLORS.border,
   },
   verifyEyebrow: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#B8894A",
+    color: "#74451F",
     letterSpacing: 0.8,
     textTransform: "uppercase",
     fontFamily: "serif",
@@ -453,7 +497,7 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   verifyCta: {
-    backgroundColor: "#3B1F08",
+    backgroundColor: COLORS.accent,
     borderRadius: 10,
     paddingVertical: 16,
     alignItems: "center",
@@ -463,7 +507,7 @@ const styles = StyleSheet.create({
   verifyCtaText: {
     fontSize: 15,
     fontFamily: "serif",
-    color: "#FFF1D6",
+    color: COLORS.iconFg,
     fontWeight: "800",
     letterSpacing: 0.3,
   },

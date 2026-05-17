@@ -3,9 +3,9 @@ import TopBar from "@/components/TopBar";
 import { ReviewCard } from "@/components/cafe/ReviewCard";
 import { ReviewsSummaryStrip } from "@/components/cafe/ReviewsSummaryStrip";
 import { MaterialIcons } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
-import { useNavigation } from "@react-navigation/native";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,7 +25,6 @@ import {
   View,
 } from "react-native";
 
-import { supabase } from "@/app/shared/lib/supabaseClient";
 import {
   CafeInfoTab,
   StarFilterBar,
@@ -35,6 +34,7 @@ import {
   getCafeById,
 } from "@/app/features/cafe/services/cafeService";
 import { getProfile } from "@/app/features/profile/services/profileService";
+import { supabase } from "@/app/shared/lib/supabaseClient";
 import {
   formatReviewDate,
   getReviewsByCafe,
@@ -55,8 +55,11 @@ type LoadStatus =
   | "no_owner"
   | "cafe_load_failed";
 
+type Tab = "info" | "posts" | "reviews";
+
 export default function BusinessProfile() {
   const navigation = useNavigation<NavProps>();
+  const route = useRoute<RouteProp<RootStackParamList, "BusinessProfile">>();
   const [activeTab, setActiveTab] = useState<Tab>("info");
   const [cafe, setCafe] = useState<CafeDetail | null>(null);
   const [cafeId, setCafeId] = useState<string>("");
@@ -99,6 +102,31 @@ export default function BusinessProfile() {
           console.error("Failed to fetch user profile:", err);
         }
 
+        // If a cafeId was passed via navigation params, use it directly.
+        const paramCafeId = route?.params?.cafeId;
+        if (paramCafeId) {
+          const id = String(paramCafeId);
+          setCafeId(id);
+          try {
+            const cafeData = await getCafeById(id);
+            if (!cafeData) {
+              setLoadStatus("cafe_load_failed");
+              setLoadErrorDetail(`Café #${id} not found`);
+              return;
+            }
+            setCafe(cafeData);
+            setLoadStatus("ready");
+          } catch (cafeErr: any) {
+            console.error("[BusinessProfile] getCafeById error:", cafeErr);
+            setLoadErrorDetail(
+              cafeErr?.message ?? "Failed to load café details",
+            );
+            setLoadStatus("cafe_load_failed");
+          }
+          return;
+        }
+
+        // Otherwise fall back to owner-based lookup (existing behavior)
         const { data: ownerRows, error: ownerError } = await supabase
           .from("cafe_owners")
           .select("cafe_id")
@@ -454,7 +482,7 @@ function OwnerPostsTab({
     let result: ImagePicker.ImagePickerResult;
     try {
       result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ["images"] as any,
         allowsMultipleSelection: true,
         selectionLimit: remainingSlots,
         quality: 0.85,

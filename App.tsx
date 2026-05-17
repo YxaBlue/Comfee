@@ -12,6 +12,8 @@ import ForgotPasswordScreen from "./app/features/auth/screens/ForgotPassword";
 import LoginScreen from "./app/features/auth/screens/Login";
 import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
 import BusinessNavigation from "./app/features/business/screens/BusinessNavigation";
+import BusinessProfile from "./app/features/business/screens/BusinessProfile";
+import OwnerVerificationScreen from "./app/features/business/screens/OwnerVerification";
 import CafeProfileScreen from "./app/features/cafe/screens/cafeProfile";
 import Dashboard from "./app/features/cafe/screens/Dashboard";
 import FilteredCafes from "./app/features/cafe/screens/DashboardFilter";
@@ -38,6 +40,7 @@ export type RootStackParamList = {
   Settings: undefined;
   ChangePassword: undefined;
   SubmitCafe: undefined;
+  OwnerVerification: undefined;
   EditProfile: undefined;
   ForgotPassword: undefined;
   ResetPassword: undefined;
@@ -58,6 +61,7 @@ export type RootStackParamList = {
   };
   FilteredCafes: { filterType: string };
   BusinessNavigation: undefined;
+  BusinessProfile: { cafeId?: string } | undefined;
   CafeProfile: { cafeId: string };
   WriteReviewFE:
     | {
@@ -255,6 +259,10 @@ export default function App() {
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         <Stack.Screen name="SubmitCafe" component={SubmitCafeScreen} />
+        <Stack.Screen
+          name="OwnerVerification"
+          component={OwnerVerificationScreen}
+        />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         <Stack.Screen name="Dashboard" component={Dashboard} />
@@ -265,6 +273,7 @@ export default function App() {
           name="BusinessNavigation"
           component={BusinessNavigation}
         />
+        <Stack.Screen name="BusinessProfile" component={BusinessProfile} />
         <Stack.Screen name="CafeProfile" component={CafeProfileScreen} />
         <Stack.Screen name="WriteReviewFE" component={WriteReviewFEScreen} />
       </Stack.Navigator>
