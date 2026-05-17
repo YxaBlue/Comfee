@@ -58,7 +58,8 @@ export function formatReviewDate(
       year: "numeric",
     });
   if (!updated_at) return fmt(created_at);
-  return `${fmt(created_at)} (edited on ${fmt(updated_at)})`;
+  if (updated_at != created_at)
+    return `${fmt(created_at)} (edited on ${fmt(updated_at)})`;
 }
 
 // ─── Shared storage helper ────────────────────────────────────────────────────
@@ -319,12 +320,10 @@ export async function uploadReviewImage(
   const ext = localUri.split(".").pop()?.split("?")[0] ?? "jpg";
   const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const path = `reviews/${reviewId}/${fileName}`;
-  const { error } = await supabase.storage
-    .from("posts")
-    .upload(path, blob, {
-      contentType: blob.type || "image/jpeg",
-      upsert: false,
-    });
+  const { error } = await supabase.storage.from("posts").upload(path, blob, {
+    contentType: blob.type || "image/jpeg",
+    upsert: false,
+  });
   if (error) throw error;
   const { data } = supabase.storage.from("posts").getPublicUrl(path);
   return data.publicUrl;

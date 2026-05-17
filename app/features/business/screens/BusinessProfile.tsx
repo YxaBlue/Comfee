@@ -9,7 +9,6 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Image,
   ImageBackground,
@@ -1603,6 +1602,11 @@ const postStyles = StyleSheet.create({
     fontSize: 13,
     color: "#3B2A1A",
     fontFamily: "SourceSerifPro-Regular",
+  },
+  dropdownDivider: {
+    height: 1,
+    marginHorizontal: 5,
+    backgroundColor: "#E6D6BE",
   },
 });
 
