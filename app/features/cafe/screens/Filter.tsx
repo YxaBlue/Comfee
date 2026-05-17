@@ -21,7 +21,6 @@ export default function FilterScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<FilterRouteProp>();
   const userCoords = route.params?.userCoords;
-  const city = route.params?.city;
   const [selectedFilters, setSelectedFilters] = useState<FilterSelectionState>(
     () => normalizeFilterSelections(route.params?.selectedFilters),
   );

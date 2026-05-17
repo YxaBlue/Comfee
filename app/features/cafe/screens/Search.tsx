@@ -151,8 +151,6 @@ export default function SearchScreen() {
   // Ref to always access latest allCafes inside async callbacks
   const allCafesRef = useRef<CafeWithFeatures[]>([]);
 
-  const city = route.params?.city;
-
   useEffect(() => {
     setSearch(route.params?.query ?? "");
   }, [route.params?.query]);
@@ -327,13 +325,11 @@ export default function SearchScreen() {
         cafe.name.toLowerCase().includes(normalizedQuery) ||
         cafe.address.toLowerCase().includes(normalizedQuery);
 
-      const matchesCity = !nearMeActive && city ? cafe.city === city : true;
-
       return (
-        matchesQuery && matchesCity && cafeMatchesFilters(cafe, selectedFilters)
+        matchesQuery && cafeMatchesFilters(cafe, selectedFilters)
       );
     });
-  }, [allCafes, nearbyCafes, nearMeActive, city, search, selectedFilters]);
+  }, [allCafes, nearbyCafes, nearMeActive, search, selectedFilters]);
 
   return (
     <ImageBackground
@@ -368,7 +364,6 @@ export default function SearchScreen() {
           onSubmitEditing={() => {
             navigation.navigate("Search", {
               query: search,
-              city,
               selectedFilters,
               userCoords: userCoords ?? undefined,
             });
@@ -378,7 +373,6 @@ export default function SearchScreen() {
           onPress={() =>
             navigation.navigate("Filter", {
               query: search,
-              city,
               selectedFilters,
               userCoords: userCoords ?? undefined,
             })

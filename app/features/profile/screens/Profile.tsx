@@ -185,16 +185,13 @@ function ReviewCard({
           </View>
         </TouchableOpacity>
 
-        {/* ✅ Meta is a plain View; nothing is tappable */}
         <View style={styles.reviewCardMeta}>
           <Text style={styles.reviewLabel}>Review For</Text>
           <Text style={styles.reviewCafeName}>{review.cafeName}</Text>
-          {/* Stars and date: plain Text, NOT tappable */}
           <StarRating rating={review.rating} />
           <Text style={styles.reviewDate}>{displayDate}</Text>
         </View>
 
-        {/* Three-dot menu */}
         <TouchableOpacity
           style={styles.reviewMoreButton}
           onPress={() => setOpenMenuId(showMenu ? null : review.id)}
@@ -379,12 +376,18 @@ export default function ProfileScreen({ navigation }: Props) {
   const [removingFavoriteId, setRemovingFavoriteId] = useState<string | null>(
     null,
   );
-  const [pendingAvatarUri, setPendingAvatarUri] = useState<
-    string | null | undefined
-  >(undefined);
-  const [pendingCoverUri, setPendingCoverUri] = useState<
-    string | null | undefined
-  >(undefined);
+
+  // pendingAvatarUri / pendingCoverUri: string = new image selected, undefined = no change
+  // pendingRemoveAvatar / pendingRemoveCover: true = user clicked Remove (deferred until Save)
+  const [pendingAvatarUri, setPendingAvatarUri] = useState<string | undefined>(
+    undefined,
+  );
+  const [pendingCoverUri, setPendingCoverUri] = useState<string | undefined>(
+    undefined,
+  );
+  const [pendingRemoveAvatar, setPendingRemoveAvatar] = useState(false);
+  const [pendingRemoveCover, setPendingRemoveCover] = useState(false);
+
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -442,6 +445,19 @@ export default function ProfileScreen({ navigation }: Props) {
   const isSaveDisabled =
     isSaving ||
     Boolean(usernameError || firstNameError || lastNameError || birthDateError);
+
+  // Derive the live preview URIs shown while editing
+  const avatarPreviewUri = pendingAvatarUri
+    ? pendingAvatarUri // newly picked image
+    : pendingRemoveAvatar
+      ? null // marked for removal — show placeholder
+      : (profile?.profile_picture ?? null); // unchanged
+
+  const coverPreviewUri = pendingCoverUri
+    ? pendingCoverUri
+    : pendingRemoveCover
+      ? null
+      : (profile?.cover_photo ?? null);
 
   const fetchFavoriteCafes = async (uid: string) => {
     setFavoritesLoading(true);
@@ -542,6 +558,10 @@ export default function ProfileScreen({ navigation }: Props) {
       birth_date: profile?.birth_date || "",
       bio: profile?.bio || "",
     });
+    setPendingAvatarUri(undefined);
+    setPendingCoverUri(undefined);
+    setPendingRemoveAvatar(false);
+    setPendingRemoveCover(false);
     setIsEditing(true);
   };
 
@@ -560,26 +580,35 @@ export default function ProfileScreen({ navigation }: Props) {
       let newAvatarUrl = profile?.profile_picture ?? null;
       let newCoverUrl = profile?.cover_photo ?? null;
 
-      if (pendingAvatarUri === null && profile?.profile_picture) {
-        const avatarPath = `avatars/${viewedUserId}.${profile.profile_picture.split(".").pop()?.split("?")[0] || "jpg"}`;
-        await supabase.storage.from("profile").remove([avatarPath]);
+      if (pendingRemoveAvatar && profile?.profile_picture) {
+        const ext =
+          profile.profile_picture.split(".").pop()?.split("?")[0] || "jpg";
+        await supabase.storage
+          .from("profile")
+          .remove([`avatars/${viewedUserId}.${ext}`]);
+        await supabase
+          .from("profile")
+          .update({ profile_picture: null })
+          .eq("id", viewedUserId);
         newAvatarUrl = null;
       } else if (pendingAvatarUri !== undefined) {
-        newAvatarUrl = await uploadAvatar(
-          viewedUserId,
-          pendingAvatarUri as string,
-        );
+        newAvatarUrl = await uploadAvatar(viewedUserId, pendingAvatarUri);
       }
 
-      if (pendingCoverUri === null && profile?.cover_photo) {
-        const coverPath = `cover_photos/${viewedUserId}.${profile.cover_photo.split(".").pop()?.split("?")[0] || "jpg"}`;
-        await supabase.storage.from("profile").remove([coverPath]);
+      // Cover: same pattern
+      if (pendingRemoveCover && profile?.cover_photo) {
+        const ext =
+          profile.cover_photo.split(".").pop()?.split("?")[0] || "jpg";
+        await supabase.storage
+          .from("profile")
+          .remove([`cover_photos/${viewedUserId}.${ext}`]);
+        await supabase
+          .from("profile")
+          .update({ cover_photo: null })
+          .eq("id", viewedUserId);
         newCoverUrl = null;
       } else if (pendingCoverUri !== undefined) {
-        newCoverUrl = await uploadCoverPhoto(
-          viewedUserId,
-          pendingCoverUri as string,
-        );
+        newCoverUrl = await uploadCoverPhoto(viewedUserId, pendingCoverUri);
       }
 
       await editProfile(
@@ -601,8 +630,11 @@ export default function ProfileScreen({ navigation }: Props) {
         profile_picture: newAvatarUrl,
         cover_photo: newCoverUrl,
       }));
-      setPendingAvatarUri(null);
-      setPendingCoverUri(null);
+
+      setPendingAvatarUri(undefined);
+      setPendingCoverUri(undefined);
+      setPendingRemoveAvatar(false);
+      setPendingRemoveCover(false);
       setIsEditing(false);
     } catch (err: any) {
       if (err?.validationErrors) setFieldErrors(err.validationErrors);
@@ -615,8 +647,10 @@ export default function ProfileScreen({ navigation }: Props) {
   const handleCancel = () => {
     setIsEditing(false);
     setFieldErrors({});
-    setPendingAvatarUri(null);
-    setPendingCoverUri(null);
+    setPendingAvatarUri(undefined);
+    setPendingCoverUri(undefined);
+    setPendingRemoveAvatar(false);
+    setPendingRemoveCover(false);
   };
 
   const handleTabPress = (key: Tab) => {
@@ -652,7 +686,10 @@ export default function ProfileScreen({ navigation }: Props) {
       quality: 0.8,
       selectionLimit: 1,
     });
-    if (!result.canceled) setPendingAvatarUri(result.assets[0].uri);
+    if (!result.canceled) {
+      setPendingAvatarUri(result.assets[0].uri);
+      setPendingRemoveAvatar(false); // picking a new image cancels removal
+    }
   };
 
   const handlePickCoverPhoto = async () => {
@@ -665,7 +702,10 @@ export default function ProfileScreen({ navigation }: Props) {
       quality: 0.85,
       selectionLimit: 1,
     });
-    if (!result.canceled) setPendingCoverUri(result.assets[0].uri);
+    if (!result.canceled) {
+      setPendingCoverUri(result.assets[0].uri);
+      setPendingRemoveCover(false);
+    }
   };
 
   const handlePickEditImages = async () => {
@@ -758,19 +798,17 @@ export default function ProfileScreen({ navigation }: Props) {
           const filename = `${editingReview.id}_${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
           const path = `reviews/${filename}`;
 
-          // ✅ Use FormData with URI object — works on Android & iOS
-          const formData = new FormData();
-          formData.append("file", {
-            uri,
-            name: filename,
-            type: `image/${ext}`,
-          } as any);
+          // Fetch the image file and convert to blob
+          const response = await fetch(uri);
+          if (!response.ok)
+            throw new Error(`Failed to fetch image: ${response.statusText}`);
+          const blob = await response.blob();
 
           const { error } = await supabase.storage
             .from("posts")
-            .upload(path, formData, {
+            .upload(path, blob, {
               upsert: false,
-              contentType: `image/${ext}`,
+              contentType: blob.type || `image/${ext}`,
             });
 
           if (error) throw error;
@@ -786,7 +824,6 @@ export default function ProfileScreen({ navigation }: Props) {
         images_url: finalUrls,
       });
 
-      // ✅ Re-fetch so dates come from DB via formatReviewDate — no manual string construction
       await fetchReviews(viewedUserId, sessionUserId);
     } catch (err) {
       console.error("Failed to save review:", err);
@@ -811,14 +848,12 @@ export default function ProfileScreen({ navigation }: Props) {
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* ── Header band ── */}
           <View style={styles.headerBand}>
-            {profile?.cover_photo ? (
+            {/* Cover photo — shows preview (or dimmed existing if marked for removal) */}
+            {coverPreviewUri ? (
               <Image
-                key={profile.cover_photo}
-                source={{
-                  uri: pendingCoverUri ?? profile?.cover_photo,
-                  cache: "reload",
-                }}
-                style={StyleSheet.absoluteFill}
+                key={coverPreviewUri}
+                source={{ uri: coverPreviewUri, cache: "reload" }}
+                style={[StyleSheet.absoluteFill]}
                 resizeMode="cover"
               />
             ) : (
@@ -830,6 +865,12 @@ export default function ProfileScreen({ navigation }: Props) {
               />
             )}
 
+            {pendingRemoveCover && profile?.cover_photo && (
+              <View style={styles.pendingRemoveOverlay}>
+                <MaterialIcons name="delete" size={20} color="#fff" />
+              </View>
+            )}
+
             {isEditing && isOwnProfile && (
               <View style={styles.coverEditRow}>
                 <TouchableOpacity
@@ -839,13 +880,31 @@ export default function ProfileScreen({ navigation }: Props) {
                   <MaterialIcons name="photo-camera" size={16} color="#fff" />
                   <Text style={styles.coverEditText}>Edit Cover</Text>
                 </TouchableOpacity>
-                {(pendingCoverUri !== null || profile?.cover_photo) && (
+                {(pendingCoverUri !== undefined ||
+                  pendingRemoveCover ||
+                  profile?.cover_photo) &&
+                  !pendingRemoveCover && (
+                    <TouchableOpacity
+                      style={[styles.coverEditBtn, styles.removeBtn]}
+                      onPress={() => {
+                        setPendingRemoveCover(true);
+                        setPendingCoverUri(undefined);
+                      }}
+                    >
+                      <MaterialIcons name="delete" size={16} color="#fff" />
+                      <Text style={styles.coverEditText}>Remove</Text>
+                    </TouchableOpacity>
+                  )}
+                {pendingRemoveCover && (
                   <TouchableOpacity
-                    style={[styles.coverEditBtn, styles.removeBtn]}
-                    onPress={() => setPendingCoverUri(null)}
+                    style={[
+                      styles.coverEditBtn,
+                      { backgroundColor: "rgba(30,138,120,0.85)" },
+                    ]}
+                    onPress={() => setPendingRemoveCover(false)}
                   >
-                    <MaterialIcons name="delete" size={16} color="#fff" />
-                    <Text style={styles.coverEditText}>Remove</Text>
+                    <MaterialIcons name="undo" size={16} color="#fff" />
+                    <Text style={styles.coverEditText}>Restore Original</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -877,13 +936,10 @@ export default function ProfileScreen({ navigation }: Props) {
                 activeOpacity={isEditing && isOwnProfile ? 0.7 : 1}
               >
                 <View style={styles.avatarCircle}>
-                  {profile?.profile_picture ? (
+                  {avatarPreviewUri ? (
                     <Image
-                      key={profile.profile_picture}
-                      source={{
-                        uri: pendingAvatarUri ?? profile?.profile_picture,
-                        cache: "reload",
-                      }}
+                      key={avatarPreviewUri}
+                      source={{ uri: avatarPreviewUri, cache: "reload" }}
                       style={styles.avatarImage}
                       resizeMode="cover"
                     />
@@ -891,6 +947,7 @@ export default function ProfileScreen({ navigation }: Props) {
                     <MaterialIcons name="person" size={52} color="#C8A97A" />
                   )}
                 </View>
+
                 {isEditing && isOwnProfile && (
                   <View style={styles.avatarEditRow}>
                     <TouchableOpacity
@@ -903,12 +960,27 @@ export default function ProfileScreen({ navigation }: Props) {
                         color="#fff"
                       />
                     </TouchableOpacity>
-                    {profile?.profile_picture && (
+                    {(profile?.profile_picture || pendingAvatarUri) &&
+                      !pendingRemoveAvatar && (
+                        <TouchableOpacity
+                          style={[styles.avatarEditBtn, styles.removeBtn]}
+                          onPress={() => {
+                            setPendingRemoveAvatar(true);
+                            setPendingAvatarUri(undefined);
+                          }}
+                        >
+                          <MaterialIcons name="delete" size={12} color="#fff" />
+                        </TouchableOpacity>
+                      )}
+                    {pendingRemoveAvatar && (
                       <TouchableOpacity
-                        style={[styles.avatarEditBtn, styles.removeBtn]}
-                        onPress={() => setPendingAvatarUri(null)}
+                        style={[
+                          styles.avatarEditBtn,
+                          { backgroundColor: "#1E8A78" },
+                        ]}
+                        onPress={() => setPendingRemoveAvatar(false)}
                       >
-                        <MaterialIcons name="delete" size={12} color="#fff" />
+                        <MaterialIcons name="undo" size={12} color="#fff" />
                       </TouchableOpacity>
                     )}
                   </View>
@@ -942,7 +1014,7 @@ export default function ProfileScreen({ navigation }: Props) {
                 ) : (
                   <Text style={styles.userName}>{profile?.username}</Text>
                 )}
-                {isOwnProfile && (
+                {isOwnProfile && !isEditing && (
                   <TouchableOpacity onPress={handleEditPress}>
                     <MaterialIcons name="edit" size={16} color="#8C6D4F" />
                   </TouchableOpacity>
@@ -1421,6 +1493,38 @@ const styles = StyleSheet.create({
     fontFamily: "SourceSerifPro-Bold",
   },
   removeBtn: { backgroundColor: "rgba(192,57,43,0.8)" },
+  // Pending-remove visual states
+  pendingRemoveOverlay: {
+    position: "absolute",
+    bottom: 10,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 6,
+    zIndex: 25,
+  },
+  pendingRemoveText: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "SourceSerifPro-Bold",
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  avatarRemoveBadge: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "rgba(192,57,43,0.9)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 5,
+  },
   avatarWrapper: {
     alignSelf: "flex-end",
     marginRight: 30,
@@ -1732,15 +1836,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 3,
   },
-  favoritePhotoWrapper: {
-    width: 90,
-    height: 90,
-    flexShrink: 0,
-  },
-  favoritePhoto: {
-    width: 90,
-    height: 90,
-  },
+  favoritePhotoWrapper: { width: 90, height: 90, flexShrink: 0 },
+  favoritePhoto: { width: 90, height: 90 },
   favoritePhotoFallback: {
     backgroundColor: "#ECD9BE",
     alignItems: "center",

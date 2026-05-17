@@ -83,37 +83,18 @@ async function uploadToStorage(
   uri: string,
   ext: string,
 ): Promise<string> {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) throw new Error("Not authenticated");
+  // fetch the local file and convert to blob
+  const response = await fetch(uri);
+  const blob = await response.blob();
 
-  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-  const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${path}`;
+  const { error: uploadError } = await supabase.storage
+    .from(bucket)
+    .upload(path, blob, {
+      upsert: true,
+      contentType: `image/${ext}`,
+    });
 
-  console.log("Uploading via raw fetch to:", uploadUrl);
-
-  const response = await fetch(uploadUrl, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-      "Content-Type": `image/${ext}`,
-      "x-upsert": "true",
-    },
-    body: {
-      uri,
-      name: path.split("/").pop() ?? "upload",
-      type: `image/${ext}`,
-    } as any,
-  });
-
-  console.log("Raw fetch status:", response.status);
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.log("Upload error body:", errorText);
-    throw new Error(`Upload failed: ${response.status} ${errorText}`);
-  }
+  if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return `${data.publicUrl}?t=${Date.now()}`;
@@ -125,9 +106,9 @@ export async function uploadAvatar(
   uri: string,
 ): Promise<string> {
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) throw new Error("Not authenticated");
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
 
   const ext = getExt(uri);
   const path = `avatars/${userId}.${ext}`;
@@ -146,15 +127,14 @@ export async function uploadAvatar(
   return bustUrl;
 }
 
-// ── Cover photo ────────────────────────────────────────────────
 export async function uploadCoverPhoto(
   userId: string,
   uri: string,
 ): Promise<string> {
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) throw new Error("Not authenticated");
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
 
   const ext = getExt(uri);
   const path = `cover_photos/${userId}.${ext}`;
