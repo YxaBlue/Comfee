@@ -4,13 +4,13 @@ import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
-    Image,
-    ImageBackground,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  ImageBackground,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 const MOCK_PROFILE = {
@@ -141,7 +141,6 @@ export default function BusinessPreview() {
           onPress={() => navigation.goBack()}
         >
           <MaterialIcons name="arrow-back-ios-new" size={18} color="#3B2A1A" />
-          <Text style={styles.backButtonText}>My Cafés</Text>
         </TouchableOpacity>
         <Text style={styles.pageTitle}>Profile Preview</Text>
       </View>
@@ -1029,24 +1028,21 @@ const reviewStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   background: { flex: 1, width: "100%", height: "100%" },
   topBar: {
-    paddingTop: 18,
-    paddingBottom: 16,
+    height: 70,
     paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#E9D0A2",
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
     shadowColor: "#7A5A37",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.14,
     shadowRadius: 8,
     elevation: 6,
+    marginTop: 20,
   },
   backButton: {
     position: "absolute",
     left: 18,
-    bottom: 20,
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
@@ -1058,10 +1054,11 @@ const styles = StyleSheet.create({
     fontFamily: "serif",
   },
   pageTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "800",
     fontFamily: "serif",
     color: "#3B2A1A",
+    alignSelf: "center",
   },
   wrapper: { position: "relative" },
   coverPhoto: {

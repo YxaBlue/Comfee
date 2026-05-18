@@ -29,7 +29,6 @@ import ProfileScreen from "./app/features/profile/screens/Profile";
 import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";
 import SettingsScreen from "./app/features/settings/screens/Settings";
 import SubmitCafeScreen from "./app/features/settings/screens/SubmitCafe";
-
 SplashScreen.preventAutoHideAsync();
 
 console.log(Linking.createURL("/"));

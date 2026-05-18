@@ -6,11 +6,14 @@
     "orientation": "portrait",
     "scheme": "comfeeproject",
     "userInterfaceStyle": "automatic",
+    "icon": "./assets/images/logo.png",
+
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#E6F4FE"
       },
 
