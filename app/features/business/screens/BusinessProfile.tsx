@@ -3,13 +3,13 @@ import TopBar from "@/components/TopBar";
 import { ReviewCard } from "@/components/cafe/ReviewCard";
 import { ReviewsSummaryStrip } from "@/components/cafe/ReviewsSummaryStrip";
 import { MaterialIcons } from "@expo/vector-icons";
-import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { RouteProp, useRoute } from "@react-navigation/native";
 import * as ImagePicker from "expo-image-picker";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Animated,
   Image,
   ImageBackground,
@@ -187,6 +187,24 @@ export default function BusinessProfile() {
     })();
   }, []);
 
+  const reloadCafe = useCallback(async () => {
+    if (!cafeId) return;
+    try {
+      const cafeData = await getCafeById(cafeId);
+      if (cafeData) setCafe(cafeData);
+    } catch (err) {
+      console.error("[BusinessProfile] Failed to refresh café:", err);
+    }
+  }, [cafeId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (loadStatus === "ready") {
+        void reloadCafe();
+      }
+    }, [loadStatus, reloadCafe]),
+  );
+
   const fetchReviews = useCallback(async () => {
     if (!cafeId || !currentUserId) return;
     setReviewsLoading(true);
@@ -247,11 +265,10 @@ export default function BusinessProfile() {
       setCreatePostVisible(true);
       return;
     }
-    Alert.alert(
-      "Edit Café",
-      "Café editing will be available in a future update.",
-      [{ text: "OK" }],
-    );
+    if (activeTab === "info" && cafeId) {
+      navigation.navigate("EditCafeProfile", { cafeId });
+      return;
+    }
   };
 
   if (loadStatus === "loading") {
@@ -443,13 +460,29 @@ function OwnerPostsTab({
   createPostVisible: boolean;
   onCloseCreatePost: () => void;
 }) {
-  const { posts, loading, addPost, deletePost } = useCafePosts(cafeId);
+  const { posts, loading, addPost, updatePost, deletePost } =
+    useCafePosts(cafeId);
   const [caption, setCaption] = useState("");
   const [selectedPhotoUris, setSelectedPhotoUris] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  const [editingPost, setEditingPost] = useState<CafePost | null>(null);
+  const [editCaption, setEditCaption] = useState("");
+  const [editPhotoUris, setEditPhotoUris] = useState<string[]>([]);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const [pendingDeletePostId, setPendingDeletePostId] = useState<number | null>(
+    null,
+  );
+  const [deletingPostId, setDeletingPostId] = useState<number | null>(null);
+  const [postDeleteErrors, setPostDeleteErrors] = useState<
+    Record<number, string>
+  >({});
+
   const canSubmit = caption.trim().length > 0 || selectedPhotoUris.length > 0;
+  const canSaveEdit = editCaption.trim().length > 0 || editPhotoUris.length > 0;
 
   const resetCreateForm = () => {
     setCaption("");
@@ -540,33 +573,164 @@ function OwnerPostsTab({
     setSelectedPhotoUris((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleEditPost = () => {
-    Alert.alert(
-      "Edit Post",
-      "Post editing will be available in a future update.",
-      [{ text: "OK" }],
-    );
+  const openEditPost = (post: CafePost) => {
+    setEditingPost(post);
+    setEditCaption(post.caption ?? "");
+    setEditPhotoUris(post.photo_url?.filter(Boolean) ?? []);
+    setEditError(null);
   };
 
-  const handleDeletePost = (postId: number) => {
-    Alert.alert("Delete Post", "Are you sure you want to delete this post?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          const { error } = await deletePost(postId);
-          if (error) {
-            Alert.alert("Error", error);
-          }
-        },
-      },
-    ]);
+  const closeEditPost = () => {
+    if (editSubmitting) return;
+    setEditingPost(null);
+    setEditCaption("");
+    setEditPhotoUris([]);
+    setEditError(null);
   };
+
+  const handlePickEditPhoto = async () => {
+    setEditError(null);
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      setEditError(
+        "The app does not have permission to read your photo library. Please allow photo access and try again.",
+      );
+      return;
+    }
+
+    const remainingSlots = 5 - editPhotoUris.length;
+    if (remainingSlots <= 0) {
+      setEditError("You can add up to 5 photos.");
+      return;
+    }
+
+    let result: ImagePicker.ImagePickerResult;
+    try {
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        selectionLimit: remainingSlots,
+        quality: 0.85,
+      });
+    } catch (err: any) {
+      setEditError(err?.message ?? "The photo picker could not be opened.");
+      return;
+    }
+
+    if (!result.canceled) {
+      const pickedUris = result.assets
+        .map((asset) => asset.uri)
+        .filter(Boolean);
+      setEditPhotoUris((prev) => [...prev, ...pickedUris].slice(0, 5));
+    }
+  };
+
+  const handleRemoveEditPhoto = (index: number) => {
+    setEditError(null);
+    setEditPhotoUris((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveEditPost = async () => {
+    if (!editingPost || !canSaveEdit || editSubmitting) return;
+
+    setEditError(null);
+    setEditSubmitting(true);
+    try {
+      const { error } = await updatePost(
+        editingPost.id,
+        editCaption,
+        editPhotoUris,
+      );
+
+      if (error) {
+        setEditError(error);
+        return;
+      }
+
+      setEditingPost(null);
+      setEditCaption("");
+      setEditPhotoUris([]);
+      setEditError(null);
+    } catch (err: any) {
+      setEditError(
+        err?.message ?? "Something went wrong while saving the post.",
+      );
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const requestDeletePost = (postId: number) => {
+    setPostDeleteErrors((prev) => {
+      const next = { ...prev };
+      delete next[postId];
+      return next;
+    });
+    setPendingDeletePostId(postId);
+  };
+
+  const cancelDeletePost = () => {
+    setPendingDeletePostId(null);
+  };
+
+  const confirmDeletePost = async (postId: number) => {
+    console.log("[BusinessProfile] confirmDeletePost", { postId });
+    setDeletingPostId(postId);
+    setPostDeleteErrors((prev) => {
+      const next = { ...prev };
+      delete next[postId];
+      return next;
+    });
+
+    const result = await deletePost(postId);
+    console.log("[BusinessProfile] deletePost result", result);
+
+    setDeletingPostId(null);
+    setPendingDeletePostId(null);
+
+    if (result.error) {
+      setPostDeleteErrors((prev) => ({ ...prev, [postId]: result.error! }));
+    }
+  };
+
+  const editPostSheet = (
+    <EditPostModal
+      visible={!!editingPost}
+      cafeName={cafeName}
+      caption={editCaption}
+      photoUris={editPhotoUris}
+      submitError={editError}
+      submitting={editSubmitting}
+      canSave={canSaveEdit}
+      onChangeCaption={(value) => {
+        setEditError(null);
+        setEditCaption(value);
+      }}
+      onPickPhoto={handlePickEditPhoto}
+      onRemovePhoto={handleRemoveEditPhoto}
+      onSave={handleSaveEditPost}
+      onClose={closeEditPost}
+    />
+  );
+
+  const deleteConfirmModal = (
+    <DeletePostConfirmModal
+      visible={pendingDeletePostId !== null}
+      deleting={deletingPostId !== null}
+      onCancel={cancelDeletePost}
+      onConfirm={() => {
+        if (pendingDeletePostId !== null) {
+          void confirmDeletePost(pendingDeletePostId);
+        }
+      }}
+    />
+  );
 
   if (loading) {
     return (
       <>
+        {editPostSheet}
+        {deleteConfirmModal}
         <CreatePostSheet
           visible={createPostVisible}
           caption={caption}
@@ -592,6 +756,8 @@ function OwnerPostsTab({
   if (posts.length === 0) {
     return (
       <>
+        {editPostSheet}
+        {deleteConfirmModal}
         <CreatePostSheet
           visible={createPostVisible}
           caption={caption}
@@ -618,6 +784,8 @@ function OwnerPostsTab({
 
   return (
     <View style={{ flex: 1 }}>
+      {editPostSheet}
+      {deleteConfirmModal}
       <CreatePostSheet
         visible={createPostVisible}
         caption={caption}
@@ -638,16 +806,34 @@ function OwnerPostsTab({
           paddingBottom: 100,
         }}
       >
-        {posts.map((post) => (
-          <OwnerPostCard
-            key={post.id}
-            post={post}
-            cafeName={cafeName}
-            cafeAvatarUrl={cafeAvatarUrl}
-            onEdit={handleEditPost}
-            onDelete={() => handleDeletePost(post.id)}
-          />
-        ))}
+        {posts.map((post) => {
+          const postId = Number(post.id);
+          return (
+            <View key={postId} style={postListStyles.postWrap}>
+              <OwnerPostCard
+                post={post}
+                cafeName={cafeName}
+                cafeAvatarUrl={cafeAvatarUrl}
+                isDeleting={deletingPostId === postId}
+                onEdit={() => openEditPost(post)}
+                onDelete={() => requestDeletePost(postId)}
+              />
+
+              {postDeleteErrors[postId] ? (
+                <View style={postListStyles.errorBar}>
+                  <MaterialIcons
+                    name="error-outline"
+                    size={16}
+                    color="#C0392B"
+                  />
+                  <Text style={postListStyles.errorText}>
+                    {postDeleteErrors[postId]}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
       </ScrollView>
     </View>
   );
@@ -777,16 +963,201 @@ function CreatePostSheet({
   );
 }
 
+function EditPostModal({
+  visible,
+  cafeName,
+  caption,
+  photoUris,
+  submitError,
+  submitting,
+  canSave,
+  onChangeCaption,
+  onPickPhoto,
+  onRemovePhoto,
+  onSave,
+  onClose,
+}: {
+  visible: boolean;
+  cafeName: string;
+  caption: string;
+  photoUris: string[];
+  submitError: string | null;
+  submitting: boolean;
+  canSave: boolean;
+  onChangeCaption: (value: string) => void;
+  onPickPhoto: () => void;
+  onRemovePhoto: (index: number) => void;
+  onSave: () => void;
+  onClose: () => void;
+}) {
+  if (!visible) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={editModalStyles.overlay}
+      >
+        <Pressable style={editModalStyles.backdrop} onPress={onClose} />
+        <View style={editModalStyles.card}>
+          <Text style={editModalStyles.title}>Edit Post</Text>
+          <Text style={editModalStyles.cafeName}>{cafeName}</Text>
+
+          <TextInput
+            value={caption}
+            onChangeText={onChangeCaption}
+            placeholder="What's new at your café?"
+            placeholderTextColor="#B09070"
+            multiline
+            textAlignVertical="top"
+            style={editModalStyles.captionInput}
+            editable={!submitting}
+          />
+
+          <Text style={editModalStyles.sectionLabel}>
+            Photos ({photoUris.length}/5)
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={editModalStyles.photoRow}>
+              {photoUris.map((uri, index) => (
+                <View key={`${uri}-${index}`} style={editModalStyles.thumbWrap}>
+                  <Image
+                    source={{ uri }}
+                    style={editModalStyles.thumbImage}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    style={editModalStyles.removePhotoBtn}
+                    onPress={() => onRemovePhoto(index)}
+                    disabled={submitting}
+                  >
+                    <MaterialIcons name="close" size={12} color="#fff" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {photoUris.length < 5 && (
+                <TouchableOpacity
+                  style={editModalStyles.addPhotoBtn}
+                  onPress={onPickPhoto}
+                  disabled={submitting}
+                >
+                  <MaterialIcons
+                    name="add-photo-alternate"
+                    size={28}
+                    color="#A97C4E"
+                  />
+                  <Text style={editModalStyles.addPhotoText}>Add</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </ScrollView>
+
+          {submitError ? (
+            <Text style={editModalStyles.errorText}>{submitError}</Text>
+          ) : null}
+
+          <View style={editModalStyles.actionsRow}>
+            <TouchableOpacity
+              style={editModalStyles.cancelBtn}
+              onPress={onClose}
+              disabled={submitting}
+            >
+              <Text style={editModalStyles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                editModalStyles.saveBtn,
+                (!canSave || submitting) && editModalStyles.saveBtnDisabled,
+              ]}
+              onPress={onSave}
+              disabled={!canSave || submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color="#FDF6EC" />
+              ) : (
+                <Text style={editModalStyles.saveBtnText}>Save</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+function DeletePostConfirmModal({
+  visible,
+  deleting,
+  onCancel,
+  onConfirm,
+}: {
+  visible: boolean;
+  deleting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={deleting ? undefined : onCancel}
+    >
+      <View style={deleteModalStyles.overlay}>
+        <Pressable
+          style={deleteModalStyles.backdrop}
+          onPress={deleting ? undefined : onCancel}
+        />
+        <View style={deleteModalStyles.card}>
+          <Text style={deleteModalStyles.title}>
+            Are you sure you want to delete this post?
+          </Text>
+          <View style={deleteModalStyles.actionsRow}>
+            <TouchableOpacity
+              style={deleteModalStyles.cancelBtn}
+              onPress={onCancel}
+              disabled={deleting}
+            >
+              <Text style={deleteModalStyles.cancelBtnText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                deleteModalStyles.deleteBtn,
+                deleting && deleteModalStyles.deleteBtnDisabled,
+              ]}
+              onPress={onConfirm}
+              disabled={deleting}
+            >
+              {deleting ? (
+                <ActivityIndicator size="small" color="#FFF7ED" />
+              ) : (
+                <Text style={deleteModalStyles.deleteBtnText}>Delete</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function OwnerPostCard({
   post,
   cafeName,
   cafeAvatarUrl,
+  isDeleting,
   onEdit,
   onDelete,
 }: {
   post: CafePost;
   cafeName: string;
   cafeAvatarUrl: string | null;
+  isDeleting?: boolean;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -850,17 +1221,15 @@ function OwnerPostCard({
           <Text style={postStyles.date}>{displayDate}</Text>
         </View>
 
-        <View>
+        <View style={postStyles.menuAnchor}>
           <TouchableOpacity
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={menuOpen ? closeMenu : openMenu}
+            disabled={isDeleting}
           >
             <MaterialIcons name="more-vert" size={18} color="#8C6D4F" />
           </TouchableOpacity>
-          {menuOpen && (
-            <Pressable style={StyleSheet.absoluteFill} onPress={closeMenu} />
-          )}
-          {menuOpen && (
+          {menuOpen ? (
             <Animated.View
               style={[
                 postStyles.dropdownMenu,
@@ -869,8 +1238,9 @@ function OwnerPostCard({
             >
               <TouchableOpacity
                 style={postStyles.dropdownItem}
+                activeOpacity={0.7}
                 onPress={() => {
-                  closeMenu();
+                  setMenuOpen(false);
                   onEdit();
                 }}
               >
@@ -880,8 +1250,9 @@ function OwnerPostCard({
               <View style={postStyles.dropdownDivider} />
               <TouchableOpacity
                 style={postStyles.dropdownItem}
+                activeOpacity={0.7}
                 onPress={() => {
-                  closeMenu();
+                  setMenuOpen(false);
                   onDelete();
                 }}
               >
@@ -893,7 +1264,7 @@ function OwnerPostCard({
                 </Text>
               </TouchableOpacity>
             </Animated.View>
-          )}
+          ) : null}
         </View>
       </View>
 
@@ -941,10 +1312,14 @@ function OwnerPostCard({
       ) : null}
 
       <View style={postStyles.footer}>
-        <View style={postStyles.likeBtn}>
-          <MaterialIcons name="thumb-up-off-alt" size={20} color="#8C6D4F" />
-          <Text style={postStyles.likesCount}>{post.likes}</Text>
-        </View>
+        {isDeleting ? (
+          <ActivityIndicator size="small" color="#8C6D4F" />
+        ) : (
+          <View style={postStyles.likeBtn}>
+            <MaterialIcons name="thumb-up-off-alt" size={20} color="#8C6D4F" />
+            <Text style={postStyles.likesCount}>{post.likes}</Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -1034,7 +1409,102 @@ function OwnerReviewsTab({
   );
 }
 
+const deleteModalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 28,
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+  },
+  card: {
+    width: "100%",
+    maxWidth: 340,
+    backgroundColor: "#FAF2E6",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: "#E9D0A2",
+    zIndex: 1,
+  },
+  title: {
+    fontSize: 16,
+    color: "#3B2A1A",
+    fontFamily: "SourceSerifPro-Bold",
+    marginBottom: 14,
+  },
+  actionsRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: "#E6D6BE",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#C4A882",
+  },
+  cancelBtnText: {
+    fontSize: 14,
+    color: "#8C6D4F",
+    fontFamily: "SourceSerifPro-Bold",
+  },
+  deleteBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: "#C0392B",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 42,
+  },
+  deleteBtnDisabled: {
+    opacity: 0.75,
+  },
+  deleteBtnText: {
+    fontSize: 14,
+    color: "#FFF7ED",
+    fontFamily: "SourceSerifPro-Bold",
+  },
+});
+
+const postListStyles = StyleSheet.create({
+  postWrap: {
+    marginBottom: 4,
+  },
+  errorBar: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: "#FDEDEC",
+    borderWidth: 1,
+    borderColor: "#F5C6C0",
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#C0392B",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+});
+
 const postStyles = StyleSheet.create({
+  menuAnchor: {
+    position: "relative",
+    zIndex: 20,
+  },
   container: {
     backgroundColor: "#FFF7ED",
     borderRadius: 12,
@@ -1167,6 +1637,7 @@ const postStyles = StyleSheet.create({
   dropdownDivider: {
     height: 1,
     marginHorizontal: 5,
+    backgroundColor: "#E6D6BE",
   },
 });
 
@@ -1174,6 +1645,150 @@ const reviewStyles = StyleSheet.create({
   reviewsHeader: {
     paddingHorizontal: 16,
     marginTop: 20,
+  },
+});
+
+const editModalStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+  },
+  card: {
+    width: "100%",
+    maxWidth: 420,
+    backgroundColor: "#FDF6EC",
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#E9D0A2",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  title: {
+    fontSize: 18,
+    color: "#3B2A1A",
+    fontFamily: "SourceSerifPro-Bold",
+    marginBottom: 4,
+  },
+  cafeName: {
+    fontSize: 13,
+    color: "#8C6D4F",
+    fontFamily: "SourceSerifPro-Regular",
+    marginBottom: 12,
+  },
+  captionInput: {
+    minHeight: 80,
+    borderWidth: 1.5,
+    borderColor: "#CBA875",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 12,
+    color: "#3B2A1A",
+    fontFamily: "SourceSerifPro-Regular",
+    fontSize: 15,
+    lineHeight: 20,
+    backgroundColor: "#FFF7ED",
+    textAlignVertical: "top",
+  },
+  sectionLabel: {
+    marginTop: 14,
+    marginBottom: 8,
+    fontSize: 14,
+    color: "#A26F3B",
+    fontFamily: "SourceSerifPro-Bold",
+  },
+  photoRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingBottom: 4,
+  },
+  thumbWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    overflow: "hidden",
+    position: "relative",
+  },
+  thumbImage: {
+    width: "100%",
+    height: "100%",
+  },
+  removePhotoBtn: {
+    position: "absolute",
+    top: 3,
+    right: 3,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 10,
+    padding: 3,
+  },
+  addPhotoBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: "#C8A97A",
+    borderStyle: "dashed",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FDF6EC",
+    gap: 2,
+  },
+  addPhotoText: {
+    fontSize: 11,
+    color: "#A97C4E",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  errorText: {
+    marginTop: 10,
+    color: "#C0392B",
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  actionsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 16,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 10,
+    backgroundColor: "#E6D6BE",
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#C4A882",
+  },
+  cancelBtnText: {
+    fontSize: 14,
+    fontFamily: "SourceSerifPro-Bold",
+    color: "#8C6D4F",
+  },
+  saveBtn: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 10,
+    backgroundColor: "#6B4F2E",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 44,
+  },
+  saveBtnDisabled: {
+    opacity: 0.6,
+  },
+  saveBtnText: {
+    fontSize: 14,
+    fontFamily: "SourceSerifPro-Bold",
+    color: "#FDF6EC",
   },
 });
 

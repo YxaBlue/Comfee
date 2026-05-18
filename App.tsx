@@ -14,6 +14,7 @@ import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
 import BusinessNavigation from "./app/features/business/screens/BusinessNavigation";
 import BusinessProfile from "./app/features/business/screens/BusinessProfile";
 import OwnerVerificationScreen from "./app/features/business/screens/OwnerVerification";
+import EditCafeProfileScreen from "./app/features/business/screens/EditCafeProfile";
 import CafeProfileScreen from "./app/features/cafe/screens/cafeProfile";
 import Dashboard from "./app/features/cafe/screens/Dashboard";
 import FilteredCafes from "./app/features/cafe/screens/DashboardFilter";
@@ -60,9 +61,14 @@ export type RootStackParamList = {
     userCoords?: { latitude: number; longitude: number };
   };
   FilteredCafes: { filterType: string };
+  
   BusinessNavigation: undefined;
   BusinessProfile: { cafeId?: string } | undefined;
+  ProfileBusi: undefined;
+  
+  EditCafeProfile: { cafeId: string };
   CafeProfile: { cafeId: string };
+  
   WriteReviewFE:
     | {
         cafeName?: string;
@@ -274,6 +280,11 @@ export default function App() {
           component={BusinessNavigation}
         />
         <Stack.Screen name="BusinessProfile" component={BusinessProfile} />
+        <Stack.Screen name="ProfileBusi" component={BusinessProfile} />
+        <Stack.Screen
+          name="EditCafeProfile"
+          component={EditCafeProfileScreen}
+        />
         <Stack.Screen name="CafeProfile" component={CafeProfileScreen} />
         <Stack.Screen name="WriteReviewFE" component={WriteReviewFEScreen} />
       </Stack.Navigator>
