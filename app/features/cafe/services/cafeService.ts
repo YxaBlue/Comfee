@@ -277,8 +277,15 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
       .from("cafe")
       .select(
         `
-        id, name, address, email, phone,
-        review ( rating ), avatar_url, main_photo_url,
+        id,
+        name,
+        address,
+        email,
+        phone,
+        review ( rating ),
+        avatar_url,
+        main_photo_url,
+        menu_urls,
         cafe_hours (weekday, open_time, close_time),
         info
       `,
@@ -328,7 +335,7 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
     avatar_url: data.avatar_url ?? null,
     // main_photo_url is used as the cover/banner image on the profile screen
     cover_photo_url: data.main_photo_url ?? null,
-    menu_urls: null,
+    menu_urls: data.menu_urls ?? null,
     average_rating,
     review_count: ratings.length,
     favorites_count: 0,
