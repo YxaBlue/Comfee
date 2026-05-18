@@ -1,8 +1,6 @@
 import { calculateAge } from "@/app/shared/utils/dateUtils";
 import { supabase } from "../../../shared/lib/supabaseClient";
 import { validateEditProfile } from "../utils/profileValidation";
-
-// Re-export review-related types and functions from the canonical source
 export {
   deleteReview,
   editReview,
@@ -83,13 +81,16 @@ async function uploadToStorage(
   uri: string,
   ext: string,
 ): Promise<string> {
-  // fetch the local file and convert to blob
-  const response = await fetch(uri);
-  const blob = await response.blob();
+  const formData = new FormData();
+  formData.append("file", {
+    uri,
+    name: `upload.${ext}`,
+    type: `image/${ext}`,
+  } as any);
 
   const { error: uploadError } = await supabase.storage
     .from(bucket)
-    .upload(path, blob, {
+    .upload(path, formData, {
       upsert: true,
       contentType: `image/${ext}`,
     });
