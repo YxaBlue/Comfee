@@ -1,14 +1,17 @@
 import { RootStackParamList } from "@/App";
-import TopBar from "@/components/TopBar";
 import {
+  AmenitiesFormState,
+  buildAmenitiesFromCafe,
   buildHoursFromCafe,
   EditCafeDayHours,
+  saveAmenities,
   saveCafeProfile,
 } from "@/app/features/business/services/editCafeService";
 import {
   CafeDetail,
   getCafeById,
 } from "@/app/features/cafe/services/cafeService";
+import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
@@ -22,6 +25,7 @@ import {
   ImageBackground,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Switch,
@@ -83,6 +87,22 @@ export default function EditCafeProfile() {
   );
   const [hours, setHours] = useState<EditCafeDayHours[]>([]);
 
+  // ── Amenities state ──
+  const [amenities, setAmenities] = useState<AmenitiesFormState>({
+    wifi_speed: null,
+    sockets: null,
+    parking: null,
+    lighting: null,
+    music: null,
+    price_level: null,
+    pet_friendly: false,
+    seating: [],
+    tables_type: [],
+    coffee_bean_type: [],
+    coffee_brew_method: [],
+    suitable_for: [],
+  });
+
   useEffect(() => {
     (async () => {
       try {
@@ -113,6 +133,7 @@ export default function EditCafeProfile() {
     setCoverUri(cafe.cover_photo_url);
     setAvatarUri(cafe.avatar_url);
     setHours(buildHoursFromCafe(cafe.opening_hours));
+    setAmenities(buildAmenitiesFromCafe(cafe));
   };
 
   const clearFieldError = (key: string) => {
@@ -196,23 +217,27 @@ export default function EditCafeProfile() {
     if (Object.keys(errors).length > 0) return;
 
     setSaving(true);
-    const result = await saveCafeProfile({
-      cafeId: Number(cafeId),
-      name,
-      info,
-      address,
-      phone,
-      email,
-      coverUri: coverUri!,
-      avatarUri: avatarUri!,
-      newCoverLocalUri,
-      newAvatarLocalUri,
-      hours,
-    });
+    const [profileResult, amenitiesResult] = await Promise.all([
+      saveCafeProfile({
+        cafeId: Number(cafeId),
+        name,
+        info,
+        address,
+        phone,
+        email,
+        coverUri: coverUri!,
+        avatarUri: avatarUri!,
+        newCoverLocalUri,
+        newAvatarLocalUri,
+        hours,
+      }),
+      saveAmenities(Number(cafeId), amenities),
+    ]);
     setSaving(false);
 
-    if (result.error) {
-      Alert.alert("Could not save", result.error);
+    const saveError = profileResult.error ?? amenitiesResult.error;
+    if (saveError) {
+      Alert.alert("Could not save", saveError);
       return;
     }
 
@@ -420,6 +445,163 @@ export default function EditCafeProfile() {
               ) : null}
             </View>
           ))}
+
+
+          {/* ── Amenities ── */}
+          <Text style={styles.sectionLabel}>Amenities</Text>
+
+          <AmenityPillRow
+            label="WiFi"
+            options={["None", "Slow", "Moderate", "Fast"]}
+            single
+            selected={amenities.wifi_speed ? [amenities.wifi_speed] : []}
+            onToggle={(val) =>
+              setAmenities((prev) => ({
+                ...prev,
+                wifi_speed: prev.wifi_speed === val ? null : (val as AmenitiesFormState["wifi_speed"]),
+              }))
+            }
+          />
+          <AmenityPillRow
+            label="Sockets"
+            options={["None", "Some", "Many"]}
+            single
+            selected={amenities.sockets ? [amenities.sockets] : []}
+            onToggle={(val) =>
+              setAmenities((prev) => ({
+                ...prev,
+                sockets: prev.sockets === val ? null : (val as AmenitiesFormState["sockets"]),
+              }))
+            }
+          />
+          <AmenityPillRow
+            label="Parking"
+            options={["None", "Limited", "Plenty"]}
+            single
+            selected={amenities.parking ? [amenities.parking] : []}
+            onToggle={(val) =>
+              setAmenities((prev) => ({
+                ...prev,
+                parking: prev.parking === val ? null : (val as AmenitiesFormState["parking"]),
+              }))
+            }
+          />
+          <AmenityPillRow
+            label="Lighting"
+            options={["Dim", "Balanced", "Bright"]}
+            single
+            selected={amenities.lighting ? [amenities.lighting] : []}
+            onToggle={(val) =>
+              setAmenities((prev) => ({
+                ...prev,
+                lighting: prev.lighting === val ? null : (val as AmenitiesFormState["lighting"]),
+              }))
+            }
+          />
+          <AmenityPillRow
+            label="Music"
+            options={["Quiet", "Normal", "Blaring"]}
+            single
+            selected={amenities.music ? [amenities.music] : []}
+            onToggle={(val) =>
+              setAmenities((prev) => ({
+                ...prev,
+                music: prev.music === val ? null : (val as AmenitiesFormState["music"]),
+              }))
+            }
+          />
+          <AmenityPillRow
+            label="Seating"
+            options={["Inside", "Outside"]}
+            selected={amenities.seating}
+            onToggle={(val) =>
+              setAmenities((prev) => ({
+                ...prev,
+                seating: prev.seating.includes(val)
+                  ? prev.seating.filter((s) => s !== val)
+                  : [...prev.seating, val],
+              }))
+            }
+          />
+          <AmenityPillRow
+            label="Tables"
+            options={["Bar Type", "Individual Tables", "Large Tables"]}
+            selected={amenities.tables_type}
+            onToggle={(val) =>
+              setAmenities((prev) => ({
+                ...prev,
+                tables_type: prev.tables_type.includes(val)
+                  ? prev.tables_type.filter((t) => t !== val)
+                  : [...prev.tables_type, val],
+              }))
+            }
+          />
+          <AmenityPillRow
+            label="Pet Friendly"
+            options={["Yes", "No"]}
+            single
+            selected={[amenities.pet_friendly ? "Yes" : "No"]}
+            onToggle={(val) =>
+              setAmenities((prev) => ({ ...prev, pet_friendly: val === "Yes" }))
+            }
+          />
+
+          <Text style={styles.sectionLabel}>Coffee</Text>
+          <AmenityPillRow
+            label="Bean Type"
+            options={["Arabica", "Robusta", "Liberica", "Excelsa"]}
+            selected={amenities.coffee_bean_type}
+            onToggle={(val) =>
+              setAmenities((prev) => ({
+                ...prev,
+                coffee_bean_type: prev.coffee_bean_type.includes(val)
+                  ? prev.coffee_bean_type.filter((b) => b !== val)
+                  : [...prev.coffee_bean_type, val],
+              }))
+            }
+          />
+          <AmenityPillRow
+            label="Brew Method"
+            options={["Espresso", "Drip", "French Press", "Pour Over", "Cold Brew"]}
+            selected={amenities.coffee_brew_method}
+            onToggle={(val) =>
+              setAmenities((prev) => ({
+                ...prev,
+                coffee_brew_method: prev.coffee_brew_method.includes(val)
+                  ? prev.coffee_brew_method.filter((b) => b !== val)
+                  : [...prev.coffee_brew_method, val],
+              }))
+            }
+          />
+
+          <Text style={styles.sectionLabel}>Price Level</Text>
+          <AmenityPillRow
+            label="Price Range"
+            options={["P", "PP", "PPP"]}
+            single
+            selected={amenities.price_level ? [amenities.price_level] : []}
+            onToggle={(val) =>
+              setAmenities((prev) => ({
+                ...prev,
+                price_level: prev.price_level === val ? null : (val as AmenitiesFormState["price_level"]),
+              }))
+            }
+          />
+
+          <Text style={styles.sectionLabel}>Suitable For</Text>
+          <AmenityPillRow
+            label="Suitable Conditions"
+            options={["Student", "Work", "Group", "Vibes"]}
+            selected={amenities.suitable_for}
+            onToggle={(val) =>
+              setAmenities((prev) => ({
+                ...prev,
+                suitable_for: prev.suitable_for.includes(val)
+                  ? prev.suitable_for.filter((s) => s !== val)
+                  : [...prev.suitable_for, val],
+              }))
+            }
+          />
 
           <TouchableOpacity
             style={[styles.saveButton, saving && styles.saveButtonDisabled]}
@@ -684,5 +866,103 @@ const styles = StyleSheet.create({
     color: "#FFF7ED",
     fontSize: 17,
     fontFamily: "SourceSerifPro-Bold",
+  },
+});
+
+// ─── AmenityPillRow ───────────────────────────────────────────────────────────
+
+function AmenityPillRow({
+  label,
+  options,
+  selected,
+  single = false,
+  onToggle,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+  single?: boolean;
+  onToggle: (val: string) => void;
+}) {
+  return (
+    <View style={amenityEditStyles.rowWrap}>
+      <Text style={amenityEditStyles.rowLabel}>{label}</Text>
+      <View style={amenityEditStyles.pillsRow}>
+        {options.map((opt) => {
+          const isSelected = selected.includes(opt);
+          return (
+            <Pressable
+              key={opt}
+              style={[
+                amenityEditStyles.pill,
+                isSelected && amenityEditStyles.pillSelected,
+              ]}
+              onPress={() => onToggle(opt)}
+            >
+              <Text
+                style={[
+                  amenityEditStyles.pillText,
+                  isSelected && amenityEditStyles.pillTextSelected,
+                ]}
+              >
+                {opt}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      {single && (
+        <Text style={amenityEditStyles.singleHint}>Tap to select one</Text>
+      )}
+    </View>
+  );
+}
+
+const amenityEditStyles = StyleSheet.create({
+  rowWrap: {
+    backgroundColor: "#FFF7ED",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E9D0A2",
+    padding: 12,
+    marginBottom: 10,
+  },
+  rowLabel: {
+    fontSize: 13,
+    color: "#6B4F2E",
+    fontFamily: "SourceSerifPro-Bold",
+    marginBottom: 8,
+  },
+  pillsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  pill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: "#D2BA94",
+    backgroundColor: "transparent",
+  },
+  pillSelected: {
+    backgroundColor: "#6B4F2E",
+    borderColor: "#6B4F2E",
+  },
+  pillText: {
+    fontSize: 13,
+    color: "#6B4F2E",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  pillTextSelected: {
+    color: "#FFF7EA",
+    fontWeight: "600",
+  },
+  singleHint: {
+    marginTop: 6,
+    fontSize: 10,
+    color: "#B09070",
+    fontFamily: "SourceSerifPro-Regular",
   },
 });

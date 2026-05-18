@@ -12,7 +12,6 @@ import {
 } from "react-native";
 
 import { MaterialIcons } from "@expo/vector-icons";
-
 import { StarRating } from "./StarRating";
 
 

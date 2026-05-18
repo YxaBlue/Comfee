@@ -28,13 +28,15 @@ import { CafeDetail, getCafeById } from "../services/cafeService";
 import { ReviewCard } from "@/components/cafe/ReviewCard";
 import { WriteReviewCTA } from "@/components/cafe/WriteReview";
 import { FavoriteButton } from "@/components/input/FavoritesBtn";
+import { CafePost, useCafePosts } from "@/hooks/useCafePosts";
+import { formatReviewDate } from "../../../shared/modals/reviewService";
 import { Amenities, AmenitiesMenuTab, Coffee } from "./AmenitiesSubpage";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "CafeProfile">;
 };
 
-type Tab = "Cafe-Info" | "Cafe-Reviews" | "Cafe-Ammenities-Menu";
+type Tab = "Cafe-Info" | "Cafe-Posts" | "Cafe-Reviews" | "Cafe-Ammenities-Menu";
 
 
 // 1 = Sunday, 2 = Monday, ... 7 = Saturday (matches Supabase numeric day values)
@@ -299,6 +301,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: "Cafe-Info", icon: "info" },
+    { key: "Cafe-Posts", icon: "article" },
     { key: "Cafe-Reviews", icon: "rate-review" },
     { key: "Cafe-Ammenities-Menu", icon: "list" },
   ];
@@ -500,6 +503,14 @@ export default function CafeProfileScreen({ navigation }: Props) {
               <CafeInfoTab cafe={{ ...cafe, favoritesCount }} />
             )}
 
+            {activeTab === "Cafe-Posts" && (
+              <PublicPostsTab
+                cafeId={Number(cafeId)}
+                cafeName={cafe.name}
+                cafeAvatarUrl={cafe.avatar_url}
+              />
+            )}
+
             {activeTab === "Cafe-Reviews" && (
               <View>
                 <WriteReviewCTA
@@ -630,13 +641,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 4,
     lineHeight: 17,
-  },
-});
-
-
-const reviewsHeaderStyles = StyleSheet.create({
-  block: {
-    marginTop: 4,
   },
 });
 
@@ -875,5 +879,240 @@ const infoStyles = StyleSheet.create({
     height: 5,
     backgroundColor: "#FFEFD5",
     marginBottom: 4,
+  },
+});
+
+// ─── Public Posts Tab ─────────────────────────────────────────────────────────
+
+function PublicPostsTab({
+  cafeId,
+  cafeName,
+  cafeAvatarUrl,
+}: {
+  cafeId: number;
+  cafeName: string;
+  cafeAvatarUrl: string | null;
+}) {
+  const { posts, loading } = useCafePosts(cafeId);
+
+  if (loading) {
+    return (
+      <ActivityIndicator
+        size="small"
+        color="#8C6D4F"
+        style={{ marginTop: 20 }}
+      />
+    );
+  }
+
+  if (posts.length === 0) {
+    return (
+      <View style={styles.emptyState}>
+        <MaterialIcons name="article" size={44} color="#D2BA94" />
+        <Text style={styles.emptyText}>No posts yet</Text>
+        <Text style={styles.emptySubText}>
+          This café hasn't shared any updates yet.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View>
+      {posts.map((post) => (
+        <PublicPostCard
+          key={post.id}
+          post={post}
+          cafeName={cafeName}
+          cafeAvatarUrl={cafeAvatarUrl}
+        />
+      ))}
+    </View>
+  );
+}
+
+// ─── Public Post Card (read-only) ────────────────────────────────────────────
+
+function PublicPostCard({
+  post,
+  cafeName,
+  cafeAvatarUrl,
+}: {
+  post: CafePost;
+  cafeName: string;
+  cafeAvatarUrl: string | null;
+}) {
+  const [cardWidth, setCardWidth] = useState(0);
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const displayDate = formatReviewDate(post.created_at, null);
+  const postPhotoUrls = post.photo_url?.filter(Boolean) ?? [];
+  const postImageHeight = Math.round(cardWidth * 0.68);
+
+  return (
+    <View
+      style={publicPostStyles.container}
+      onLayout={(e) => setCardWidth(e.nativeEvent.layout.width)}
+    >
+      <View style={publicPostStyles.header}>
+        <View style={publicPostStyles.avatar}>
+          {cafeAvatarUrl ? (
+            <Image
+              source={{ uri: cafeAvatarUrl }}
+              style={{ width: "100%", height: "100%", borderRadius: 25 }}
+              resizeMode="cover"
+            />
+          ) : (
+            <MaterialIcons name="store" size={20} color="#C8A97A" />
+          )}
+        </View>
+        <View style={publicPostStyles.meta}>
+          <Text
+            style={publicPostStyles.cafeName}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {cafeName}
+          </Text>
+          <Text style={publicPostStyles.date}>{displayDate}</Text>
+        </View>
+      </View>
+
+      {post.caption ? (
+        <Text style={publicPostStyles.caption}>{post.caption}</Text>
+      ) : null}
+
+      {postPhotoUrls.length > 0 && cardWidth > 0 ? (
+        <View style={{ overflow: "hidden" }}>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={(e) =>
+              setActivePhotoIndex(
+                Math.round(e.nativeEvent.contentOffset.x / cardWidth),
+              )
+            }
+            scrollEventThrottle={16}
+          >
+            {postPhotoUrls.map((uri, i) => (
+              <Image
+                key={`${uri}-${i}`}
+                source={{ uri }}
+                style={{ width: cardWidth, height: postImageHeight }}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
+          {postPhotoUrls.length > 1 && (
+            <View style={publicPostStyles.dotsRow}>
+              {postPhotoUrls.map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    publicPostStyles.dot,
+                    i === activePhotoIndex && publicPostStyles.dotActive,
+                  ]}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      ) : null}
+
+      <View style={publicPostStyles.footer}>
+        <MaterialIcons name="thumb-up-off-alt" size={20} color="#8C6D4F" />
+        <Text style={publicPostStyles.likesCount}>{post.likes}</Text>
+      </View>
+    </View>
+  );
+}
+
+const publicPostStyles = StyleSheet.create({
+  container: {
+    backgroundColor: "#FFF7ED",
+    borderRadius: 12,
+    borderColor: "#E9D0A2",
+    borderWidth: 0.2,
+    marginBottom: 10,
+    overflow: "visible",
+    shadowColor: "#8C6D4F",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    padding: 12,
+    paddingBottom: 4,
+  },
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#D2BA94",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    overflow: "hidden",
+  },
+  meta: {
+    flex: 1,
+    gap: 1,
+    justifyContent: "center",
+    minHeight: 50,
+  },
+  cafeName: {
+    fontSize: 15,
+    color: "#3B2A1A",
+    fontFamily: "SourceSerifPro-Bold",
+  },
+  date: {
+    fontSize: 11,
+    color: "#8C6D4F",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  caption: {
+    fontSize: 14,
+    color: "#4A3220",
+    lineHeight: 18,
+    paddingHorizontal: 20,
+    paddingTop: 6,
+    paddingBottom: 8,
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 6,
+  },
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#C8A97A",
+  },
+  dotActive: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#6B4F2E",
+  },
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    paddingBottom: 6,
+  },
+  likesCount: {
+    fontSize: 14,
+    color: "#8C6D4F",
+    fontFamily: "SourceSerifPro-Regular",
   },
 });

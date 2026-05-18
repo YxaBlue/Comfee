@@ -205,3 +205,122 @@ export async function saveCafeProfile(
     return { error: err?.message ?? "Failed to save café profile." };
   }
 }
+
+
+// ─── Amenities types ──────────────────────────────────────────────────────────
+
+export type AmenitiesFormState = {
+  wifi_speed: "None" | "Slow" | "Moderate" | "Fast" | null;
+  sockets: "None" | "Some" | "Many" | null;
+  parking: "None" | "Limited" | "Plenty" | null;
+  lighting: "Dim" | "Balanced" | "Bright" | null;
+  music: "Quiet" | "Normal" | "Blaring" | null;
+  price_level: "P" | "PP" | "PPP" | null;
+  pet_friendly: boolean;
+  seating: string[];
+  tables_type: string[];
+  coffee_bean_type: string[];
+  coffee_brew_method: string[];
+  suitable_for: string[];
+};
+
+export function buildAmenitiesFromCafe(cafe: {
+  wifi_speed: string | null;
+  sockets: string | null;
+  parking: string | null;
+  lighting: string | null;
+  music: string | null;
+  price_level: string | null;
+  pet_friendly: boolean;
+  seating: string[];
+  tables_type: string[];
+  coffee_bean_type: string[];
+  coffee_brew_method: string[];
+  suitable_for: string[];
+}): AmenitiesFormState {
+  return {
+    wifi_speed: (cafe.wifi_speed ?? null) as AmenitiesFormState["wifi_speed"],
+    sockets: (cafe.sockets ?? null) as AmenitiesFormState["sockets"],
+    parking: (cafe.parking ?? null) as AmenitiesFormState["parking"],
+    lighting: (cafe.lighting ?? null) as AmenitiesFormState["lighting"],
+    music: (cafe.music ?? null) as AmenitiesFormState["music"],
+    price_level: (cafe.price_level ?? null) as AmenitiesFormState["price_level"],
+    pet_friendly: cafe.pet_friendly ?? false,
+    seating: cafe.seating ?? [],
+    tables_type: cafe.tables_type ?? [],
+    coffee_bean_type: cafe.coffee_bean_type ?? [],
+    coffee_brew_method: cafe.coffee_brew_method ?? [],
+    suitable_for: cafe.suitable_for ?? [],
+  };
+}
+
+// ─── DB value maps (display → DB raw) ────────────────────────────────────────
+
+// The DB stores lowercase/underscore values, cafeService normalises them to
+// display strings on read. We reverse that here on write.
+const SEATING_TO_DB: Record<string, string> = {
+  Inside: "inside",
+  Outside: "outside",
+};
+const TABLES_TO_DB: Record<string, string> = {
+  "Bar Type": "Bar Type",
+  "Individual Tables": "Individual Tables",
+  "Large Tables": "Large Tables",
+};
+const BEAN_TO_DB: Record<string, string> = {
+  Arabica: "Arabica",
+  Robusta: "Robusta",
+  Liberica: "Liberica",
+  Excelsa: "Excelsa",
+};
+const BREW_TO_DB: Record<string, string> = {
+  Espresso: "Espresso",
+  Drip: "Drip",
+  "French Press": "French Press",
+  "Pour Over": "Pour Over",
+  "Cold Brew": "Cold Brew",
+};
+const SUITABLE_TO_DB: Record<string, string> = {
+  Student: "student",
+  Work: "work",
+  Group: "group",
+  Vibes: "vibes",
+};
+
+function mapArr(arr: string[], map: Record<string, string>): string[] {
+  return arr.map((v) => map[v] ?? v);
+}
+
+export async function saveAmenities(
+  cafeId: number,
+  amenities: AmenitiesFormState,
+): Promise<{ error: string | null }> {
+  try {
+    const { supabase } = await import("@/app/shared/lib/supabaseClient");
+
+    const payload = {
+      cafe_id: cafeId,
+      wifi_speed: amenities.wifi_speed?.toLowerCase() ?? null,
+      sockets: amenities.sockets?.toLowerCase() ?? null,
+      parking: amenities.parking?.toLowerCase() ?? null,
+      lighting: amenities.lighting?.toLowerCase() ?? null,
+      music: amenities.music?.toLowerCase() ?? null,
+      price_level: amenities.price_level ?? null,
+      pet_friendly: amenities.pet_friendly,
+      seating: mapArr(amenities.seating, SEATING_TO_DB),
+      tables_type: mapArr(amenities.tables_type, TABLES_TO_DB),
+      coffee_bean_type: mapArr(amenities.coffee_bean_type, BEAN_TO_DB),
+      coffee_brew_method: mapArr(amenities.coffee_brew_method, BREW_TO_DB),
+      suitable_for: mapArr(amenities.suitable_for, SUITABLE_TO_DB),
+    };
+
+    const { error } = await supabase
+      .from("cafe_amenities")
+      .upsert(payload, { onConflict: "cafe_id" });
+
+    if (error) return { error: error.message };
+    return { error: null };
+  } catch (err: any) {
+    return { error: err?.message ?? "Failed to save amenities." };
+  }
+}

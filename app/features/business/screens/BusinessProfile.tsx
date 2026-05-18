@@ -3,10 +3,9 @@ import TopBar from "@/components/TopBar";
 import { ReviewCard } from "@/components/cafe/ReviewCard";
 import { ReviewsSummaryStrip } from "@/components/cafe/ReviewsSummaryStrip";
 import { MaterialIcons } from "@expo/vector-icons";
-import { RouteProp, useRoute } from "@react-navigation/native";
-import * as ImagePicker from "expo-image-picker";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,6 +24,12 @@ import {
   View,
 } from "react-native";
 
+import {
+  AmenitiesFormState,
+  buildAmenitiesFromCafe,
+  saveAmenities,
+} from "@/app/features/business/services/editCafeService";
+import { AmenitiesMenuTab } from "@/app/features/cafe/screens/AmenitiesSubpage";
 import {
   CafeInfoTab,
   StarFilterBar,
@@ -55,7 +60,7 @@ type LoadStatus =
   | "no_owner"
   | "cafe_load_failed";
 
-type Tab = "info" | "posts" | "reviews";
+type Tab = "info" | "posts" | "reviews" | "amenities";
 
 export default function BusinessProfile() {
   const navigation = useNavigation<NavProps>();
@@ -74,6 +79,10 @@ export default function BusinessProfile() {
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [starFilter, setStarFilter] = useState<number | null>(null);
   const [createPostVisible, setCreatePostVisible] = useState(false);
+  const [amenitiesEditorVisible, setAmenitiesEditorVisible] = useState(false);
+  const [amenitiesForm, setAmenitiesForm] = useState<AmenitiesFormState | null>(null);
+  const [amenitiesSaving, setAmenitiesSaving] = useState(false);
+  const [amenitiesSaveError, setAmenitiesSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -169,6 +178,13 @@ export default function BusinessProfile() {
           console.warn("[BusinessProfile] Café not found for id:", id);
           setLoadStatus("cafe_load_failed");
           return;
+        }
+
+        // Build initial amenities editor state
+        try {
+          setAmenitiesForm(buildAmenitiesFromCafe(cafeData as any));
+        } catch (e) {
+          // ignore
         }
 
         const { count, error: countError } = await supabase
@@ -267,6 +283,16 @@ export default function BusinessProfile() {
     }
     if (activeTab === "info" && cafeId) {
       navigation.navigate("EditCafeProfile", { cafeId });
+      return;
+    }
+    if (activeTab === "amenities" && cafe) {
+      // open inline amenities editor
+      try {
+        setAmenitiesForm(buildAmenitiesFromCafe(cafe as any));
+      } catch (e) {
+        setAmenitiesForm(null);
+      }
+      setAmenitiesEditorVisible(true);
       return;
     }
   };
@@ -402,10 +428,38 @@ export default function BusinessProfile() {
                 color={activeTab === "reviews" ? "#3B2A1A" : "#8C6D4F"}
               />
             </TouchableOpacity>
+            <TouchableOpacity onPress={() => setActiveTab("amenities")}>
+              <MaterialIcons
+                name="tune"
+                size={25}
+                color={activeTab === "amenities" ? "#3B2A1A" : "#8C6D4F"}
+              />
+            </TouchableOpacity>
           </View>
 
           {activeTab === "info" && (
             <CafeInfoTab cafe={{ ...cafe, favoritesCount }} />
+          )}
+          {activeTab === "amenities" && (
+            <AmenitiesMenuTab
+              amenities={{
+                WiFi: cafe.wifi_speed,
+                Sockets: cafe.sockets,
+                Parking: cafe.parking,
+                Lighting: cafe.lighting,
+                Seating: cafe.seating,
+                Tables: cafe.tables_type,
+                Music: cafe.music,
+                PetFriendly: cafe.pet_friendly,
+                SuitableConditions: cafe.suitable_for as ("Student" | "Work" | "Group" | "Vibes")[],
+              }}
+              menuURLs={cafe.menu_urls}
+              coffee={{
+                BeanType: cafe.coffee_bean_type as ("Arabica" | "Robusta" | "Liberica" | "Excelsa")[],
+                BrewMethod: cafe.coffee_brew_method as ("Espresso" | "Drip" | "French Press" | "Pour Over" | "Cold Brew")[],
+              }}
+              price={{ PriceRange: cafe.price_level }}
+            />
           )}
           {activeTab === "posts" && (
             <OwnerPostsTab
@@ -433,6 +487,155 @@ export default function BusinessProfile() {
           )}
         </View>
       </ScrollView>
+
+      {/* Amenities editor modal */}
+      <Modal
+        visible={amenitiesEditorVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          if (!amenitiesSaving) setAmenitiesEditorVisible(false);
+        }}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={editModalStyles.overlay}
+        >
+          <Pressable
+            style={editModalStyles.backdrop}
+            onPress={() => {
+              if (!amenitiesSaving) setAmenitiesEditorVisible(false);
+            }}
+          />
+          <View style={editModalStyles.card}>
+            <Text style={editModalStyles.title}>Edit Amenities</Text>
+
+            <Text style={{ marginTop: 8, color: "#6B4F2E" }}>WiFi</Text>
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+              {(["None", "Slow", "Moderate", "Fast"] as const).map(
+                (opt) => (
+                  <TouchableOpacity
+                    key={opt}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: "#D2BA94",
+                      backgroundColor:
+                        amenitiesForm?.wifi_speed === opt ? "#6B4F2E" : "transparent",
+                    }}
+                    onPress={() =>
+                      setAmenitiesForm((prev) =>
+                        prev ? { ...prev, wifi_speed: opt as any } : prev,
+                      )
+                    }
+                    disabled={amenitiesSaving}
+                  >
+                    <Text style={{ color: amenitiesForm?.wifi_speed === opt ? "#FFF7EA" : "#6B4F2E" }}>{opt}</Text>
+                  </TouchableOpacity>
+                ),
+              )}
+            </View>
+
+            <Text style={{ marginTop: 14, color: "#6B4F2E" }}>Pet Friendly</Text>
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+              <TouchableOpacity
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: "#D2BA94",
+                  backgroundColor: amenitiesForm?.pet_friendly ? "#6B4F2E" : "transparent",
+                }}
+                onPress={() => setAmenitiesForm((prev) => (prev ? { ...prev, pet_friendly: true } : prev))}
+                disabled={amenitiesSaving}
+              >
+                <Text style={{ color: amenitiesForm?.pet_friendly ? "#FFF7EA" : "#6B4F2E" }}>Yes</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: "#D2BA94",
+                  backgroundColor: amenitiesForm && !amenitiesForm.pet_friendly ? "#6B4F2E" : "transparent",
+                }}
+                onPress={() => setAmenitiesForm((prev) => (prev ? { ...prev, pet_friendly: false } : prev))}
+                disabled={amenitiesSaving}
+              >
+                <Text style={{ color: amenitiesForm && !amenitiesForm.pet_friendly ? "#FFF7EA" : "#6B4F2E" }}>No</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ marginTop: 14, color: "#6B4F2E" }}>Price Level</Text>
+            <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+              {( [ {symbol: '₱', value: 'P'}, {symbol: '₱₱', value: 'PP'}, {symbol: '₱₱₱', value: 'PPP'} ] as const).map((opt) => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 10,
+                    borderWidth: 1,
+                    borderColor: "#D2BA94",
+                    backgroundColor: amenitiesForm?.price_level === opt.value ? "#6B4F2E" : "transparent",
+                  }}
+                  onPress={() => setAmenitiesForm((prev) => (prev ? { ...prev, price_level: opt.value as any } : prev))}
+                  disabled={amenitiesSaving}
+                >
+                  <Text style={{ color: amenitiesForm?.price_level === opt.value ? "#FFF7EA" : "#6B4F2E" }}>{opt.symbol}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {amenitiesSaveError ? <Text style={{ color: '#C0392B', marginTop: 10 }}>{amenitiesSaveError}</Text> : null}
+
+            <View style={editModalStyles.actionsRow}>
+              <TouchableOpacity
+                style={editModalStyles.cancelBtn}
+                onPress={() => setAmenitiesEditorVisible(false)}
+                disabled={amenitiesSaving}
+              >
+                <Text style={editModalStyles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  editModalStyles.saveBtn,
+                  amenitiesSaving && editModalStyles.saveBtnDisabled,
+                ]}
+                onPress={async () => {
+                  if (!amenitiesForm || !cafeId) return;
+                  setAmenitiesSaveError(null);
+                  setAmenitiesSaving(true);
+                  try {
+                    const res = await saveAmenities(Number(cafeId), amenitiesForm);
+                    if (res.error) {
+                      setAmenitiesSaveError(res.error);
+                    } else {
+                      setAmenitiesEditorVisible(false);
+                      void reloadCafe();
+                    }
+                  } catch (err: any) {
+                    setAmenitiesSaveError(err?.message ?? 'Failed to save amenities');
+                  } finally {
+                    setAmenitiesSaving(false);
+                  }
+                }}
+                disabled={amenitiesSaving}
+              >
+                {amenitiesSaving ? (
+                  <ActivityIndicator size="small" color="#FDF6EC" />
+                ) : (
+                  <Text style={editModalStyles.saveBtnText}>Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {activeTab !== "reviews" && (
         <TouchableOpacity style={styles.editButton} onPress={handleFabPress}>

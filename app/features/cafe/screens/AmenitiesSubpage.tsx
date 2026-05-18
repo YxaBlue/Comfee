@@ -1,15 +1,15 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRef, useState } from "react";
 import {
-    Dimensions,
-    FlatList,
-    Image,
-    Modal,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Dimensions,
+  FlatList,
+  Image,
+  Modal,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from "react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -450,37 +450,41 @@ export function AmenitiesMenuTab({ amenities, menuURLs, coffee, price }: Ameniti
       ))}
 
       {/* ── Suitable Conditions ── */}
-      {amenities.SuitableConditions?.length > 0 && (
-        <View style={amenityCardStyles.card}>
-          <View style={amenityCardStyles.cardHeader}>
-            <MaterialIcons name="group" size={17} color="#6B4F2E" />
-            <Text style={amenityCardStyles.cardTitle}>Suitable Conditions</Text>
-          </View>
-          <View style={amenityCardStyles.optionsRow}>
-            {(["Student", "Work", "Group", "Vibes"] as const).map((cond) => {
-              const isSelected = amenities.SuitableConditions.includes(cond);
-              return (
-                <View
-                  key={cond}
-                  style={[
-                    amenityCardStyles.optionPill,
-                    isSelected && amenityCardStyles.optionPillSelected,
-                  ]}
-                >
-                  <Text
+      {(() => {
+        const suitable = amenities.SuitableConditions ?? [];
+        if (suitable.length === 0) return null;
+        return (
+          <View style={amenityCardStyles.card}>
+            <View style={amenityCardStyles.cardHeader}>
+              <MaterialIcons name="group" size={17} color="#6B4F2E" />
+              <Text style={amenityCardStyles.cardTitle}>Suitable Conditions</Text>
+            </View>
+            <View style={amenityCardStyles.optionsRow}>
+              {( ["Student", "Work", "Group", "Vibes"] as const).map((cond) => {
+                const isSelected = suitable.includes(cond as any);
+                return (
+                  <View
+                    key={cond}
                     style={[
-                      amenityCardStyles.optionText,
-                      isSelected && amenityCardStyles.optionTextSelected,
+                      amenityCardStyles.optionPill,
+                      isSelected && amenityCardStyles.optionPillSelected,
                     ]}
                   >
-                    {cond}
-                  </Text>
-                </View>
-              );
-            })}
+                    <Text
+                      style={[
+                        amenityCardStyles.optionText,
+                        isSelected && amenityCardStyles.optionTextSelected,
+                      ]}
+                    >
+                      {cond}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
           </View>
-        </View>
-      )}
+        );
+      })()}
 
       {/* ── Pet Friendly ── */}
       <View style={amenityCardStyles.card}>
