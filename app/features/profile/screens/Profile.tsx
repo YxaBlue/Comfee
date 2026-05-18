@@ -42,7 +42,7 @@ type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "Profile">;
 };
 
-type Tab = "info" | "favorites" | "reviews";
+type Tab = "info" | "favorites" | "posts" | "reviews";
 
 type EditableFields = {
   username: string;
@@ -58,6 +58,17 @@ type FaveCafe = {
   name: string;
   location: string;
   mainPhotoUrl: string | null;
+};
+
+type FollowedCafePost = {
+  id: number;
+  cafe_id: number;
+  caption: string | null;
+  photo_url: string[] | null;
+  likes: number;
+  isLiked: boolean;
+  created_at: string;
+  cafe?: { name: string; avatar_url: string | null } | null;
 };
 
 const AVATAR_SIZE = 106;
@@ -200,14 +211,16 @@ function ReviewCard({
         </TouchableOpacity>
       </View>
 
-      <Text
-        style={[
-          styles.reviewComment,
-          !hasImages && styles.reviewCommentWithoutMedia,
-        ]}
-      >
-        {`"${review.comment}"`}
-      </Text>
+      {review.comment?.trim() ? (
+        <Text
+          style={[
+            styles.reviewComment,
+            !hasImages && styles.reviewCommentWithoutMedia,
+          ]}
+        >
+          {`"${review.comment}"`}
+        </Text>
+      ) : null}
 
       {hasImages && cardWidth > 0 && (
         <View style={styles.reviewMediaWrapper}>
@@ -294,6 +307,127 @@ function ReviewCard({
   );
 }
 
+function FollowedCafePostCard({
+  post,
+  navigation,
+  onToggleLike,
+}: {
+  post: FollowedCafePost;
+  navigation: NativeStackNavigationProp<RootStackParamList, "Profile">;
+  onToggleLike: (postId: number, currentlyLiked: boolean) => void;
+}) {
+  const [cardWidth, setCardWidth] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const photoUrls = post.photo_url?.filter(Boolean) ?? [];
+  const imageHeight = Math.round(cardWidth * 0.68);
+  const displayDate = formatReviewDate(post.created_at, null);
+  const cafeName = post.cafe?.name ?? "Cafe";
+
+  const navigateToCafe = () =>
+    navigation.navigate("CafeProfile", { cafeId: String(post.cafe_id) });
+
+  return (
+    <View
+      style={styles.reviewCard}
+      onLayout={(event) => setCardWidth(event.nativeEvent.layout.width)}
+    >
+      <View style={styles.userPostHeader}>
+        <TouchableOpacity onPress={navigateToCafe} activeOpacity={0.75}>
+          <View style={styles.userPostAvatar}>
+            {post.cafe?.avatar_url ? (
+              <Image
+                source={{ uri: post.cafe.avatar_url }}
+                style={styles.userPostAvatarImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <MaterialIcons name="store" size={20} color="#C8A97A" />
+            )}
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={navigateToCafe}
+          activeOpacity={0.75}
+          style={styles.userPostMeta}
+        >
+          <Text style={styles.userPostCafeName} numberOfLines={1}>
+            {cafeName}
+          </Text>
+          <Text style={styles.userPostDate}>{displayDate}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {post.caption ? (
+        <Text style={styles.userPostCaption}>{post.caption}</Text>
+      ) : null}
+
+      {photoUrls.length > 0 && cardWidth > 0 ? (
+        <View style={styles.reviewMediaWrapper}>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={(event) => {
+              const index = Math.round(
+                event.nativeEvent.contentOffset.x / cardWidth,
+              );
+              setActiveIndex(index);
+            }}
+            scrollEventThrottle={16}
+          >
+            {photoUrls.map((uri, index) => (
+              <Image
+                key={`${uri}-${index}`}
+                source={{ uri }}
+                style={{ width: cardWidth, height: imageHeight }}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
+          {photoUrls.length > 1 && (
+            <View style={styles.dotsRow}>
+              {photoUrls.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.dot,
+                    index === activeIndex && styles.dotActive,
+                  ]}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      ) : null}
+
+      <View
+        style={[
+          styles.likesRow,
+          photoUrls.length === 0 && styles.likesRowWithoutMedia,
+        ]}
+      >
+        <Pressable
+          onPress={() => onToggleLike(post.id, post.isLiked)}
+          accessibilityRole="button"
+          accessibilityLabel={post.isLiked ? "Unlike post" : "Like post"}
+          style={({ pressed }) => [pressed && styles.likesRowPressed]}
+        >
+          <MaterialIcons
+            name={post.isLiked ? "thumb-up" : "thumb-up-off-alt"}
+            size={20}
+            color={post.isLiked ? "#6B4F2E" : "#8C6D4F"}
+          />
+        </Pressable>
+        <Text
+          style={[styles.likesCount, post.isLiked && styles.likesCountActive]}
+        >
+          {post.likes}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 function ProfileSkeleton() {
   return (
     <View style={styles.wrapper}>
@@ -373,6 +507,8 @@ export default function ProfileScreen({ navigation }: Props) {
   );
   const [favoriteCafes, setFavoriteCafes] = useState<FaveCafe[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(true);
+  const [followedPosts, setFollowedPosts] = useState<FollowedCafePost[]>([]);
+  const [followedPostsLoading, setFollowedPostsLoading] = useState(true);
   const [removingFavoriteId, setRemovingFavoriteId] = useState<string | null>(
     null,
   );
@@ -417,6 +553,7 @@ export default function ProfileScreen({ navigation }: Props) {
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: "info", icon: "info-outline" },
     { key: "favorites", icon: "favorite-border" },
+    { key: "posts", icon: "article" },
     { key: "reviews", icon: "rate-review" },
   ];
 
@@ -495,6 +632,128 @@ export default function ProfileScreen({ navigation }: Props) {
     }
   };
 
+  const fetchFollowedCafePosts = async (uid: string) => {
+    setFollowedPostsLoading(true);
+    try {
+      const { data: favorites, error: favoritesError } = await supabase
+        .from("favorite_cafes")
+        .select("cafe_id")
+        .eq("user_id", uid);
+
+      if (favoritesError) throw favoritesError;
+
+      const followedCafeIds = [
+        ...new Set(
+          (favorites ?? [])
+            .map((favorite) => favorite.cafe_id)
+            .filter((cafeId): cafeId is number => typeof cafeId === "number"),
+        ),
+      ];
+
+      if (followedCafeIds.length === 0) {
+        setFollowedPosts([]);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("cafe_posts")
+        .select(
+          "id, cafe_id, caption, photo_url, likes, created_at, cafe:cafe_id ( name, avatar_url )",
+        )
+        .in("cafe_id", followedCafeIds)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      const postIds = (data ?? []).map((p) => p.id);
+      const likedSet = new Set<number>();
+
+      if (postIds.length > 0) {
+        const { data: likedRows } = await supabase
+          .from("cafe_post_likes")
+          .select("post_id")
+          .eq("user_id", uid)
+          .in("post_id", postIds);
+
+        (likedRows ?? []).forEach((r) => likedSet.add(r.post_id));
+      }
+      const posts =
+        data?.map((post) => {
+          const cafe = Array.isArray(post.cafe) ? post.cafe[0] : post.cafe;
+          return {
+            id: post.id,
+            cafe_id: post.cafe_id,
+            caption: post.caption,
+            photo_url: Array.isArray(post.photo_url) ? post.photo_url : [],
+            likes: post.likes ?? 0,
+            isLiked: likedSet.has(post.id),
+            created_at: post.created_at,
+            cafe: cafe
+              ? {
+                  name: cafe.name,
+                  avatar_url: cafe.avatar_url ?? null,
+                }
+              : null,
+          };
+        }) ?? [];
+
+      setFollowedPosts(posts);
+    } catch (err) {
+      console.error("Failed to fetch followed cafe posts:", err);
+      setFollowedPosts([]);
+    } finally {
+      setFollowedPostsLoading(false);
+    }
+  };
+
+  const handleTogglePostLike = async (
+    postId: number,
+    currentlyLiked: boolean,
+  ) => {
+    if (!sessionUserId) return;
+    const previous = followedPosts;
+
+    // Optimistic update
+    setFollowedPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? {
+              ...p,
+              isLiked: !currentlyLiked,
+              likes: p.likes + (currentlyLiked ? -1 : 1),
+            }
+          : p,
+      ),
+    );
+
+    try {
+      if (currentlyLiked) {
+        await supabase
+          .from("cafe_post_likes")
+          .delete()
+          .eq("post_id", postId)
+          .eq("user_id", sessionUserId);
+
+        await supabase
+          .from("cafe_posts")
+          .update({ likes: previous.find((p) => p.id === postId)!.likes - 1 })
+          .eq("id", postId);
+      } else {
+        await supabase
+          .from("cafe_post_likes")
+          .insert({ post_id: postId, user_id: sessionUserId });
+
+        await supabase
+          .from("cafe_posts")
+          .update({ likes: previous.find((p) => p.id === postId)!.likes + 1 })
+          .eq("id", postId);
+      }
+    } catch (err) {
+      console.error("Failed to toggle post like:", err);
+      setFollowedPosts(previous);
+    }
+  };
+
   const fetchReviews = async (userId: string, currentUserId?: string) => {
     setReviewsLoading(true);
     try {
@@ -531,6 +790,7 @@ export default function ProfileScreen({ navigation }: Props) {
         const [viewedProfile, currentUserProfileData] = await Promise.all([
           ...profilePromises,
           fetchFavoriteCafes(targetId),
+          fetchFollowedCafePosts(targetId),
           fetchReviews(targetId, uid),
         ]);
 
@@ -1136,6 +1396,35 @@ export default function ProfileScreen({ navigation }: Props) {
               </View>
             )}
 
+            {activeTab === "posts" && (
+              <View>
+                {followedPostsLoading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color="#8C6D4F"
+                    style={{ marginTop: 12 }}
+                  />
+                ) : followedPosts.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <MaterialIcons name="article" size={44} color="#D2BA94" />
+                    <Text style={styles.emptyText}>No cafe posts yet</Text>
+                    <Text style={styles.emptySubText}>
+                      Follow cafes to see their latest posts here.
+                    </Text>
+                  </View>
+                ) : (
+                  followedPosts.map((post) => (
+                    <FollowedCafePostCard
+                      key={post.id}
+                      post={post}
+                      navigation={navigation}
+                      onToggleLike={handleTogglePostLike}
+                    />
+                  ))
+                )}
+              </View>
+            )}
+
             {activeTab === "info" && (
               <View style={styles.infoSection}>
                 <View style={styles.infoRow}>
@@ -1650,6 +1939,54 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
   },
   reviewCardMeta: { justifyContent: "center", flex: 1 },
+  userPostHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 6,
+  },
+  userPostAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#F1E7DA",
+    borderWidth: 1,
+    borderColor: "#EADAC6",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  userPostAvatarImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 28,
+  },
+  userPostMeta: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  userPostCafeName: {
+    fontSize: 16,
+    color: "#3B2A1A",
+    fontFamily: "SourceSerifPro-Bold",
+  },
+  userPostDate: {
+    fontSize: 11,
+    color: "#8C6D4F",
+    marginTop: 2,
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  userPostCaption: {
+    fontSize: 15,
+    color: "#5C3D1E",
+    lineHeight: 20,
+    paddingHorizontal: 22,
+    paddingTop: 10,
+    paddingBottom: 10,
+    fontFamily: "SourceSerifPro-Regular",
+  },
   cafeAvatarSmall: {
     width: 66,
     height: 66,

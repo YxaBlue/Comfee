@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  ImageBackground,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -541,7 +542,11 @@ export default function SubmitCafeScreen({ navigation }: Props) {
   }, [step]);
 
   return (
-    <View style={styles.wrapper}>
+    <ImageBackground
+      source={require("../../../../assets/images/bg1.png")}
+      style={styles.wrapper}
+      resizeMode="cover"
+    >
       <View
         style={[
           styles.header,
@@ -687,7 +692,7 @@ export default function SubmitCafeScreen({ navigation }: Props) {
           ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </ImageBackground>
   );
 }
 
@@ -2014,7 +2019,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "#C5A06A",
     borderRadius: 7,
-    backgroundColor: "#FFF8EC",
+    backgroundColor: "#E2CFA8",
     overflow: "hidden",
     justifyContent: "center",
   },

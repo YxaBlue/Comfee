@@ -98,7 +98,6 @@ export function ReviewCard({
         </TouchableOpacity>
 
         <View style={reviewCardStyles.meta}>
-          {/* Username + stars on the same row */}
           <View style={reviewCardStyles.nameRatingRow}>
             <TouchableOpacity
               onPress={() =>

@@ -12,7 +12,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 import { supabase } from "@/app/shared/lib/supabaseClient";
@@ -62,29 +62,32 @@ type PriceLevel = {
   PriceRange: "P" | "PP" | "PPP" | null;
 };
 
-const ALL_DAYS = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-];
+// 1 = Sunday, 2 = Monday, ... 7 = Saturday (matches Supabase numeric day values)
+const DAYS_SUN_FIRST = [1, 2, 3, 4, 5, 6, 7];
 
-const DAY_SHORT: Record<string, string> = {
-  Monday: "Mon",
-  Tuesday: "Tue",
-  Wednesday: "Wed",
-  Thursday: "Thu",
-  Friday: "Fri",
-  Saturday: "Sat",
-  Sunday: "Sun",
+const DAY_SHORT: Record<number, string> = {
+  1: "Sun",
+  2: "Mon",
+  3: "Tue",
+  4: "Wed",
+  5: "Thu",
+  6: "Fri",
+  7: "Sat",
+};
+
+const DAY_FULL: Record<number, string> = {
+  1: "Sunday",
+  2: "Monday",
+  3: "Tuesday",
+  4: "Wednesday",
+  5: "Thursday",
+  6: "Friday",
+  7: "Saturday",
 };
 
 // ─── Star Filter Bar ──────────────────────────────────────────────────────────
 
-function StarFilterBar({
+export function StarFilterBar({
   selected,
   counts,
   onSelect,
@@ -100,7 +103,10 @@ function StarFilterBar({
       contentContainerStyle={filterStyles.row}
     >
       <TouchableOpacity
-        style={[filterStyles.pill, selected === null && filterStyles.pillActive]}
+        style={[
+          filterStyles.pill,
+          selected === null && filterStyles.pillActive,
+        ]}
         onPress={() => onSelect(null)}
       >
         <Text
@@ -159,7 +165,11 @@ function StarFilterBar({
 
 // ─── Info Tab ─────────────────────────────────────────────────────────────────
 
-function CafeInfoTab({ cafe }: { cafe: CafeDetail & { favoritesCount: number } }) {
+export function CafeInfoTab({
+  cafe,
+}: {
+  cafe: CafeDetail & { favoritesCount: number };
+}) {
   return (
     <View>
       <View style={infoStyles.section}>
@@ -189,45 +199,71 @@ function CafeInfoTab({ cafe }: { cafe: CafeDetail & { favoritesCount: number } }
       </View>
 
       <Text style={infoStyles.sectionLabel}>Operating Hours</Text>
-      {ALL_DAYS.map((day) => {
-        const dayHours = cafe.opening_hours.find((hours) => hours.day === day);
-        const isOpen = Boolean(dayHours);
-        const isOpen24Hours =
-          dayHours?.opening_time === "12:00 AM" &&
-          dayHours?.closing_time === "11:59 PM";
-        const hoursText = isOpen24Hours
-          ? "Open for 24 hours"
-          : `${dayHours?.opening_time ?? cafe.opening_time} - ${
-              dayHours?.closing_time ?? cafe.closing_time
-            }`;
-        return (
-          <View key={day} style={infoStyles.infoRow}>
-            <MaterialIcons
-              name="access-time"
-              size={15}
-              color={isOpen ? "#8C6D4F" : "#C4A882"}
-            />
-            <Text
-              style={[
-                infoStyles.infoText,
-                { width: 95, fontWeight: "700" },
-                !isOpen && { color: "#B09070" },
-              ]}
-            >
-              {day}
-            </Text>
-            {isOpen ? (
-              <Text style={[infoStyles.infoText, { flex: 1 }]}>
-                {hoursText}
+      {(() => {
+        type Group = { hoursText: string; days: number[]; isOpen: boolean };
+        const groupsMap = new Map<string, Group>();
+
+        for (const day of DAYS_SUN_FIRST) {
+          const dayName = DAY_FULL[day];
+          const dayHours = cafe.opening_hours.find((h) => h.day === dayName);
+          const inDefaultDays = (cafe.opening_days ?? []).includes(dayName);
+          const hasDefaultTimes = !!(cafe.opening_time && cafe.closing_time);
+          const isOpen = Boolean(dayHours) || (inDefaultDays && hasDefaultTimes);
+          const isOpen24Hours =
+            (dayHours?.opening_time === "12:00 AM" && dayHours?.closing_time === "11:59 PM") ||
+            (isOpen && cafe.opening_time === "12:00 AM" && cafe.closing_time === "11:59 PM");
+
+          const hoursText = isOpen
+            ? isOpen24Hours
+              ? "Open for 24 hours"
+              : `${dayHours?.opening_time ?? cafe.opening_time} - ${
+                  dayHours?.closing_time ?? cafe.closing_time
+                }`
+            : "Closed";
+
+          const existing = groupsMap.get(hoursText);
+          if (existing) existing.days.push(day);
+          else groupsMap.set(hoursText, { hoursText, days: [day], isOpen });
+        }
+
+        return Array.from(groupsMap.values()).map((grp) => (
+          <View key={grp.hoursText} style={infoStyles.hoursGroup}>
+            <View style={infoStyles.hoursGroupHeader}>
+              <MaterialIcons
+                name="access-time"
+                size={18}
+                color={grp.isOpen ? "#8C6D4F" : "#C4A882"}
+              />
+              <Text style={[infoStyles.infoText, { fontFamily: "SourceSerifPro-Bold", marginLeft: 8 }]}>
+                {grp.hoursText}
               </Text>
-            ) : (
-              <Text style={[infoStyles.infoText, { flex: 1, color: "#B09070", fontStyle: "italic" }]}>
-                Closed
-              </Text>
-            )}
+            </View>
+            <View style={infoStyles.daysRow}>
+              {DAYS_SUN_FIRST.map((d) => {
+                const isHighlighted = grp.days.includes(d);
+                return (
+                  <View
+                    key={d}
+                    style={[
+                      infoStyles.dayPill,
+                      isHighlighted && infoStyles.dayPillActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        infoStyles.dayText,
+                        isHighlighted && infoStyles.dayTextActive,
+                      ]}
+                    >
+                      {DAY_SHORT[d]}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
           </View>
-        );
-      })}
+        ));
+      })()}
 
       <Text style={[infoStyles.sectionLabel, { marginTop: 16 }]}>Contact</Text>
       <View style={infoStyles.infoRow}>
@@ -301,7 +337,12 @@ function AmenityCard({
   );
 }
 
-function AmenitiesMenuTab({ amenities, menuURLs, coffee, price }: AmenitiesMenuTabProps) {
+function AmenitiesMenuTab({
+  amenities,
+  menuURLs,
+  coffee,
+  price,
+}: AmenitiesMenuTabProps) {
   const AMENITY_ROWS: {
     label: string;
     icon: keyof typeof MaterialIcons.glyphMap;
@@ -415,7 +456,13 @@ function AmenitiesMenuTab({ amenities, menuURLs, coffee, price }: AmenitiesMenuT
         />
         <CoffeeSubCard
           label="Brew Method"
-          options={["Espresso", "Drip", "French Press", "Pour Over", "Cold Brew"]}
+          options={[
+            "Espresso",
+            "Drip",
+            "French Press",
+            "Pour Over",
+            "Cold Brew",
+          ]}
           selected={coffee.BrewMethod}
         />
       </SectionCard>
@@ -561,7 +608,9 @@ function SectionCard({
         <View>
           <Text style={priceCoffeeStyles.sectionCardTitle}>{title}</Text>
           {subtitle ? (
-            <Text style={priceCoffeeStyles.sectionCardSubtitle}>{subtitle}</Text>
+            <Text style={priceCoffeeStyles.sectionCardSubtitle}>
+              {subtitle}
+            </Text>
           ) : null}
         </View>
       </View>
@@ -675,8 +724,16 @@ function FavoriteButton({
     setToggling(true);
 
     Animated.sequence([
-      Animated.spring(scaleAnim, { toValue: 1.3, useNativeDriver: true, speed: 50 }),
-      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50 }),
+      Animated.spring(scaleAnim, {
+        toValue: 1.3,
+        useNativeDriver: true,
+        speed: 50,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 50,
+      }),
     ]).start();
 
     const wasLiked = isFavorited;
@@ -718,7 +775,9 @@ function FavoriteButton({
       activeOpacity={0.8}
       style={favStyles.btn}
       accessibilityRole="button"
-      accessibilityLabel={isFavorited ? "Remove from favorites" : "Add to favorites"}
+      accessibilityLabel={
+        isFavorited ? "Remove from favorites" : "Add to favorites"
+      }
     >
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
         <MaterialIcons
@@ -808,26 +867,25 @@ export default function CafeProfileScreen({ navigation }: Props) {
     fetchReviews();
   }, [fetchReviews]);
 
-  const starCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  for (const r of cafeReviews) {
-    const bucket = Math.floor(r.rating);
-    if (bucket >= 1 && bucket <= 5) {
-      starCounts[bucket] = (starCounts[bucket] ?? 0) + 1;
-    }
-  }
-
   const filteredReviews =
     starFilter === null
       ? cafeReviews
       : cafeReviews.filter((r) => Math.floor(r.rating) === starFilter);
 
-  const handleToggleLike = async (reviewId: number, currentlyLiked: boolean) => {
+  const handleToggleLike = async (
+    reviewId: number,
+    currentlyLiked: boolean,
+  ) => {
     if (!currentUserId) return;
     const previous = cafeReviews;
     setCafeReviews((prev) =>
       prev.map((r) =>
         r.id === reviewId
-          ? { ...r, isLiked: !currentlyLiked, likes: r.likes + (currentlyLiked ? -1 : 1) }
+          ? {
+              ...r,
+              isLiked: !currentlyLiked,
+              likes: r.likes + (currentlyLiked ? -1 : 1),
+            }
           : r,
       ),
     );
@@ -962,13 +1020,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
                   cafeId={cafeId}
                   onReviewPosted={fetchReviews}
                 />
-                {!reviewsLoading && cafeReviews.length > 0 && (
-                  <StarFilterBar
-                    selected={starFilter}
-                    counts={starCounts}
-                    onSelect={setStarFilter}
-                  />
-                )}
                 {reviewsLoading ? (
                   <ActivityIndicator
                     size="small"
@@ -1098,12 +1149,18 @@ const favStyles = StyleSheet.create({
   btn: { padding: 4 },
 });
 
+const reviewsHeaderStyles = StyleSheet.create({
+  block: {
+    marginTop: 4,
+  },
+});
+
 const filterStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
     gap: 6,
-    paddingHorizontal: 0,
-    paddingVertical: 10,
+    paddingHorizontal: 4,
+    paddingVertical: 6,
   },
   pill: {
     flexDirection: "row",
@@ -1442,6 +1499,7 @@ const infoStyles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 6,
+    marginLeft: 10,
   },
   infoRow: {
     flexDirection: "row",
@@ -1459,60 +1517,36 @@ const infoStyles = StyleSheet.create({
     fontFamily: "SourceSerifPro-Regular",
   },
   infoSubText: { fontSize: 11, color: "#8C6D4F", marginTop: 2 },
-  hoursRow: {
+  hoursGroup: {
+    flexDirection: "column",
+    gap: 8,
+    backgroundColor: "#FFF7ED",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 6,
+  },
+  hoursGroupHeader: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 7,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EDE0CE",
   },
-  hoursDay: {
-    width: 100,
-    alignItems: "flex-start",
+  daysRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 5,
   },
-  hoursDayOpen: {
-    backgroundColor: "transparent",
-  },
-  hoursDayClosed: {
-    backgroundColor: "transparent",
-  },
-  hoursDayText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#4B2C11",
-    fontFamily: "SourceSerifPro-Regular",
-  },
-  hoursDayTextClosed: {
-    color: "#B09070",
-    fontWeight: "400",
-  },
-  hoursTime: {
-    flex: 1,
-    fontSize: 13,
-    color: "#4B2C11",
-    fontFamily: "SourceSerifPro-Regular",
-  },
-  hoursClosed: {
-    flex: 1,
-    fontSize: 13,
-    color: "#B09070",
-    fontStyle: "italic",
-    fontFamily: "SourceSerifPro-Regular",
-  },
-  daysRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 4 },
   dayPill: {
-    backgroundColor: "#D2BA94",
-    borderRadius: 20,
-    paddingHorizontal: 10,
+    backgroundColor: "#EDE0CE",
+    borderRadius: 16,
+    paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  dayPillClosed: { backgroundColor: "#EDE0CE" },
-  dayPillText: {
+  dayPillActive: { backgroundColor: "#6B4F2E" },
+  dayText: {
     fontSize: 11,
     fontFamily: "SourceSerifPro-Bold",
     color: "#5A3E28",
   },
-  dayPillTextClosed: { color: "#B09070", textDecorationLine: "line-through" },
+  dayTextActive: { color: "#FFF7EA" },
   section: {
     paddingVertical: 8,
     backgroundColor: "#FFF7ED",
@@ -1523,6 +1557,7 @@ const infoStyles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     color: "#3B2A1A",
+    marginTop: 5,
     marginBottom: 2,
     marginLeft: 10,
     fontFamily: "SourceSerifPro-Bold",

@@ -11,7 +11,10 @@ import CreateAccountScreen from "./app/features/auth/screens/CreateAccount";
 import ForgotPasswordScreen from "./app/features/auth/screens/ForgotPassword";
 import LoginScreen from "./app/features/auth/screens/Login";
 import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
+import BusinessNavigation from "./app/features/business/screens/BusinessNavigation";
 import BusinessProfile from "./app/features/business/screens/BusinessProfile";
+import OwnerVerificationScreen from "./app/features/business/screens/OwnerVerification";
+import EditCafeProfileScreen from "./app/features/business/screens/EditCafeProfile";
 import CafeProfileScreen from "./app/features/cafe/screens/cafeProfile";
 import Dashboard from "./app/features/cafe/screens/Dashboard";
 import FilteredCafes from "./app/features/cafe/screens/DashboardFilter";
@@ -38,6 +41,7 @@ export type RootStackParamList = {
   Settings: undefined;
   ChangePassword: undefined;
   SubmitCafe: undefined;
+  OwnerVerification: undefined;
   EditProfile: undefined;
   ForgotPassword: undefined;
   ResetPassword: undefined;
@@ -57,8 +61,14 @@ export type RootStackParamList = {
     userCoords?: { latitude: number; longitude: number };
   };
   FilteredCafes: { filterType: string };
+  
+  BusinessNavigation: undefined;
+  BusinessProfile: { cafeId?: string } | undefined;
   ProfileBusi: undefined;
+  
+  EditCafeProfile: { cafeId: string };
   CafeProfile: { cafeId: string };
+  
   WriteReviewFE:
     | {
         cafeName?: string;
@@ -255,13 +265,26 @@ export default function App() {
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         <Stack.Screen name="SubmitCafe" component={SubmitCafeScreen} />
+        <Stack.Screen
+          name="OwnerVerification"
+          component={OwnerVerificationScreen}
+        />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         <Stack.Screen name="Dashboard" component={Dashboard} />
         <Stack.Screen name="Filter" component={FilterScreen} />
         <Stack.Screen name="Search" component={SearchScreen} />
         <Stack.Screen name="FilteredCafes" component={FilteredCafes} />
+        <Stack.Screen
+          name="BusinessNavigation"
+          component={BusinessNavigation}
+        />
+        <Stack.Screen name="BusinessProfile" component={BusinessProfile} />
         <Stack.Screen name="ProfileBusi" component={BusinessProfile} />
+        <Stack.Screen
+          name="EditCafeProfile"
+          component={EditCafeProfileScreen}
+        />
         <Stack.Screen name="CafeProfile" component={CafeProfileScreen} />
         <Stack.Screen name="WriteReviewFE" component={WriteReviewFEScreen} />
       </Stack.Navigator>
