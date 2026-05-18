@@ -156,6 +156,10 @@ export type SaveCafeProfileInput = {
   newCoverLocalUri: string | null;
   newAvatarLocalUri: string | null;
   hours: EditCafeDayHours[];
+  // Local URIs for menu images to upload (new images picked by user)
+  newMenuLocalUris?: string[];
+  // Existing remote menu URLs to keep
+  menuExistingUrls?: string[];
 };
 
 export async function saveCafeProfile(
@@ -165,6 +169,7 @@ export async function saveCafeProfile(
     const id = input.cafeId;
     let main_photo_url: string | undefined;
     let avatar_url: string | undefined;
+    let uploadedMenuUrls: string[] = [];
 
     if (input.newCoverLocalUri) {
       main_photo_url = await uploadCafeImage(
@@ -180,7 +185,23 @@ export async function saveCafeProfile(
       );
     }
 
-    const cafePayload: Record<string, string> = {
+    // Upload any new menu images and collect their public URLs
+    if (input.newMenuLocalUris && input.newMenuLocalUris.length > 0) {
+      const uploads: string[] = [];
+      for (let i = 0; i < input.newMenuLocalUris.length; i++) {
+        const uri = input.newMenuLocalUris[i];
+        try {
+          const url = await uploadCafeImage(`menus/${id}_${Date.now()}_${i}.jpg`, uri);
+          uploads.push(url);
+        } catch (e) {
+          // ignore individual upload failures here; surface later if needed
+          console.warn("Failed to upload menu image", e);
+        }
+      }
+      uploadedMenuUrls = uploads;
+    }
+
+    const cafePayload: Record<string, any> = {
       name: input.name.trim(),
       info: input.info.trim(),
       address: input.address.trim(),
@@ -190,6 +211,13 @@ export async function saveCafeProfile(
 
     if (main_photo_url) cafePayload.main_photo_url = main_photo_url;
     if (avatar_url) cafePayload.avatar_url = avatar_url;
+    // If there are menu images either existing remote URLs or newly uploaded ones,
+    // save them in the cafe record as menu_urls (JSON/array column expected).
+    const finalMenuUrls: string[] = [
+      ...(input.menuExistingUrls ?? []),
+      ...uploadedMenuUrls,
+    ];
+    if (finalMenuUrls.length > 0) cafePayload.menu_urls = finalMenuUrls;
 
     const [cafeResult] = await Promise.all([
       supabase.from("cafe").update(cafePayload).eq("id", id).select("id"),

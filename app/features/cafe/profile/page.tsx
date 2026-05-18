@@ -30,7 +30,7 @@ import { WriteReviewCTA } from "@/components/cafe/WriteReview";
 import { FavoriteButton } from "@/components/input/FavoritesBtn";
 import { CafePost, useCafePosts } from "@/hooks/useCafePosts";
 import { formatReviewDate } from "../../../shared/modals/reviewService";
-import { Amenities, AmenitiesMenuTab, Coffee } from "./AmenitiesSubpage";
+import { Amenities, AmenitiesMenuTab, Coffee } from "./amenities/AmenitiesSubpage";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "CafeProfile">;

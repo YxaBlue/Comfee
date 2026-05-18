@@ -19,14 +19,12 @@ import { Picker } from "@react-native-picker/picker";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  Image,
+  Alert, Dimensions, Image,
   ImageBackground,
-  KeyboardAvoidingView,
-  Platform,
+  KeyboardAvoidingView, Modal, Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -34,7 +32,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 type NavProps = NativeStackNavigationProp<
@@ -89,6 +87,13 @@ export default function EditCafeProfile() {
   );
   const [hours, setHours] = useState<EditCafeDayHours[]>([]);
   const [page, setPage] = useState<number>(0);
+  const [menuUris, setMenuUris] = useState<string[]>([]);
+  const [newMenuLocalUris, setNewMenuLocalUris] = useState<string[]>([]);
+  const [menuPreviewVisible, setMenuPreviewVisible] = useState<boolean>(false);
+  const [previewIndex, setPreviewIndex] = useState<number>(0);
+  const previewCarouselRef = useRef<ScrollView | null>(null);
+  const modalCarouselRef = useRef<ScrollView | null>(null);
+  const windowWidth = Dimensions.get("window").width - 32;
 
   // ── Amenities state ──
   const [amenities, setAmenities] = useState<AmenitiesFormState>({
@@ -137,7 +142,13 @@ export default function EditCafeProfile() {
     setAvatarUri(cafe.avatar_url);
     setHours(buildHoursFromCafe(cafe.opening_hours));
     setAmenities(buildAmenitiesFromCafe(cafe));
+    setMenuUris(cafe.menu_urls ?? []);
   };
+
+  useEffect(() => {
+    const initial = (route.params as any)?.initialPage;
+    if (typeof initial === "number") setPage(initial);
+  }, [route.params]);
 
   const clearFieldError = (key: string) => {
     setFieldErrors((prev) => {
@@ -176,6 +187,71 @@ export default function EditCafeProfile() {
       clearFieldError("avatar");
     }
   };
+
+  const pickMenuImages = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        "Permission needed",
+        "Allow photo library access to upload images.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+      allowsMultipleSelection: true,
+    } as any);
+
+    if (result.canceled || !result.assets?.length) return;
+
+    const uris = result.assets.map((a: any) => a.uri).filter(Boolean) as string[];
+    if (!uris.length) return;
+
+    // Append up to 5
+    setMenuUris((prev) => {
+      const next = [...prev];
+      for (const u of uris) {
+        if (next.length >= 5) break;
+        next.push(u);
+      }
+      return next;
+    });
+    setNewMenuLocalUris((prev) => {
+      const next = [...prev];
+      for (const u of uris) {
+        if (next.length + menuUris.filter((x) => !x.startsWith("http")).length >= 5) break;
+        next.push(u);
+      }
+      return next;
+    });
+  };
+
+  const removeMenuImage = (index: number) => {
+    setMenuUris((prev) => prev.filter((_, i) => i !== index));
+    setNewMenuLocalUris((prev) => prev.filter((u) => !menuUris[index] || u !== menuUris[index]));
+  };
+
+  const openPreviewAt = (index: number) => {
+    setPreviewIndex(index);
+    setMenuPreviewVisible(true);
+    // scroll will be handled in Modal content via ref
+  };
+
+  const closePreview = () => setMenuPreviewVisible(false);
+
+  useEffect(() => {
+    if (menuPreviewVisible && modalCarouselRef.current) {
+      setTimeout(() => {
+        try {
+          modalCarouselRef.current?.scrollTo({ x: previewIndex * windowWidth, animated: false } as any);
+        } catch {
+          // ignore
+        }
+      }, 50);
+    }
+  }, [menuPreviewVisible, previewIndex, windowWidth]);
 
   const updateDay = (index: number, patch: Partial<EditCafeDayHours>) => {
     setHours((prev) =>
@@ -244,7 +320,7 @@ export default function EditCafeProfile() {
     const errs = validatePage(page);
     setFieldErrors(errs);
     if (Object.keys(errs).length > 0) return;
-    setPage((p) => Math.min(3, p + 1));
+    setPage((p) => Math.min(4, p + 1));
   };
 
   const goPrev = () => setPage((p) => Math.max(0, p - 1));
@@ -268,6 +344,8 @@ export default function EditCafeProfile() {
         newCoverLocalUri,
         newAvatarLocalUri,
         hours,
+        newMenuLocalUris,
+        menuExistingUrls: menuUris.filter((u) => typeof u === "string" && u.startsWith("http")),
       }),
       saveAmenities(Number(cafeId), amenities),
     ]);
@@ -312,9 +390,124 @@ export default function EditCafeProfile() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          {page === 0 && (
+          {page === 4 && (
             <>
-              <Text style={styles.sectionLabel}>Cover Photo</Text>
+              <Text style={styles.sectionLabel}>Amenities</Text>
+
+              <AmenityPillRow
+                label="WiFi"
+                options={["None", "Slow", "Moderate", "Fast"]}
+                single
+                selected={amenities.wifi_speed ? [amenities.wifi_speed] : []}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    wifi_speed: prev.wifi_speed === val ? null : (val as AmenitiesFormState["wifi_speed"]),
+                  }))
+                }
+              />
+              <AmenityPillRow
+                label="Sockets"
+                options={["None", "Some", "Many"]}
+                single
+                selected={amenities.sockets ? [amenities.sockets] : []}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    sockets: prev.sockets === val ? null : (val as AmenitiesFormState["sockets"]),
+                  }))
+                }
+              />
+              <AmenityPillRow
+                label="Parking"
+                options={["None", "Limited", "Plenty"]}
+                single
+                selected={amenities.parking ? [amenities.parking] : []}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    parking: prev.parking === val ? null : (val as AmenitiesFormState["parking"]),
+                  }))
+                }
+              />
+              <AmenityPillRow
+                label="Lighting"
+                options={["Dim", "Balanced", "Bright"]}
+                single
+                selected={amenities.lighting ? [amenities.lighting] : []}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    lighting: prev.lighting === val ? null : (val as AmenitiesFormState["lighting"]),
+                  }))
+                }
+              />
+              <AmenityPillRow
+                label="Music"
+                options={["Quiet", "Normal", "Blaring"]}
+                single
+                selected={amenities.music ? [amenities.music] : []}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    music: prev.music === val ? null : (val as AmenitiesFormState["music"]),
+                  }))
+                }
+              />
+              <AmenityPillRow
+                label="Seating"
+                options={["Inside", "Outside"]}
+                selected={amenities.seating}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    seating: prev.seating.includes(val)
+                      ? prev.seating.filter((s) => s !== val)
+                      : [...prev.seating, val],
+                  }))
+                }
+              />
+              <AmenityPillRow
+                label="Tables"
+                options={["Bar Type", "Individual Tables", "Large Tables"]}
+                selected={amenities.tables_type}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    tables_type: prev.tables_type.includes(val)
+                      ? prev.tables_type.filter((t) => t !== val)
+                      : [...prev.tables_type, val],
+                  }))
+                }
+              />
+              <AmenityPillRow
+                label="Pet Friendly"
+                options={["Yes", "No"]}
+                single
+                selected={[amenities.pet_friendly ? "Yes" : "No"]}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({ ...prev, pet_friendly: val === "Yes" }))
+                }
+              />
+
+              <Text style={styles.sectionLabel}>Suitable For</Text>
+              <AmenityPillRow
+                label="Suitable Conditions"
+                options={["Student", "Work", "Group", "Vibes"]}
+                selected={amenities.suitable_for}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    suitable_for: prev.suitable_for.includes(val)
+                      ? prev.suitable_for.filter((s) => s !== val)
+                      : [...prev.suitable_for, val],
+                  }))
+                }
+              />
+            </>
+          )}
+
+          {page === 0 && ( <>
               <TouchableOpacity
             style={[
               styles.coverPicker,
@@ -493,118 +686,91 @@ export default function EditCafeProfile() {
 
           {page === 2 && (
             <>
-              <Text style={styles.sectionLabel}>Amenities</Text>
+              <Text style={styles.sectionLabel}>Menu Images</Text>
 
-              <AmenityPillRow
-                label="WiFi"
-                options={["None", "Slow", "Moderate", "Fast"]}
-                single
-                selected={amenities.wifi_speed ? [amenities.wifi_speed] : []}
-                onToggle={(val) =>
-                  setAmenities((prev) => ({
-                    ...prev,
-                    wifi_speed: prev.wifi_speed === val ? null : (val as AmenitiesFormState["wifi_speed"]),
-                  }))
-                }
-              />
-              <AmenityPillRow
-                label="Sockets"
-                options={["None", "Some", "Many"]}
-                single
-                selected={amenities.sockets ? [amenities.sockets] : []}
-                onToggle={(val) =>
-                  setAmenities((prev) => ({
-                    ...prev,
-                    sockets: prev.sockets === val ? null : (val as AmenitiesFormState["sockets"]),
-                  }))
-                }
-              />
-              <AmenityPillRow
-                label="Parking"
-                options={["None", "Limited", "Plenty"]}
-                single
-                selected={amenities.parking ? [amenities.parking] : []}
-                onToggle={(val) =>
-                  setAmenities((prev) => ({
-                    ...prev,
-                    parking: prev.parking === val ? null : (val as AmenitiesFormState["parking"]),
-                  }))
-                }
-              />
-              <AmenityPillRow
-                label="Lighting"
-                options={["Dim", "Balanced", "Bright"]}
-                single
-                selected={amenities.lighting ? [amenities.lighting] : []}
-                onToggle={(val) =>
-                  setAmenities((prev) => ({
-                    ...prev,
-                    lighting: prev.lighting === val ? null : (val as AmenitiesFormState["lighting"]),
-                  }))
-                }
-              />
-              <AmenityPillRow
-                label="Music"
-                options={["Quiet", "Normal", "Blaring"]}
-                single
-                selected={amenities.music ? [amenities.music] : []}
-                onToggle={(val) =>
-                  setAmenities((prev) => ({
-                    ...prev,
-                    music: prev.music === val ? null : (val as AmenitiesFormState["music"]),
-                  }))
-                }
-              />
-              <AmenityPillRow
-                label="Seating"
-                options={["Inside", "Outside"]}
-                selected={amenities.seating}
-                onToggle={(val) =>
-                  setAmenities((prev) => ({
-                    ...prev,
-                    seating: prev.seating.includes(val)
-                      ? prev.seating.filter((s) => s !== val)
-                      : [...prev.seating, val],
-                  }))
-                }
-              />
-              <AmenityPillRow
-                label="Tables"
-                options={["Bar Type", "Individual Tables", "Large Tables"]}
-                selected={amenities.tables_type}
-                onToggle={(val) =>
-                  setAmenities((prev) => ({
-                    ...prev,
-                    tables_type: prev.tables_type.includes(val)
-                      ? prev.tables_type.filter((t) => t !== val)
-                      : [...prev.tables_type, val],
-                  }))
-                }
-              />
-              <AmenityPillRow
-                label="Pet Friendly"
-                options={["Yes", "No"]}
-                single
-                selected={[amenities.pet_friendly ? "Yes" : "No"]}
-                onToggle={(val) =>
-                  setAmenities((prev) => ({ ...prev, pet_friendly: val === "Yes" }))
-                }
-              />
+              {menuUris.length > 0 ? (
+                <>
+                  <View style={{ height: 220, borderRadius: 12, overflow: "hidden", backgroundColor: "#000" }}>
+                    <ScrollView
+                      horizontal
+                      pagingEnabled
+                      showsHorizontalScrollIndicator={false}
+                      ref={(r) => { previewCarouselRef.current = r; }}
+                      onMomentumScrollEnd={(e) => {
+                        const idx = Math.round(e.nativeEvent.contentOffset.x / windowWidth);
+                        setPreviewIndex(idx);
+                      }}
+                    >
+                      {menuUris.map((uri, idx) => (
+                        <TouchableOpacity key={idx} activeOpacity={0.95} onPress={() => openPreviewAt(idx)}>
+                          <Image
+                            source={{ uri }}
+                            style={{ width: windowWidth, height: 220 }}
+                            resizeMode="cover"
+                          />
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                    <View style={{ position: "absolute", bottom: 8, left: 0, right: 0, alignItems: "center" }}>
+                      <Text style={{ color: "#FFF7ED" }}>{previewIndex + 1} / {menuUris.length}</Text>
+                    </View>
+                  </View>
 
-              <Text style={styles.sectionLabel}>Suitable For</Text>
-              <AmenityPillRow
-                label="Suitable Conditions"
-                options={["Student", "Work", "Group", "Vibes"]}
-                selected={amenities.suitable_for}
-                onToggle={(val) =>
-                  setAmenities((prev) => ({
-                    ...prev,
-                    suitable_for: prev.suitable_for.includes(val)
-                      ? prev.suitable_for.filter((s) => s !== val)
-                      : [...prev.suitable_for, val],
-                  }))
-                }
-              />
+                  <Modal visible={menuPreviewVisible} animationType="slide" onRequestClose={() => closePreview()}>
+                    <View style={{ flex: 1, backgroundColor: "#000" }}>
+                      <View style={{ position: "absolute", top: 40, right: 16, zIndex: 10 }}>
+                        <TouchableOpacity onPress={() => closePreview()}>
+                          <MaterialIcons name="close" size={28} color="#fff" />
+                        </TouchableOpacity>
+                      </View>
+                      <ScrollView
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        ref={(r) => { modalCarouselRef.current = r; }}
+                        contentOffset={{ x: previewIndex * windowWidth, y: 0 }}
+                      >
+                        {menuUris.map((uri, idx) => (
+                          <View key={idx} style={{ width: windowWidth, height: "100%", alignItems: "center", justifyContent: "center" }}>
+                            <Image source={{ uri }} style={{ width: windowWidth, height: "80%" }} resizeMode="contain" />
+                          </View>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  </Modal>
+                </>
+              ) : (
+                <View style={{ height: 220, borderRadius: 12, overflow: "hidden", backgroundColor: "#FFF7ED", borderWidth: 1, borderColor: "#E9D0A2", alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ color: "#8C6D4F" }}>No menu images yet</Text>
+                </View>
+              )}
+
+              <View style={{ height: 12 }} />
+              <Text style={{ color: "#6B4F2E", marginBottom: 8 }}>Upload up to 5 images to display as your menu.</Text>
+              <View style={{ flexDirection: "row", gap: 8, flexWrap: "wrap" }}>
+                {Array.from({ length: 5 }).map((_, idx) => {
+                  const uri = menuUris[idx];
+                  return (
+                    <View key={idx} style={{ width: 90, height: 90, borderRadius: 8, overflow: "hidden", backgroundColor: "#FFF7ED", borderWidth: 1, borderColor: "#E9D0A2", alignItems: "center", justifyContent: "center" }}>
+                      {uri ? (
+                        <>
+                          <TouchableOpacity onPress={() => openPreviewAt(idx)} style={{ width: "100%", height: "100%" }}>
+                            <Image source={{ uri }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => removeMenuImage(idx)} style={{ position: "absolute", top: 6, right: 6, width: 22, height: 22, borderRadius: 11, backgroundColor: "#C0392B", alignItems: "center", justifyContent: "center" }}>
+                            <MaterialIcons name="close" size={12} color="#fff" />
+                          </TouchableOpacity>
+                        </>
+                      ) : (
+                        <TouchableOpacity onPress={() => pickMenuImages()} style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                          <MaterialIcons name="add-photo-alternate" size={28} color="#B08354" />
+                          <Text style={{ fontSize: 11, color: "#8C6D4F" }}>Add</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
             </>
           )}
 
@@ -664,16 +830,14 @@ export default function EditCafeProfile() {
               )}
 
               <View style={{ flex: 1, alignItems: "flex-end" }}>
-                {page < 3 ? (
+                {page < 4 ? (
                   <IconCircleButton icon="arrow-forward" onPress={goNext} />
-                ) : (
-                  <FullTextButton title="Save" onPress={() => void handleSave()} loading={saving} />
-                )}
+                ) : null}
               </View>
             </View>
 
             <View style={{ marginTop: 8, alignItems: "center" }}>
-              <Text style={{ color: "#8C6D4F" }}>{page + 1} / 4</Text>
+              <Text style={{ color: "#8C6D4F" }}>{page + 1} / 5</Text>
             </View>
           </View>
 

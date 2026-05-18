@@ -1,8 +1,9 @@
 import { RootStackParamList } from "@/App";
+import { CafeWithFeatures, getCafesWithFeatures } from "@/app/features/cafe/services/cafeService";
 import { MaterialIcons } from "@expo/vector-icons";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   FlatList,
   Image,
@@ -32,6 +33,23 @@ export default function FilteredCafes() {
   ];
 
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [cafes, setCafes] = useState<CafeWithFeatures[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const data = await getCafesWithFeatures() as CafeWithFeatures[];
+        if (!mounted) return;
+        setCafes(data ?? []);
+      } catch (err) {
+        // ignore for now
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const filteredCafes = cafes.filter((cafe) =>
     cafe.name.toLowerCase().includes(filterType.toLowerCase()),
@@ -39,7 +57,7 @@ export default function FilteredCafes() {
 
   return (
     <ImageBackground
-      source={require("../../../../assets/images/bg1.png")}
+      source={require("../../../../../assets/images/bg1.png")}
       style={styles.background}
       resizeMode="cover"
     >
@@ -47,7 +65,7 @@ export default function FilteredCafes() {
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.navigate("Dashboard")}>
             <Image
-              source={require("../../../../assets/images/logo.png")}
+              source={require("../../../../../assets/images/logo.png")}
               style={styles.logo}
               resizeMode="contain"
             />
@@ -55,7 +73,7 @@ export default function FilteredCafes() {
 
           <TouchableOpacity onPress={() => navigation.navigate("Profile")}>
             <Image
-              source={require("../../../../assets/images/profileHolder1.png")}
+              source={require("../../../../../assets/images/profileHolder1.png")}
               style={styles.profHolder}
               resizeMode="contain"
             />
@@ -139,7 +157,7 @@ export default function FilteredCafes() {
       <View style={styles.container2}>
         <FlatList
           data={cafes}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id.toString()}
           numColumns={2}
           columnWrapperStyle={{
             justifyContent: "space-between",
@@ -157,10 +175,10 @@ export default function FilteredCafes() {
                       size={14}
                       color="#E9D0A2"
                     />
-                    <Text style={styles.location}>{item.location}</Text>
+                    <Text style={styles.location}>{item.city ?? item.address}</Text>
                   </View>
                 </View>
-                <Text style={styles.rating}>{item.rating}</Text>
+                <Text style={styles.rating}>{item.average_rating}</Text>
               </View>
             </View>
           )}

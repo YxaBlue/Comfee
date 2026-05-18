@@ -12,7 +12,7 @@ import {
   FILTER_CATEGORIES,
   FilterSelectionState,
   normalizeFilterSelections,
-} from "../services/filtering";
+} from "../../services/filtering";
 
 type FilterRouteProp = RouteProp<RootStackParamList, "Filter">;
 
