@@ -208,10 +208,14 @@ export function CafeInfoTab({
           const dayHours = cafe.opening_hours.find((h) => h.day === dayName);
           const inDefaultDays = (cafe.opening_days ?? []).includes(dayName);
           const hasDefaultTimes = !!(cafe.opening_time && cafe.closing_time);
-          const isOpen = Boolean(dayHours) || (inDefaultDays && hasDefaultTimes);
+          const isOpen =
+            Boolean(dayHours) || (inDefaultDays && hasDefaultTimes);
           const isOpen24Hours =
-            (dayHours?.opening_time === "12:00 AM" && dayHours?.closing_time === "11:59 PM") ||
-            (isOpen && cafe.opening_time === "12:00 AM" && cafe.closing_time === "11:59 PM");
+            (dayHours?.opening_time === "12:00 AM" &&
+              dayHours?.closing_time === "11:59 PM") ||
+            (isOpen &&
+              cafe.opening_time === "12:00 AM" &&
+              cafe.closing_time === "11:59 PM");
 
           const hoursText = isOpen
             ? isOpen24Hours
@@ -234,7 +238,12 @@ export function CafeInfoTab({
                 size={18}
                 color={grp.isOpen ? "#8C6D4F" : "#C4A882"}
               />
-              <Text style={[infoStyles.infoText, { fontFamily: "SourceSerifPro-Bold", marginLeft: 8 }]}>
+              <Text
+                style={[
+                  infoStyles.infoText,
+                  { fontFamily: "SourceSerifPro-Bold", marginLeft: 8 },
+                ]}
+              >
                 {grp.hoursText}
               </Text>
             </View>
@@ -1543,7 +1552,7 @@ const infoStyles = StyleSheet.create({
   dayPillActive: { backgroundColor: "#6B4F2E" },
   dayText: {
     fontSize: 11,
-    fontFamily: "SourceSerifPro-Bold",
+    fontFamily: "SourceSerifPro-Regular",
     color: "#5A3E28",
   },
   dayTextActive: { color: "#FFF7EA" },

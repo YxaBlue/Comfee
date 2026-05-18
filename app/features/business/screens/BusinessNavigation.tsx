@@ -172,11 +172,7 @@ export default function BusinessNavigation({
           </View>
         ) : cafes.length === 0 ? (
           <View style={styles.emptyState}>
-            <MaterialIcons
-              name="storefront"
-              size={36}
-              color={COLORS.accent}
-            />
+            <MaterialIcons name="storefront" size={36} color={COLORS.accent} />
             <Text style={styles.emptyTitle}>No cafés linked</Text>
             <Text style={styles.emptyDesc}>
               Verify ownership of a café below to link it to your account and
@@ -220,8 +216,8 @@ export default function BusinessNavigation({
           <View style={styles.verifyTextBlock}>
             <Text style={styles.verifyHeading}>Link a café you own</Text>
             <Text style={styles.verifySub}>
-              Submit ownership documents to connect your account to a café.
-              You will need to verify separately for each café you own.
+              Submit ownership documents to connect your account to a café. You
+              will need to verify separately for each café you own.
             </Text>
           </View>
 
@@ -239,6 +235,22 @@ export default function BusinessNavigation({
               style={{ marginRight: 8 }}
             />
             <Text style={styles.verifyCtaText}>Verify & link a café</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("BusinessPreview")}
+            activeOpacity={0.7}
+            style={{ alignItems: "center" }}
+          >
+            <Text
+              style={{
+                fontFamily: "serif",
+                fontSize: 13,
+                color: COLORS.muted,
+                textDecorationLine: "underline",
+              }}
+            >
+              Launch Cafe Preview
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -287,7 +299,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   pageTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "800",
     fontFamily: "serif",
     color: COLORS.text,

@@ -7,14 +7,17 @@ import * as Linking from "expo-linking";
 import { useEffect, useRef } from "react";
 
 import { supabase } from "@/app/shared/lib/supabaseClient";
+import { useFonts } from "expo-font";
+import * as SplashScreen from "expo-splash-screen";
 import CreateAccountScreen from "./app/features/auth/screens/CreateAccount";
 import ForgotPasswordScreen from "./app/features/auth/screens/ForgotPassword";
 import LoginScreen from "./app/features/auth/screens/Login";
 import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
 import BusinessNavigation from "./app/features/business/screens/BusinessNavigation";
+import BusinessPreview from "./app/features/business/screens/BusinessPreview";
 import BusinessProfile from "./app/features/business/screens/BusinessProfile";
-import OwnerVerificationScreen from "./app/features/business/screens/OwnerVerification";
 import EditCafeProfileScreen from "./app/features/business/screens/EditCafeProfile";
+import OwnerVerificationScreen from "./app/features/business/screens/OwnerVerification";
 import CafeProfileScreen from "./app/features/cafe/screens/cafeProfile";
 import Dashboard from "./app/features/cafe/screens/Dashboard";
 import FilteredCafes from "./app/features/cafe/screens/DashboardFilter";
@@ -26,9 +29,6 @@ import ProfileScreen from "./app/features/profile/screens/Profile";
 import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";
 import SettingsScreen from "./app/features/settings/screens/Settings";
 import SubmitCafeScreen from "./app/features/settings/screens/SubmitCafe";
-
-import { useFonts } from "expo-font";
-import * as SplashScreen from "expo-splash-screen";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -61,14 +61,15 @@ export type RootStackParamList = {
     userCoords?: { latitude: number; longitude: number };
   };
   FilteredCafes: { filterType: string };
-  
+
   BusinessNavigation: undefined;
   BusinessProfile: { cafeId?: string } | undefined;
   ProfileBusi: undefined;
-  
+
   EditCafeProfile: { cafeId: string };
   CafeProfile: { cafeId: string };
-  
+  BusinessPreview: undefined;
+
   WriteReviewFE:
     | {
         cafeName?: string;
@@ -287,6 +288,7 @@ export default function App() {
         />
         <Stack.Screen name="CafeProfile" component={CafeProfileScreen} />
         <Stack.Screen name="WriteReviewFE" component={WriteReviewFEScreen} />
+        <Stack.Screen name="BusinessPreview" component={BusinessPreview} />
       </Stack.Navigator>
     </NavigationContainer>
   );
