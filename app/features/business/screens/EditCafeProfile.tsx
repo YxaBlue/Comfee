@@ -11,7 +11,9 @@ import {
   CafeDetail,
   getCafeById,
 } from "@/app/features/cafe/services/cafeService";
-import TopBar from "@/components/TopBar";
+import FullTextButton from "@/components/ui/FullTextButton";
+import Header from "@/components/ui/Header";
+import IconCircleButton from "@/components/ui/IconCircleButton";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
@@ -86,6 +88,7 @@ export default function EditCafeProfile() {
     null,
   );
   const [hours, setHours] = useState<EditCafeDayHours[]>([]);
+  const [page, setPage] = useState<number>(0);
 
   // ── Amenities state ──
   const [amenities, setAmenities] = useState<AmenitiesFormState>({
@@ -211,6 +214,41 @@ export default function EditCafeProfile() {
     return errors;
   };
 
+  const validatePage = (p: number): FieldErrors => {
+    const errs: FieldErrors = {};
+    if (p === 0) {
+      if (!name.trim()) errs.name = "Café name is required.";
+      if (!info.trim()) errs.info = "Description is required.";
+      if (!address.trim()) errs.address = "Address is required.";
+      if (!phone.trim()) errs.phone = "Phone is required.";
+      if (!email.trim()) errs.email = "Email is required.";
+      if (!coverUri) errs.cover = "Cover photo is required.";
+      if (!avatarUri) errs.avatar = "Profile photo is required.";
+    }
+    if (p === 1) {
+      hours.forEach((day, index) => {
+        if (!day.isOpen) return;
+        if (!day.openTime || !day.openTime.trim()) {
+          errs[`hours_${index}_open`] = `Opening time required for ${day.day}.`;
+        }
+        if (!day.closeTime || !day.closeTime.trim()) {
+          errs[`hours_${index}_close`] = `Closing time required for ${day.day}.`;
+        }
+      });
+      if (!hours.some((d) => d.isOpen)) errs.hours = "At least one day must be open.";
+    }
+    return errs;
+  };
+
+  const goNext = () => {
+    const errs = validatePage(page);
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+    setPage((p) => Math.min(3, p + 1));
+  };
+
+  const goPrev = () => setPage((p) => Math.max(0, p - 1));
+
   const handleSave = async () => {
     const errors = validate();
     setFieldErrors(errors);
@@ -251,7 +289,7 @@ export default function EditCafeProfile() {
         style={styles.background}
         resizeMode="cover"
       >
-        <TopBar navigation={navigation} />
+        <Header title={"Edit Café Profile"} navigation={navigation} />
         <View style={styles.centered}>
           <ActivityIndicator size="large" color="#8C6D4F" />
         </View>
@@ -265,7 +303,7 @@ export default function EditCafeProfile() {
       style={styles.background}
       resizeMode="cover"
     >
-      <TopBar navigation={navigation} />
+      <Header title={"Edit Café Profile"} navigation={navigation} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -274,10 +312,10 @@ export default function EditCafeProfile() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.screenTitle}>Edit Café Profile</Text>
-
-          <Text style={styles.sectionLabel}>Cover Photo</Text>
-          <TouchableOpacity
+          {page === 0 && (
+            <>
+              <Text style={styles.sectionLabel}>Cover Photo</Text>
+              <TouchableOpacity
             style={[
               styles.coverPicker,
               fieldErrors.cover && styles.inputErrorBorder,
@@ -332,7 +370,7 @@ export default function EditCafeProfile() {
             <Text style={styles.errorText}>{fieldErrors.avatar}</Text>
           ) : null}
 
-          <Field
+              <Field
             label="Café Name"
             value={name}
             onChangeText={(v) => {
@@ -341,7 +379,7 @@ export default function EditCafeProfile() {
             }}
             error={fieldErrors.name}
           />
-          <Field
+              <Field
             label="Description"
             value={info}
             onChangeText={(v) => {
@@ -382,238 +420,269 @@ export default function EditCafeProfile() {
             autoCapitalize="none"
           />
 
-          <Text style={styles.sectionLabel}>Operating Hours</Text>
-          {fieldErrors.hours ? (
-            <Text style={styles.errorText}>{fieldErrors.hours}</Text>
-          ) : null}
+            </>
+          )}
 
-          {hours.map((day, index) => (
-            <View
-              key={day.day}
-              style={[
-                styles.dayCard,
-                (fieldErrors[`hours_${index}_open`] ||
-                  fieldErrors[`hours_${index}_close`]) &&
-                  styles.inputErrorBorder,
-              ]}
-            >
-              <View style={styles.dayHeader}>
-                <Text style={styles.dayName}>{day.day}</Text>
-                <View style={styles.openToggleRow}>
-                  <Text style={styles.openToggleLabel}>
-                    {day.isOpen ? "Open" : "Closed"}
-                  </Text>
-                  <Switch
-                    value={day.isOpen}
-                    onValueChange={(isOpen) => {
-                      updateDay(index, {
-                        isOpen,
-                        openTime: day.openTime || "9:00 AM",
-                        closeTime: day.closeTime || "5:00 PM",
-                      });
-                    }}
-                    trackColor={{ false: "#D2BA94", true: "#8C6D4F" }}
-                    thumbColor="#FFF7ED"
-                  />
+          {page === 1 && (
+            <>
+              <Text style={styles.sectionLabel}>Operating Hours</Text>
+              {fieldErrors.hours ? (
+                <Text style={styles.errorText}>{fieldErrors.hours}</Text>
+              ) : null}
+
+              {hours.map((day, index) => (
+                <View
+                  key={day.day}
+                  style={[
+                    styles.dayCard,
+                    (fieldErrors[`hours_${index}_open`] ||
+                      fieldErrors[`hours_${index}_close`]) &&
+                      styles.inputErrorBorder,
+                  ]}
+                >
+                  <View style={styles.dayHeader}>
+                    <Text style={styles.dayName}>{day.day}</Text>
+                    <View style={styles.openToggleRow}>
+                      <Text style={styles.openToggleLabel}>
+                        {day.isOpen ? "Open" : "Closed"}
+                      </Text>
+                      <Switch
+                        value={day.isOpen}
+                        onValueChange={(isOpen) => {
+                          updateDay(index, {
+                            isOpen,
+                            openTime: day.openTime || "9:00 AM",
+                            closeTime: day.closeTime || "5:00 PM",
+                          });
+                        }}
+                        trackColor={{ false: "#D2BA94", true: "#8C6D4F" }}
+                        thumbColor="#FFF7ED"
+                      />
+                    </View>
+                  </View>
+
+                  {day.isOpen ? (
+                    <View style={styles.timeRow}>
+                      <TimePickerField
+                        label="Opens"
+                        value={day.openTime}
+                        onChange={(openTime) => updateDay(index, { openTime })}
+                      />
+                      <TimePickerField
+                        label="Closes"
+                        value={day.closeTime}
+                        onChange={(closeTime) => updateDay(index, { closeTime })}
+                      />
+                    </View>
+                  ) : null}
+
+                  {fieldErrors[`hours_${index}_open`] ? (
+                    <Text style={styles.errorText}>
+                      {fieldErrors[`hours_${index}_open`]}
+                    </Text>
+                  ) : null}
+                  {fieldErrors[`hours_${index}_close`] ? (
+                    <Text style={styles.errorText}>
+                      {fieldErrors[`hours_${index}_close`]}
+                    </Text>
+                  ) : null}
                 </View>
+              ))}
+            </>
+          )}
+
+          {page === 2 && (
+            <>
+              <Text style={styles.sectionLabel}>Amenities</Text>
+
+              <AmenityPillRow
+                label="WiFi"
+                options={["None", "Slow", "Moderate", "Fast"]}
+                single
+                selected={amenities.wifi_speed ? [amenities.wifi_speed] : []}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    wifi_speed: prev.wifi_speed === val ? null : (val as AmenitiesFormState["wifi_speed"]),
+                  }))
+                }
+              />
+              <AmenityPillRow
+                label="Sockets"
+                options={["None", "Some", "Many"]}
+                single
+                selected={amenities.sockets ? [amenities.sockets] : []}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    sockets: prev.sockets === val ? null : (val as AmenitiesFormState["sockets"]),
+                  }))
+                }
+              />
+              <AmenityPillRow
+                label="Parking"
+                options={["None", "Limited", "Plenty"]}
+                single
+                selected={amenities.parking ? [amenities.parking] : []}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    parking: prev.parking === val ? null : (val as AmenitiesFormState["parking"]),
+                  }))
+                }
+              />
+              <AmenityPillRow
+                label="Lighting"
+                options={["Dim", "Balanced", "Bright"]}
+                single
+                selected={amenities.lighting ? [amenities.lighting] : []}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    lighting: prev.lighting === val ? null : (val as AmenitiesFormState["lighting"]),
+                  }))
+                }
+              />
+              <AmenityPillRow
+                label="Music"
+                options={["Quiet", "Normal", "Blaring"]}
+                single
+                selected={amenities.music ? [amenities.music] : []}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    music: prev.music === val ? null : (val as AmenitiesFormState["music"]),
+                  }))
+                }
+              />
+              <AmenityPillRow
+                label="Seating"
+                options={["Inside", "Outside"]}
+                selected={amenities.seating}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    seating: prev.seating.includes(val)
+                      ? prev.seating.filter((s) => s !== val)
+                      : [...prev.seating, val],
+                  }))
+                }
+              />
+              <AmenityPillRow
+                label="Tables"
+                options={["Bar Type", "Individual Tables", "Large Tables"]}
+                selected={amenities.tables_type}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    tables_type: prev.tables_type.includes(val)
+                      ? prev.tables_type.filter((t) => t !== val)
+                      : [...prev.tables_type, val],
+                  }))
+                }
+              />
+              <AmenityPillRow
+                label="Pet Friendly"
+                options={["Yes", "No"]}
+                single
+                selected={[amenities.pet_friendly ? "Yes" : "No"]}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({ ...prev, pet_friendly: val === "Yes" }))
+                }
+              />
+
+              <Text style={styles.sectionLabel}>Suitable For</Text>
+              <AmenityPillRow
+                label="Suitable Conditions"
+                options={["Student", "Work", "Group", "Vibes"]}
+                selected={amenities.suitable_for}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    suitable_for: prev.suitable_for.includes(val)
+                      ? prev.suitable_for.filter((s) => s !== val)
+                      : [...prev.suitable_for, val],
+                  }))
+                }
+              />
+            </>
+          )}
+
+          {page === 3 && (
+            <>
+              <Text style={styles.sectionLabel}>Coffee</Text>
+              <AmenityPillRow
+                label="Bean Type"
+                options={["Arabica", "Robusta", "Liberica", "Excelsa"]}
+                selected={amenities.coffee_bean_type}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    coffee_bean_type: prev.coffee_bean_type.includes(val)
+                      ? prev.coffee_bean_type.filter((b) => b !== val)
+                      : [...prev.coffee_bean_type, val],
+                  }))
+                }
+              />
+              <AmenityPillRow
+                label="Brew Method"
+                options={["Espresso", "Drip", "French Press", "Pour Over", "Cold Brew"]}
+                selected={amenities.coffee_brew_method}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    coffee_brew_method: prev.coffee_brew_method.includes(val)
+                      ? prev.coffee_brew_method.filter((b) => b !== val)
+                      : [...prev.coffee_brew_method, val],
+                  }))
+                }
+              />
+              <Text style={styles.sectionLabel}>Price Level</Text>
+              <AmenityPillRow
+                label="Price Range"
+                options={["P", "PP", "PPP"]}
+                single
+                selected={amenities.price_level ? [amenities.price_level] : []}
+                onToggle={(val) =>
+                  setAmenities((prev) => ({
+                    ...prev,
+                    price_level: prev.price_level === val ? null : (val as AmenitiesFormState["price_level"]),
+                  }))
+                }
+              />
+            </>
+          )}
+
+          <View style={{ marginTop: 12 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
+              {page > 0 ? (
+                <View style={{ flex: 1, alignItems: "flex-start" }}>
+                  <IconCircleButton icon="arrow-back" variant="secondary" onPress={goPrev} />
+                </View>
+              ) : (
+                <View style={{ flex: 1 }} />
+              )}
+
+              <View style={{ flex: 1, alignItems: "flex-end" }}>
+                {page < 3 ? (
+                  <IconCircleButton icon="arrow-forward" onPress={goNext} />
+                ) : (
+                  <FullTextButton title="Save" onPress={() => void handleSave()} loading={saving} />
+                )}
               </View>
-
-              {day.isOpen ? (
-                <View style={styles.timeRow}>
-                  <TimePickerField
-                    label="Opens"
-                    value={day.openTime}
-                    onChange={(openTime) => updateDay(index, { openTime })}
-                  />
-                  <TimePickerField
-                    label="Closes"
-                    value={day.closeTime}
-                    onChange={(closeTime) => updateDay(index, { closeTime })}
-                  />
-                </View>
-              ) : null}
-
-              {fieldErrors[`hours_${index}_open`] ? (
-                <Text style={styles.errorText}>
-                  {fieldErrors[`hours_${index}_open`]}
-                </Text>
-              ) : null}
-              {fieldErrors[`hours_${index}_close`] ? (
-                <Text style={styles.errorText}>
-                  {fieldErrors[`hours_${index}_close`]}
-                </Text>
-              ) : null}
             </View>
-          ))}
 
+            <View style={{ marginTop: 8, alignItems: "center" }}>
+              <Text style={{ color: "#8C6D4F" }}>{page + 1} / 4</Text>
+            </View>
+          </View>
 
-          {/* ── Amenities ── */}
-          <Text style={styles.sectionLabel}>Amenities</Text>
-
-          <AmenityPillRow
-            label="WiFi"
-            options={["None", "Slow", "Moderate", "Fast"]}
-            single
-            selected={amenities.wifi_speed ? [amenities.wifi_speed] : []}
-            onToggle={(val) =>
-              setAmenities((prev) => ({
-                ...prev,
-                wifi_speed: prev.wifi_speed === val ? null : (val as AmenitiesFormState["wifi_speed"]),
-              }))
-            }
-          />
-          <AmenityPillRow
-            label="Sockets"
-            options={["None", "Some", "Many"]}
-            single
-            selected={amenities.sockets ? [amenities.sockets] : []}
-            onToggle={(val) =>
-              setAmenities((prev) => ({
-                ...prev,
-                sockets: prev.sockets === val ? null : (val as AmenitiesFormState["sockets"]),
-              }))
-            }
-          />
-          <AmenityPillRow
-            label="Parking"
-            options={["None", "Limited", "Plenty"]}
-            single
-            selected={amenities.parking ? [amenities.parking] : []}
-            onToggle={(val) =>
-              setAmenities((prev) => ({
-                ...prev,
-                parking: prev.parking === val ? null : (val as AmenitiesFormState["parking"]),
-              }))
-            }
-          />
-          <AmenityPillRow
-            label="Lighting"
-            options={["Dim", "Balanced", "Bright"]}
-            single
-            selected={amenities.lighting ? [amenities.lighting] : []}
-            onToggle={(val) =>
-              setAmenities((prev) => ({
-                ...prev,
-                lighting: prev.lighting === val ? null : (val as AmenitiesFormState["lighting"]),
-              }))
-            }
-          />
-          <AmenityPillRow
-            label="Music"
-            options={["Quiet", "Normal", "Blaring"]}
-            single
-            selected={amenities.music ? [amenities.music] : []}
-            onToggle={(val) =>
-              setAmenities((prev) => ({
-                ...prev,
-                music: prev.music === val ? null : (val as AmenitiesFormState["music"]),
-              }))
-            }
-          />
-          <AmenityPillRow
-            label="Seating"
-            options={["Inside", "Outside"]}
-            selected={amenities.seating}
-            onToggle={(val) =>
-              setAmenities((prev) => ({
-                ...prev,
-                seating: prev.seating.includes(val)
-                  ? prev.seating.filter((s) => s !== val)
-                  : [...prev.seating, val],
-              }))
-            }
-          />
-          <AmenityPillRow
-            label="Tables"
-            options={["Bar Type", "Individual Tables", "Large Tables"]}
-            selected={amenities.tables_type}
-            onToggle={(val) =>
-              setAmenities((prev) => ({
-                ...prev,
-                tables_type: prev.tables_type.includes(val)
-                  ? prev.tables_type.filter((t) => t !== val)
-                  : [...prev.tables_type, val],
-              }))
-            }
-          />
-          <AmenityPillRow
-            label="Pet Friendly"
-            options={["Yes", "No"]}
-            single
-            selected={[amenities.pet_friendly ? "Yes" : "No"]}
-            onToggle={(val) =>
-              setAmenities((prev) => ({ ...prev, pet_friendly: val === "Yes" }))
-            }
-          />
-
-          <Text style={styles.sectionLabel}>Coffee</Text>
-          <AmenityPillRow
-            label="Bean Type"
-            options={["Arabica", "Robusta", "Liberica", "Excelsa"]}
-            selected={amenities.coffee_bean_type}
-            onToggle={(val) =>
-              setAmenities((prev) => ({
-                ...prev,
-                coffee_bean_type: prev.coffee_bean_type.includes(val)
-                  ? prev.coffee_bean_type.filter((b) => b !== val)
-                  : [...prev.coffee_bean_type, val],
-              }))
-            }
-          />
-          <AmenityPillRow
-            label="Brew Method"
-            options={["Espresso", "Drip", "French Press", "Pour Over", "Cold Brew"]}
-            selected={amenities.coffee_brew_method}
-            onToggle={(val) =>
-              setAmenities((prev) => ({
-                ...prev,
-                coffee_brew_method: prev.coffee_brew_method.includes(val)
-                  ? prev.coffee_brew_method.filter((b) => b !== val)
-                  : [...prev.coffee_brew_method, val],
-              }))
-            }
-          />
-
-          <Text style={styles.sectionLabel}>Price Level</Text>
-          <AmenityPillRow
-            label="Price Range"
-            options={["P", "PP", "PPP"]}
-            single
-            selected={amenities.price_level ? [amenities.price_level] : []}
-            onToggle={(val) =>
-              setAmenities((prev) => ({
-                ...prev,
-                price_level: prev.price_level === val ? null : (val as AmenitiesFormState["price_level"]),
-              }))
-            }
-          />
-
-          <Text style={styles.sectionLabel}>Suitable For</Text>
-          <AmenityPillRow
-            label="Suitable Conditions"
-            options={["Student", "Work", "Group", "Vibes"]}
-            selected={amenities.suitable_for}
-            onToggle={(val) =>
-              setAmenities((prev) => ({
-                ...prev,
-                suitable_for: prev.suitable_for.includes(val)
-                  ? prev.suitable_for.filter((s) => s !== val)
-                  : [...prev.suitable_for, val],
-              }))
-            }
-          />
-
-          <TouchableOpacity
-            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-            onPress={() => void handleSave()}
-            disabled={saving}
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color="#FFF7ED" />
-            ) : (
-              <Text style={styles.saveButtonText}>Save</Text>
-            )}
-          </TouchableOpacity>
+          <View style={{ marginTop: 12 }}>
+            <FullTextButton title="Finish editing" onPress={() => void handleSave()} loading={saving} />
+            <View style={{ marginTop: 8 }}>
+              <FullTextButton title="Cancel editing" variant="ghost" onPress={() => navigation.goBack()} />
+            </View>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </ImageBackground>
@@ -867,9 +936,31 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: "SourceSerifPro-Bold",
   },
+  finishButton: {
+    marginTop: 6,
+    height: 48,
+    borderRadius: 10,
+    backgroundColor: "#3B2A1A",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  finishButtonText: {
+    color: "#FFF7ED",
+    fontSize: 15,
+    fontFamily: "SourceSerifPro-Bold",
+  },
+  cancelButton: {
+    marginTop: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelButtonText: {
+    color: "#8C6D4F",
+    fontSize: 14,
+    fontFamily: "SourceSerifPro-Regular",
+    textDecorationLine: "underline",
+  },
 });
-
-// ─── AmenityPillRow ───────────────────────────────────────────────────────────
 
 function AmenityPillRow({
   label,
