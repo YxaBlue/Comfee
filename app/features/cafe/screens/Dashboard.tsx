@@ -297,7 +297,7 @@ export default function Dashboard() {
               {latestCafe.name}
             </Text>
           )}
-          <Text style={styles.promoLabel}>Latest Café</Text>
+          <Text style={styles.promoLabel}>Fresh Café Finds</Text>
         </Pressable>
 
         <Text style={styles.labelText}>Featured Cafés</Text>

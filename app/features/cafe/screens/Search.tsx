@@ -220,6 +220,7 @@ export default function SearchScreen() {
     setNearMeLoading(true);
     try {
       const nearby = await getNearbyCafes(coords.latitude, coords.longitude);
+      
       const nearbyIds = new Set(nearby.map((c) => c.id));
       // ← use ref instead of allCafes state to avoid stale closure
       setNearbyCafes(allCafesRef.current.filter((c) => nearbyIds.has(c.id)));

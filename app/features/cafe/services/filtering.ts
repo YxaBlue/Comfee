@@ -24,9 +24,9 @@ export const FILTER_CATEGORIES: FilterCategory[] = [
     icon: "payments",
     selectionMode: "single",
     options: [
-      { id: "low_price", label:     "Below ₱150" },
-      { id: "medium_price", label:  "₱150 - ₱300" },
-      { id: "high_price", label:    "Above ₱300" },
+      { id: "low_price", label: "₱" },
+      { id: "medium_price", label: "₱₱" },
+      { id: "high_price", label: "₱₱₱" },
     ],
   },
   {
@@ -36,7 +36,7 @@ export const FILTER_CATEGORIES: FilterCategory[] = [
     options: [
       { id: "arabica", label: "Arabica" },
       { id: "robusta", label: "Robusta" },
-      { id: "liberica", label: "Liberica" },
+      { id: "liberica", label: "Liberica (Barako)" },
       { id: "excelsa", label: "Excelsa" },
     ],
   },

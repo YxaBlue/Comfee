@@ -33,15 +33,6 @@ export default function FilteredCafes() {
 
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
-  // Sample cafes data
-  const cafes = [
-    { id: "1", name: "Ilya Rozy Cafe", location: "Mactan", rating: 4.5 },
-    { id: "2", name: "Hollander Cafe", location: "Mactan", rating: 4.2 },
-    { id: "3", name: "Café Lumière", location: "Lapu-Lapu", rating: 4.8 },
-    // add more
-  ];
-
-  // Filter logic (example: for demo purposes, just return all)
   const filteredCafes = cafes.filter((cafe) =>
     cafe.name.toLowerCase().includes(filterType.toLowerCase()),
   );

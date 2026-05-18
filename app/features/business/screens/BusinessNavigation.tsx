@@ -281,6 +281,22 @@ export default function BusinessNavigation({
             />
             <Text style={styles.verifyCtaText}>Verify & link a café</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("BusinessPreview")}
+            activeOpacity={0.7}
+            style={{ alignItems: "center" }}
+          >
+            <Text
+              style={{
+                fontFamily: "serif",
+                fontSize: 13,
+                color: COLORS.muted,
+                textDecorationLine: "underline",
+              }}
+            >
+              Launch Cafe Preview
+            </Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </ImageBackground>
@@ -326,7 +342,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   pageTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "800",
     fontFamily: "serif",
     color: COLORS.text,
