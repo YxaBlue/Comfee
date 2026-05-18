@@ -1,19 +1,19 @@
 {
   "expo": {
-    "name": "ComfeeProject",
+    "name": "Comfee",
     "slug": "ComfeeProject",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "comfeeproject",
     "userInterfaceStyle": "automatic",
-    "icon": "./assets/images/logo.png",
+    "icon": "./assets/images/icon_logo.png",
 
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo.png",
+        "foregroundImage": "./assets/images/icon_logo.png",
         "backgroundColor": "#E6F4FE"
       },
 

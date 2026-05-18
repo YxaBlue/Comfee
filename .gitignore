@@ -2,6 +2,7 @@
 
 # Others
 .env
+eas.json
 
 # dependencies
 node_modules/
