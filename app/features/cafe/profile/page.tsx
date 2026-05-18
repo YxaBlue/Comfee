@@ -594,7 +594,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-
 const styles = StyleSheet.create({
   wrapper: { flex: 1, backgroundColor: "#EDDEC7" },
   container: { flexGrow: 1, backgroundColor: "#FFEFD5" },

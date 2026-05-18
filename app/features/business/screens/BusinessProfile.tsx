@@ -429,25 +429,27 @@ export default function BusinessProfile() {
             <CafeInfoTab cafe={{ ...cafe, favoritesCount }} />
           )}
           {activeTab === "amenities" && (
-            <AmenitiesMenuTab
-              amenities={{
-                WiFi: cafe.wifi_speed,
-                Sockets: cafe.sockets,
-                Parking: cafe.parking,
-                Lighting: cafe.lighting,
-                Seating: cafe.seating,
-                Tables: cafe.tables_type,
-                Music: cafe.music,
-                PetFriendly: cafe.pet_friendly,
-                SuitableConditions: cafe.suitable_for as ("Student" | "Work" | "Group" | "Vibes")[],
-              }}
-              menuURLs={cafe.menu_urls}
-              coffee={{
-                BeanType: cafe.coffee_bean_type as ("Arabica" | "Robusta" | "Liberica" | "Excelsa")[],
-                BrewMethod: cafe.coffee_brew_method as ("Espresso" | "Drip" | "French Press" | "Pour Over" | "Cold Brew")[],
-              }}
-              price={{ PriceRange: cafe.price_level }}
-            />
+            <View style={{ paddingHorizontal: 16, paddingTop: 18, paddingBottom: 100 }}>
+              <AmenitiesMenuTab
+                amenities={{
+                  WiFi: cafe.wifi_speed,
+                  Sockets: cafe.sockets,
+                  Parking: cafe.parking,
+                  Lighting: cafe.lighting,
+                  Seating: cafe.seating,
+                  Tables: cafe.tables_type,
+                  Music: cafe.music,
+                  PetFriendly: cafe.pet_friendly,
+                  SuitableConditions: cafe.suitable_for as ("Student" | "Work" | "Group" | "Vibes")[],
+                }}
+                menuURLs={cafe.menu_urls}
+                coffee={{
+                  BeanType: cafe.coffee_bean_type as ("Arabica" | "Robusta" | "Liberica" | "Excelsa")[],
+                  BrewMethod: cafe.coffee_brew_method as ("Espresso" | "Drip" | "French Press" | "Pour Over" | "Cold Brew")[],
+                }}
+                price={{ PriceRange: cafe.price_level }}
+              />
+            </View>
           )}
           {activeTab === "posts" && (
             <OwnerPostsTab
