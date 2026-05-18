@@ -73,16 +73,15 @@ const ALL_DAYS = [
   "Sunday",
 ];
 
-const DAY_SHORT: Record<string, string> = {
-  Monday: "Mon",
-  Tuesday: "Tue",
-  Wednesday: "Wed",
-  Thursday: "Thu",
-  Friday: "Fri",
-  Saturday: "Sat",
-  Sunday: "Sun",
-};
-
+const DAYS_SUN_FIRST = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 // ─── Star Filter Bar ──────────────────────────────────────────────────────────
 
 export function StarFilterBar({
@@ -190,45 +189,75 @@ export function CafeInfoTab({ cafe }: { cafe: CafeDetail & { favoritesCount: num
       </View>
 
       <Text style={infoStyles.sectionLabel}>Operating Hours</Text>
-      {ALL_DAYS.map((day) => {
-        const dayHours = cafe.opening_hours.find((hours) => hours.day === day);
-        const isOpen = Boolean(dayHours);
-        const isOpen24Hours =
-          dayHours?.opening_time === "12:00 AM" &&
-          dayHours?.closing_time === "11:59 PM";
-        const hoursText = isOpen24Hours
-          ? "Open for 24 hours"
-          : `${dayHours?.opening_time ?? cafe.opening_time} - ${
-              dayHours?.closing_time ?? cafe.closing_time
-            }`;
-        return (
-          <View key={day} style={infoStyles.infoRow}>
-            <MaterialIcons
-              name="access-time"
-              size={15}
-              color={isOpen ? "#8C6D4F" : "#C4A882"}
-            />
-            <Text
-              style={[
-                infoStyles.infoText,
-                { width: 95, fontWeight: "700" },
-                !isOpen && { color: "#B09070" },
-              ]}
-            >
-              {day}
-            </Text>
-            {isOpen ? (
-              <Text style={[infoStyles.infoText, { flex: 1 }]}>
-                {hoursText}
+
+      {/* Group days by identical hours text and render one row per group */}
+      {(() => {
+        type Group = { hoursText: string; days: string[]; isOpen: boolean };
+        const groupsMap = new Map<string, Group>();
+
+        for (const day of DAYS_SUN_FIRST) {
+          const dayHours = cafe.opening_hours.find((h) => h.day === day);
+          const inDefaultDays = (cafe.opening_days ?? []).includes(day);
+          const hasDefaultTimes = !!(cafe.opening_time && cafe.closing_time);
+          const isOpen = Boolean(dayHours) || (inDefaultDays && hasDefaultTimes);
+          const isOpen24Hours =
+            (dayHours?.opening_time === "12:00 AM" && dayHours?.closing_time === "11:59 PM") ||
+            (isOpen && cafe.opening_time === "12:00 AM" && cafe.closing_time === "11:59 PM");
+
+          const hoursText = isOpen
+            ? isOpen24Hours
+              ? "Open for 24 hours"
+              : `${dayHours?.opening_time ?? cafe.opening_time} - ${
+                  dayHours?.closing_time ?? cafe.closing_time
+                }`
+            : "Closed";
+
+          const existing = groupsMap.get(hoursText);
+          if (existing) existing.days.push(day);
+          else groupsMap.set(hoursText, { hoursText, days: [day], isOpen });
+        }
+
+        const shortDay = (d: string) => d.slice(0, 3).toLowerCase();
+
+        return Array.from(groupsMap.values()).map((grp) => (
+          <View key={grp.hoursText} style={infoStyles.hoursGroup}>
+            <View style={infoStyles.hoursGroupHeader}>
+              <MaterialIcons
+                name="access-time"
+                size={18}
+                color={grp.isOpen ? "#8C6D4F" : "#C4A882"}
+              />
+              <Text style={[infoStyles.infoText, { fontFamily: "SourceSerifPro-Bold", marginLeft: 8 }]}>
+                {grp.hoursText}
               </Text>
-            ) : (
-              <Text style={[infoStyles.infoText, { flex: 1, color: "#B09070", fontStyle: "italic" }]}>
-                Closed
-              </Text>
-            )}
+            </View>
+
+            <View style={infoStyles.daysRow}>
+              {DAYS_SUN_FIRST.map((d) => {
+                const isHighlighted = grp.days.includes(d);
+                return (
+                  <View
+                    key={d}
+                    style={[
+                      infoStyles.dayPill,
+                      isHighlighted && infoStyles.dayPillActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        infoStyles.dayText,
+                        isHighlighted && infoStyles.dayTextActive,
+                      ]}
+                    >
+                      {shortDay(d)}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
           </View>
-        );
-      })}
+        ));
+      })()}
 
       <Text style={[infoStyles.sectionLabel, { marginTop: 16 }]}>Contact</Text>
       <View style={infoStyles.infoRow}>
@@ -1238,197 +1267,6 @@ const avatarStyles = StyleSheet.create({
   },
 });
 
-const starStyles = StyleSheet.create({
-  row: { flexDirection: "row", gap: 1, marginTop: 1 },
-});
-
-const writeReviewStyles = StyleSheet.create({
-  container: {
-    backgroundColor: "#E6D6BE",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingTop: 6,
-    paddingBottom: 16,
-    marginBottom: 12,
-  },
-  starsRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 15,
-    marginBottom: 2,
-    paddingVertical: 5,
-  },
-  button: {
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: "#9B6A3F",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonText: {
-    color: "#FFF7EA",
-    fontSize: 18,
-    fontFamily: "SourceSerifPro-Bold",
-  },
-});
-
-const starInputStyles = StyleSheet.create({
-  starBox: {
-    width: 34,
-    height: 34,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  leftHalf: { position: "absolute", left: 0, top: 0, bottom: 0, width: "50%" },
-  rightHalf: {
-    position: "absolute",
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: "50%",
-  },
-});
-
-const reviewCardStyles = StyleSheet.create({
-  container: {
-    backgroundColor: "#E6D6BE",
-    borderRadius: 12,
-    marginBottom: 10,
-    overflow: "visible",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    padding: 12,
-    paddingBottom: 4,
-    position: "relative",
-    zIndex: 1,
-  },
-  avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#D2BA94",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-    overflow: "hidden",
-  },
-  meta: { flex: 1, gap: 1 },
-  userName: {
-    fontSize: 13,
-    fontFamily: "SourceSerifPro-Bold",
-    color: "#3B2A1A",
-  },
-  youBadge: {
-    fontSize: 11,
-    fontFamily: "SourceSerifPro-Semibold",
-    color: "#8C6D4F",
-  },
-  date: { fontSize: 11, color: "#8C6D4F", marginTop: 1 },
-  comment: {
-    fontSize: 12,
-    color: "#4A3220",
-    lineHeight: 18,
-    fontStyle: "italic",
-    paddingHorizontal: 12,
-    paddingTop: 6,
-    paddingBottom: 8,
-  },
-  mediaWrapper: { overflow: "hidden" },
-  imageGrid: { flexDirection: "row", flexWrap: "wrap", padding: 8 },
-  dotsRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 4,
-    paddingVertical: 6,
-  },
-  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: "#C8A97A" },
-  dotActive: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#6B4F2E",
-  },
-  likesRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 10,
-  },
-  likesCount: { fontSize: 12, color: "#8C6D4F" },
-  likesCountActive: { color: "#6B4F2E", fontFamily: "SourceSerifPro-Bold" },
-  dropdownMenu: {
-    position: "absolute",
-    top: 24,
-    right: 0,
-    backgroundColor: "#FDF6EC",
-    borderRadius: 10,
-    paddingVertical: 4,
-    minWidth: 130,
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 20,
-    zIndex: 999,
-    borderWidth: 1,
-    borderColor: "#E6D6BE",
-  },
-  dropdownItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 13,
-  },
-  dropdownItemText: {
-    fontSize: 13,
-    color: "#3B2A1A",
-    fontFamily: "SourceSerifPro-Regular",
-  },
-  dropdownDivider: {
-    height: 1,
-    backgroundColor: "#E6D6BE",
-    marginHorizontal: 8,
-  },
-});
-
-const postCardStyles = StyleSheet.create({
-  container: {
-    backgroundColor: "#E6D6BE",
-    borderRadius: 12,
-    overflow: "hidden",
-    marginBottom: 10,
-  },
-  imageSingle: { width: "100%", height: 200, backgroundColor: "#C8A97A" },
-  imageRow: { flexDirection: "row" },
-  imageHalf: { flex: 1, height: 160, backgroundColor: "#C8A97A" },
-  imageGrid3: { flexDirection: "row", height: 180 },
-  imageGrid3Main: { flex: 2, height: "100%", backgroundColor: "#C8A97A" },
-  imageGrid3Sub: { flex: 1, flexDirection: "column" },
-  imageGrid3SubItem: { flex: 1, backgroundColor: "#BFA080" },
-  moreOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  moreText: { color: "#fff", fontSize: 16, fontFamily: "SourceSerifPro-Bold" },
-  body: { padding: 10 },
-  caption: { fontSize: 13, color: "#4A3220", lineHeight: 19, marginBottom: 8 },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  date: { fontSize: 11, color: "#8C6D4F" },
-  likesRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  likesCount: { fontSize: 12, color: "#8C6D4F" },
-});
-
 const infoStyles = StyleSheet.create({
   statsRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
   statCard: {
@@ -1514,13 +1352,38 @@ const infoStyles = StyleSheet.create({
     fontStyle: "italic",
     fontFamily: "SourceSerifPro-Regular",
   },
-  daysRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 4 },
+  // ── Updated: stack vertically ──
+  hoursGroup: {
+    flexDirection: "column",
+    gap: 8,
+    backgroundColor: "#FFF7ED",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 6,
+  },
+  hoursGroupHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  daysRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 5,
+  },
   dayPill: {
-    backgroundColor: "#D2BA94",
-    borderRadius: 20,
-    paddingHorizontal: 10,
+    backgroundColor: "#EDE0CE",
+    borderRadius: 16,
+    paddingHorizontal: 8,
     paddingVertical: 4,
   },
+  dayPillActive: { backgroundColor: "#6B4F2E" },
+  dayText: {
+    fontSize: 11,
+    fontFamily: "SourceSerifPro-Bold",
+    color: "#5A3E28",
+    textTransform: "lowercase",
+  },
+  dayTextActive: { color: "#FFF7EA" },
   dayPillClosed: { backgroundColor: "#EDE0CE" },
   dayPillText: {
     fontSize: 11,
@@ -1717,7 +1580,6 @@ const priceCoffeeStyles = StyleSheet.create({
     backgroundColor: "#6B4F2E",
     borderColor: "#6B4F2E",
   },
-  // No line-through by default — only the selected state should be visually distinct
   priceSymbol: {
     fontSize: 15,
     fontFamily: "SourceSerifPro-Bold",
