@@ -12,6 +12,9 @@ const COLORS = {
   accent: "#A0713A",
   accentLight: "#C8A97A",
   border: "#DFC392",
+  uploadBg: "#F0D3A0",
+  uploadBorder: "#C9A66E",
+  uploadText: "#C19B61",
 };
 
 interface Props {
@@ -58,6 +61,11 @@ export default function OperationalLegitimacy({
         ))}
       </View>
 
+      {/* Field label with required star */}
+      <Text style={styles.fieldLabel}>
+        Permit Document<Text style={styles.requiredStar}> *</Text>
+      </Text>
+
       {/* Preview */}
       <View style={styles.previewBox}>
         {image ? (
@@ -76,7 +84,7 @@ export default function OperationalLegitimacy({
 
       {/* Upload */}
       <Pressable style={styles.uploadBox} onPress={handlePickImage}>
-        <MaterialIcons name="image" size={44} color={COLORS.accentLight} />
+        <MaterialIcons name="image" size={44} color={COLORS.uploadText} />
         <Text style={styles.uploadText}>Click to upload</Text>
         <Text style={styles.uploadHint}>JPG, PNG, WebP up to 5MB</Text>
       </Pressable>
@@ -92,6 +100,18 @@ export default function OperationalLegitimacy({
 }
 
 const styles = StyleSheet.create({
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    fontFamily: "serif",
+    color: "#3b1f0e",
+    marginBottom: 8,
+  },
+  requiredStar: {
+    color: "#C0392B",
+    fontSize: 14,
+    fontWeight: "800",
+  },
   infoCard: {
     backgroundColor: COLORS.card,
     borderRadius: 7,
@@ -146,9 +166,9 @@ const styles = StyleSheet.create({
   uploadBox: {
     width: "100%",
     height: 86,
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    backgroundColor: COLORS.uploadBg,
+    borderWidth: 1.5,
+    borderColor: COLORS.uploadBorder,
     borderStyle: "dashed",
     borderRadius: 12,
     alignItems: "center",
@@ -159,19 +179,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     fontFamily: "serif",
-    color: COLORS.accentLight,
+    color: COLORS.uploadText,
   },
   uploadHint: {
     fontSize: 9,
     fontFamily: "serif",
-    color: COLORS.accentLight,
+    color: COLORS.uploadText,
   },
   removeBtn: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     alignSelf: "center",
-    marginTop: 12,
+    marginTop: 10,
+    marginBottom: 10,
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 8,

@@ -19,6 +19,10 @@ const COLORS = {
   accent: "#A0713A",
   accentLight: "#C8A97A",
   border: "#DFC392",
+  uploadBg: "#F0D3A0",
+  uploadBorder: "#C9A66E",
+  uploadText: "#C19B61",
+  required: "#C0392B",
 };
 
 interface Props {
@@ -26,6 +30,28 @@ interface Props {
   onNext: (data: Partial<VerificationFormData>) => void;
   onBack: () => void;
   currentStep: number;
+}
+
+function RequiredStar() {
+  return <Text style={styles.requiredStar}> *</Text>;
+}
+
+function FieldLabel({
+  label,
+  required,
+  optional,
+}: {
+  label: string;
+  required?: boolean;
+  optional?: boolean;
+}) {
+  return (
+    <Text style={styles.fieldLabel}>
+      {label}
+      {required && <RequiredStar />}
+      {optional && <Text style={styles.optionalTag}> (optional)</Text>}
+    </Text>
+  );
 }
 
 export default function OwnerDetails({
@@ -73,9 +99,9 @@ export default function OwnerDetails({
       nextDisabled={!isValid}
     >
       <View style={styles.section}>
-        <Text style={styles.fieldLabel}>Owner/Representative Name</Text>
+        <FieldLabel label="Owner/Representative Name" required />
         <Text style={styles.cardSub}>
-          If the cafe is a corporation, choose the name of the representative.
+          If the café is a corporation, provide the representative's name.
         </Text>
         <TextInput
           style={styles.input}
@@ -88,10 +114,10 @@ export default function OwnerDetails({
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.fieldLabel}>Valid ID Picture</Text>
+        <FieldLabel label="Valid ID Picture" required />
         <View style={styles.uploadRow}>
           <Pressable style={styles.uploadBox} onPress={handlePickImage}>
-            <MaterialIcons name="image" size={40} color={COLORS.accentLight} />
+            <MaterialIcons name="image" size={40} color={COLORS.uploadText} />
             <Text style={styles.uploadText}>Click to upload</Text>
             <Text style={styles.uploadHint}>JPG, PNG, WebP up to 5MB</Text>
           </Pressable>
@@ -101,7 +127,7 @@ export default function OwnerDetails({
               <Image
                 source={{ uri: idImage }}
                 style={styles.previewImage}
-                resizeMode="cover"
+                resizeMode="contain"
               />
             ) : (
               <>
@@ -128,10 +154,10 @@ export default function OwnerDetails({
       </View>
 
       <View style={[styles.section, styles.contactSection]}>
-        <Text style={styles.fieldLabel}>Email Address</Text>
+        <FieldLabel label="Email Address" required />
         <TextInput
           style={styles.input}
-          placeholder="Email Address"
+          placeholder="email@example.com"
           placeholderTextColor={COLORS.accentLight}
           value={email}
           onChangeText={setEmail}
@@ -139,7 +165,9 @@ export default function OwnerDetails({
           autoCapitalize="none"
         />
 
-        <Text style={[styles.fieldLabel, styles.spacedLabel]}>Phone</Text>
+        <View style={styles.spacedLabel}>
+          <FieldLabel label="Phone" required />
+        </View>
         <TextInput
           style={styles.input}
           placeholder="e.g. 0912 345 6789"
@@ -149,9 +177,9 @@ export default function OwnerDetails({
           keyboardType="phone-pad"
         />
 
-        <Text style={[styles.fieldLabel, styles.spacedLabel]}>
-          Telephone (optional)
-        </Text>
+        <View style={styles.spacedLabel}>
+          <FieldLabel label="Landline / Telephone" optional />
+        </View>
         <TextInput
           style={styles.input}
           placeholder="e.g. 123-4567"
@@ -185,6 +213,16 @@ const styles = StyleSheet.create({
   spacedLabel: {
     marginTop: 12,
   },
+  requiredStar: {
+    color: "#C0392B",
+    fontSize: 14,
+    fontWeight: "800",
+  },
+  optionalTag: {
+    color: COLORS.muted,
+    fontSize: 11,
+    fontWeight: "400",
+  },
   input: {
     backgroundColor: COLORS.card,
     borderRadius: 7,
@@ -208,9 +246,9 @@ const styles = StyleSheet.create({
   uploadBox: {
     width: "42%",
     aspectRatio: 0.72,
-    backgroundColor: COLORS.card,
+    backgroundColor: COLORS.uploadBg,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: COLORS.uploadBorder,
     borderStyle: "dashed",
     borderRadius: 8,
     alignItems: "center",
@@ -221,12 +259,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: "700",
     fontFamily: "serif",
-    color: COLORS.accentLight,
+    color: COLORS.uploadText,
   },
   uploadHint: {
     fontSize: 8,
     fontFamily: "serif",
-    color: COLORS.accentLight,
+    color: COLORS.uploadText,
     textAlign: "center",
   },
   previewBox: {
@@ -257,6 +295,7 @@ const styles = StyleSheet.create({
     gap: 6,
     alignSelf: "center",
     marginTop: 10,
+    marginBottom: 10,
     paddingVertical: 7,
     paddingHorizontal: 14,
     borderRadius: 8,

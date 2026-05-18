@@ -12,7 +12,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 import { supabase } from "@/app/shared/lib/supabaseClient";
@@ -101,7 +101,10 @@ export function StarFilterBar({
       contentContainerStyle={filterStyles.row}
     >
       <TouchableOpacity
-        style={[filterStyles.pill, selected === null && filterStyles.pillActive]}
+        style={[
+          filterStyles.pill,
+          selected === null && filterStyles.pillActive,
+        ]}
         onPress={() => onSelect(null)}
       >
         <Text
@@ -160,7 +163,11 @@ export function StarFilterBar({
 
 // ─── Info Tab ─────────────────────────────────────────────────────────────────
 
-export function CafeInfoTab({ cafe }: { cafe: CafeDetail & { favoritesCount: number } }) {
+export function CafeInfoTab({
+  cafe,
+}: {
+  cafe: CafeDetail & { favoritesCount: number };
+}) {
   return (
     <View>
       <View style={infoStyles.section}>
@@ -222,7 +229,12 @@ export function CafeInfoTab({ cafe }: { cafe: CafeDetail & { favoritesCount: num
                 {hoursText}
               </Text>
             ) : (
-              <Text style={[infoStyles.infoText, { flex: 1, color: "#B09070", fontStyle: "italic" }]}>
+              <Text
+                style={[
+                  infoStyles.infoText,
+                  { flex: 1, color: "#B09070", fontStyle: "italic" },
+                ]}
+              >
                 Closed
               </Text>
             )}
@@ -232,8 +244,12 @@ export function CafeInfoTab({ cafe }: { cafe: CafeDetail & { favoritesCount: num
 
       <Text style={[infoStyles.sectionLabel, { marginTop: 16 }]}>Contact</Text>
       <View style={infoStyles.infoRow}>
-        <MaterialIcons name="phone" size={15} color="#8C6D4F" />
+        <MaterialIcons name="smartphone" size={15} color="#8C6D4F" />
         <Text style={infoStyles.infoText}>{cafe.phone ?? "—"}</Text>
+      </View>
+      <View style={infoStyles.infoRow}>
+        <MaterialIcons name="phone" size={15} color="#8C6D4F" />
+        <Text style={infoStyles.infoText}>{cafe.landline ?? "—"}</Text>
       </View>
       <View style={infoStyles.infoRow}>
         <MaterialIcons name="email" size={15} color="#8C6D4F" />
@@ -302,7 +318,12 @@ function AmenityCard({
   );
 }
 
-function AmenitiesMenuTab({ amenities, menuURLs, coffee, price }: AmenitiesMenuTabProps) {
+function AmenitiesMenuTab({
+  amenities,
+  menuURLs,
+  coffee,
+  price,
+}: AmenitiesMenuTabProps) {
   const AMENITY_ROWS: {
     label: string;
     icon: keyof typeof MaterialIcons.glyphMap;
@@ -416,7 +437,13 @@ function AmenitiesMenuTab({ amenities, menuURLs, coffee, price }: AmenitiesMenuT
         />
         <CoffeeSubCard
           label="Brew Method"
-          options={["Espresso", "Drip", "French Press", "Pour Over", "Cold Brew"]}
+          options={[
+            "Espresso",
+            "Drip",
+            "French Press",
+            "Pour Over",
+            "Cold Brew",
+          ]}
           selected={coffee.BrewMethod}
         />
       </SectionCard>
@@ -562,7 +589,9 @@ function SectionCard({
         <View>
           <Text style={priceCoffeeStyles.sectionCardTitle}>{title}</Text>
           {subtitle ? (
-            <Text style={priceCoffeeStyles.sectionCardSubtitle}>{subtitle}</Text>
+            <Text style={priceCoffeeStyles.sectionCardSubtitle}>
+              {subtitle}
+            </Text>
           ) : null}
         </View>
       </View>
@@ -676,8 +705,16 @@ function FavoriteButton({
     setToggling(true);
 
     Animated.sequence([
-      Animated.spring(scaleAnim, { toValue: 1.3, useNativeDriver: true, speed: 50 }),
-      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50 }),
+      Animated.spring(scaleAnim, {
+        toValue: 1.3,
+        useNativeDriver: true,
+        speed: 50,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 50,
+      }),
     ]).start();
 
     const wasLiked = isFavorited;
@@ -719,7 +756,9 @@ function FavoriteButton({
       activeOpacity={0.8}
       style={favStyles.btn}
       accessibilityRole="button"
-      accessibilityLabel={isFavorited ? "Remove from favorites" : "Add to favorites"}
+      accessibilityLabel={
+        isFavorited ? "Remove from favorites" : "Add to favorites"
+      }
     >
       <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
         <MaterialIcons
@@ -822,13 +861,20 @@ export default function CafeProfileScreen({ navigation }: Props) {
       ? cafeReviews
       : cafeReviews.filter((r) => Math.floor(r.rating) === starFilter);
 
-  const handleToggleLike = async (reviewId: number, currentlyLiked: boolean) => {
+  const handleToggleLike = async (
+    reviewId: number,
+    currentlyLiked: boolean,
+  ) => {
     if (!currentUserId) return;
     const previous = cafeReviews;
     setCafeReviews((prev) =>
       prev.map((r) =>
         r.id === reviewId
-          ? { ...r, isLiked: !currentlyLiked, likes: r.likes + (currentlyLiked ? -1 : 1) }
+          ? {
+              ...r,
+              isLiked: !currentlyLiked,
+              likes: r.likes + (currentlyLiked ? -1 : 1),
+            }
           : r,
       ),
     );

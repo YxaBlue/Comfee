@@ -3,6 +3,7 @@ import { useNavigation, type NavigationProp } from "@react-navigation/native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Image,
   ImageBackground,
   Pressable,
@@ -64,26 +65,53 @@ function CafeCard({
   cafe: OwnedCafe;
   onSelect: (cafe: OwnedCafe) => void;
 }) {
+  const isPending = cafe.status === "pending";
+
+  const handlePress = () => {
+    if (isPending) {
+      Alert.alert(
+        "Verification pending",
+        "Your ownership request for this café is still being reviewed. You'll be able to manage it once verified.",
+        [{ text: "OK" }],
+      );
+      return;
+    }
+    onSelect(cafe);
+  };
+
   return (
     <Pressable
       style={({ pressed }) => [
         styles.cafeCard,
-        pressed && styles.cafeCardPressed,
+        isPending && styles.cafeCardPending,
+        pressed && !isPending && styles.cafeCardPressed,
       ]}
-      onPress={() => onSelect(cafe)}
+      onPress={handlePress}
       accessibilityRole="button"
       accessibilityLabel={`Open ${cafe.name}`}
     >
       {cafe.avatarUrl ? (
-        <Image source={{ uri: cafe.avatarUrl }} style={styles.cafeAvatar} />
+        <Image
+          source={{ uri: cafe.avatarUrl }}
+          style={[styles.cafeAvatar, isPending && styles.cafeAvatarDimmed]}
+        />
       ) : (
-        <View style={[styles.cafeAvatar, styles.cafeAvatarFallback]}>
+        <View
+          style={[
+            styles.cafeAvatar,
+            styles.cafeAvatarFallback,
+            isPending && styles.cafeAvatarDimmed,
+          ]}
+        >
           <MaterialIcons name="storefront" size={22} color="#7A5230" />
         </View>
       )}
 
       <View style={styles.cafeInfo}>
-        <Text style={styles.cafeName} numberOfLines={1}>
+        <Text
+          style={[styles.cafeName, isPending && styles.cafeNameMuted]}
+          numberOfLines={1}
+        >
           {cafe.name}
         </Text>
         <Text style={styles.cafeAddress} numberOfLines={1}>
@@ -92,7 +120,11 @@ function CafeCard({
       </View>
 
       <StatusBadge status={cafe.status} />
-      <MaterialIcons name="chevron-right" size={20} color={COLORS.accent} />
+      <MaterialIcons
+        name={isPending ? "hourglass-empty" : "chevron-right"}
+        size={20}
+        color={isPending ? COLORS.accentLight : COLORS.accent}
+      />
     </Pressable>
   );
 }
@@ -106,34 +138,49 @@ export default function BusinessNavigation({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) throw new Error("Not authenticated");
-        const data = await getOwnedCafes(user.id);
-        if (!cancelled) setCafes(data);
-      } catch (err: any) {
-        if (!cancelled) setError(err.message ?? "Failed to load cafés");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+  const loadCafes = async (cancelled?: { current: boolean }) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+      const data = await getOwnedCafes(user.id);
+      if (!cancelled?.current) setCafes(data);
+    } catch (err: any) {
+      if (!cancelled?.current) setError(err.message ?? "Failed to load cafés");
+    } finally {
+      if (!cancelled?.current) setLoading(false);
     }
+  };
 
-    load();
+  useEffect(() => {
+    const cancelled = { current: false };
+    loadCafes(cancelled);
     return () => {
-      cancelled = true;
+      cancelled.current = true;
     };
   }, []);
 
+  // Refresh list when returning from OwnerVerification
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      loadCafes();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
   const handleBack = () => {
     if (navigation.canGoBack()) navigation.goBack();
+  };
+
+  const handleVerify = () => {
+    if (onVerify) {
+      onVerify();
+      return;
+    }
+    navigation.navigate("OwnerVerification");
   };
 
   return (
@@ -172,11 +219,7 @@ export default function BusinessNavigation({
           </View>
         ) : cafes.length === 0 ? (
           <View style={styles.emptyState}>
-            <MaterialIcons
-              name="storefront"
-              size={36}
-              color={COLORS.accent}
-            />
+            <MaterialIcons name="storefront" size={36} color={COLORS.accent} />
             <Text style={styles.emptyTitle}>No cafés linked</Text>
             <Text style={styles.emptyDesc}>
               Verify ownership of a café below to link it to your account and
@@ -201,7 +244,7 @@ export default function BusinessNavigation({
           </View>
         )}
 
-        {/* Connector line hinting at the relationship */}
+        {/* Connector */}
         <View style={styles.connectorRow}>
           <View style={styles.connectorLine} />
           <View style={styles.connectorDot} />
@@ -220,16 +263,14 @@ export default function BusinessNavigation({
           <View style={styles.verifyTextBlock}>
             <Text style={styles.verifyHeading}>Link a café you own</Text>
             <Text style={styles.verifySub}>
-              Submit ownership documents to connect your account to a café.
-              You will need to verify separately for each café you own.
+              Submit ownership documents to connect your account to a café. You
+              will need to verify separately for each café you own.
             </Text>
           </View>
 
           <TouchableOpacity
             style={styles.verifyCta}
-            onPress={
-              onVerify ?? (() => navigation.navigate("OwnerVerification"))
-            }
+            onPress={handleVerify}
             activeOpacity={0.85}
           >
             <MaterialIcons
@@ -256,8 +297,6 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 40,
   },
-
-  // Top bar
   topBar: {
     paddingTop: 18,
     paddingBottom: 16,
@@ -292,8 +331,6 @@ const styles = StyleSheet.create({
     fontFamily: "serif",
     color: COLORS.text,
   },
-
-  // Section header row
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -320,8 +357,6 @@ const styles = StyleSheet.create({
     fontFamily: "serif",
     fontStyle: "italic",
   },
-
-  // Cafe list
   cafeList: {
     paddingHorizontal: 16,
     gap: 10,
@@ -336,6 +371,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 12,
   },
+  cafeCardPending: {
+    opacity: 0.7,
+  },
   cafeCardPressed: {
     backgroundColor: "#FDECC0",
   },
@@ -349,6 +387,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  cafeAvatarDimmed: {
+    opacity: 0.6,
+  },
   cafeInfo: {
     flex: 1,
   },
@@ -358,14 +399,15 @@ const styles = StyleSheet.create({
     fontFamily: "serif",
     color: "#3B1F08",
   },
+  cafeNameMuted: {
+    color: COLORS.muted,
+  },
   cafeAddress: {
     fontSize: 12,
     fontFamily: "serif",
     color: "#7A5230",
     marginTop: 3,
   },
-
-  // Badge
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -387,8 +429,6 @@ const styles = StyleSheet.create({
   badgeTextPending: {
     color: "#7A7A7A",
   },
-
-  // States
   centerState: {
     marginTop: 48,
     alignItems: "center",
@@ -425,8 +465,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     maxWidth: 240,
   },
-
-  // Connector between list and verify strip
   connectorRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -446,8 +484,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.accentLight,
     marginHorizontal: 6,
   },
-
-  // Verify strip
   verifyStrip: {
     marginHorizontal: 16,
     marginTop: 12,
