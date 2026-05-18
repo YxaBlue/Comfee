@@ -18,12 +18,12 @@ import BusinessPreview from "./app/features/business/screens/BusinessPreview";
 import BusinessProfile from "./app/features/business/screens/BusinessProfile";
 import EditCafeProfileScreen from "./app/features/business/screens/EditCafeProfile";
 import OwnerVerificationScreen from "./app/features/business/screens/OwnerVerification";
-import CafeProfileScreen from "./app/features/cafe/screens/cafeProfile";
-import Dashboard from "./app/features/cafe/screens/Dashboard";
-import FilteredCafes from "./app/features/cafe/screens/DashboardFilter";
-import FilterScreen from "./app/features/cafe/screens/Filter";
-import SearchScreen from "./app/features/cafe/screens/Search";
-import WriteReviewFEScreen from "./app/features/cafe/screens/write-review-FE";
+import FilterScreen from "./app/features/cafe/dashboard/filter/page";
+import Dashboard from "./app/features/cafe/dashboard/page";
+import FilteredCafes from "./app/features/cafe/dashboard/results/page";
+import SearchScreen from "./app/features/cafe/dashboard/search/page";
+import CafeProfileScreen from "./app/features/cafe/profile/page";
+import WriteReviewFEScreen from "./app/features/cafe/profile/reviews/createReview/page";
 import { FilterSelectionState } from "./app/features/cafe/services/filtering";
 import ProfileScreen from "./app/features/profile/screens/Profile";
 import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";
@@ -66,7 +66,7 @@ export type RootStackParamList = {
   BusinessProfile: { cafeId?: string } | undefined;
   ProfileBusi: undefined;
 
-  EditCafeProfile: { cafeId: string };
+  EditCafeProfile: { cafeId: string; initialPage?: number };
   CafeProfile: { cafeId: string };
   BusinessPreview: undefined;
 

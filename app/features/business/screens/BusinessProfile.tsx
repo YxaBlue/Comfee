@@ -6,7 +6,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -23,12 +23,15 @@ import {
   View,
 } from "react-native";
 
-// Amenities editor removed from this screen; edits happen in EditCafeProfile
-import { AmenitiesMenuTab } from "@/app/features/cafe/screens/AmenitiesSubpage";
+import {
+  AmenitiesFormState,
+  saveAmenities
+} from "@/app/features/business/services/editCafeService";
+import { AmenitiesMenuTab } from "@/app/features/cafe/profile/amenities/AmenitiesSubpage";
 import {
   CafeInfoTab,
   StarFilterBar,
-} from "@/app/features/cafe/screens/cafeProfile";
+} from "@/app/features/cafe/profile/page";
 import {
   CafeDetail,
   getCafeById,
@@ -74,6 +77,10 @@ export default function BusinessProfile() {
   const [reviewsLoading, setReviewsLoading] = useState(true);
   const [starFilter, setStarFilter] = useState<number | null>(null);
   const [createPostVisible, setCreatePostVisible] = useState(false);
+  const [amenitiesEditorVisible, setAmenitiesEditorVisible] = useState(false);
+  const [amenitiesForm, setAmenitiesForm] = useState<AmenitiesFormState | null>(null);
+  const [amenitiesSaving, setAmenitiesSaving] = useState(false);
+  const [amenitiesSaveError, setAmenitiesSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -272,7 +279,8 @@ export default function BusinessProfile() {
       return;
     }
     if (activeTab === "amenities" && cafeId) {
-      navigation.navigate("EditCafeProfile", { cafeId });
+      // Open the full EditCafeProfile screen starting on the "menu/images" page (page index 3)
+      navigation.navigate("EditCafeProfile", { cafeId, initialPage: 2 });
       return;
     }
   };
@@ -468,18 +476,264 @@ export default function BusinessProfile() {
         </View>
       </ScrollView>
 
-      {/* Amenities editor removed */}
+      {/* Amenities editor modal */}
+      <Modal
+        visible={amenitiesEditorVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
+          if (!amenitiesSaving) setAmenitiesEditorVisible(false);
+        }}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={editModalStyles.overlay}
+        >
+          <Pressable
+            style={editModalStyles.backdrop}
+            onPress={() => {
+              if (!amenitiesSaving) setAmenitiesEditorVisible(false);
+            }}
+          />
+          <View style={[editModalStyles.card, { maxHeight: "85%" }]}>
+            <Text style={editModalStyles.title}>Edit Amenities</Text>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+
+              <AmenityRow label="WiFi">
+                {(["None", "Slow", "Moderate", "Fast"] as const).map((opt) => (
+                  <ChipButton
+                    key={opt}
+                    label={opt}
+                    selected={amenitiesForm?.wifi_speed === opt}
+                    onPress={() => setAmenitiesForm((p) => p ? { ...p, wifi_speed: opt } : p)}
+                    disabled={amenitiesSaving}
+                  />
+                ))}
+              </AmenityRow>
+
+              <AmenityRow label="Sockets">
+                {(["None", "Some", "Many"] as const).map((opt) => (
+                  <ChipButton
+                    key={opt}
+                    label={opt}
+                    selected={amenitiesForm?.sockets === opt}
+                    onPress={() => setAmenitiesForm((p) => p ? { ...p, sockets: opt } : p)}
+                    disabled={amenitiesSaving}
+                  />
+                ))}
+              </AmenityRow>
+
+              <AmenityRow label="Parking">
+                {(["None", "Limited", "Plenty"] as const).map((opt) => (
+                  <ChipButton
+                    key={opt}
+                    label={opt}
+                    selected={amenitiesForm?.parking === opt}
+                    onPress={() => setAmenitiesForm((p) => p ? { ...p, parking: opt } : p)}
+                    disabled={amenitiesSaving}
+                  />
+                ))}
+              </AmenityRow>
+
+              <AmenityRow label="Lighting">
+                {(["Dim", "Balanced", "Bright"] as const).map((opt) => (
+                  <ChipButton
+                    key={opt}
+                    label={opt}
+                    selected={amenitiesForm?.lighting === opt}
+                    onPress={() => setAmenitiesForm((p) => p ? { ...p, lighting: opt } : p)}
+                    disabled={amenitiesSaving}
+                  />
+                ))}
+              </AmenityRow>
+
+              <AmenityRow label="Music">
+                {(["Quiet", "Normal", "Blaring"] as const).map((opt) => (
+                  <ChipButton
+                    key={opt}
+                    label={opt}
+                    selected={amenitiesForm?.music === opt}
+                    onPress={() => setAmenitiesForm((p) => p ? { ...p, music: opt } : p)}
+                    disabled={amenitiesSaving}
+                  />
+                ))}
+              </AmenityRow>
+
+              <AmenityRow label="Pet Friendly">
+                <ChipButton
+                  label="Yes"
+                  selected={amenitiesForm?.pet_friendly === true}
+                  onPress={() => setAmenitiesForm((p) => p ? { ...p, pet_friendly: true } : p)}
+                  disabled={amenitiesSaving}
+                />
+                <ChipButton
+                  label="No"
+                  selected={amenitiesForm?.pet_friendly === false}
+                  onPress={() => setAmenitiesForm((p) => p ? { ...p, pet_friendly: false } : p)}
+                  disabled={amenitiesSaving}
+                />
+              </AmenityRow>
+
+              <AmenityRow label="Price Level">
+                {([
+                  { symbol: "₱", value: "P" },
+                  { symbol: "₱₱", value: "PP" },
+                  { symbol: "₱₱₱", value: "PPP" },
+                ] as const).map((opt) => (
+                  <ChipButton
+                    key={opt.value}
+                    label={opt.symbol}
+                    selected={amenitiesForm?.price_level === opt.value}
+                    onPress={() => setAmenitiesForm((p) => p ? { ...p, price_level: opt.value } : p)}
+                    disabled={amenitiesSaving}
+                  />
+                ))}
+              </AmenityRow>
+
+              <AmenityRow label="Seating">
+                {(["Inside", "Outside"] as const).map((opt) => (
+                  <ChipButton
+                    key={opt}
+                    label={opt}
+                    selected={amenitiesForm?.seating.includes(opt) ?? false}
+                    onPress={() =>
+                      setAmenitiesForm((p) => {
+                        if (!p) return p;
+                        const has = p.seating.includes(opt);
+                        return { ...p, seating: has ? p.seating.filter((s) => s !== opt) : [...p.seating, opt] };
+                      })
+                    }
+                    disabled={amenitiesSaving}
+                  />
+                ))}
+              </AmenityRow>
+
+              <AmenityRow label="Tables">
+                {(["Bar Type", "Individual Tables", "Large Tables"] as const).map((opt) => (
+                  <ChipButton
+                    key={opt}
+                    label={opt}
+                    selected={amenitiesForm?.tables_type.includes(opt) ?? false}
+                    onPress={() =>
+                      setAmenitiesForm((p) => {
+                        if (!p) return p;
+                        const has = p.tables_type.includes(opt);
+                        return { ...p, tables_type: has ? p.tables_type.filter((s) => s !== opt) : [...p.tables_type, opt] };
+                      })
+                    }
+                    disabled={amenitiesSaving}
+                  />
+                ))}
+              </AmenityRow>
+
+              <AmenityRow label="Bean Type">
+                {(["Arabica", "Robusta", "Liberica", "Excelsa"] as const).map((opt) => (
+                  <ChipButton
+                    key={opt}
+                    label={opt}
+                    selected={amenitiesForm?.coffee_bean_type.includes(opt) ?? false}
+                    onPress={() =>
+                      setAmenitiesForm((p) => {
+                        if (!p) return p;
+                        const has = p.coffee_bean_type.includes(opt);
+                        return { ...p, coffee_bean_type: has ? p.coffee_bean_type.filter((s) => s !== opt) : [...p.coffee_bean_type, opt] };
+                      })
+                    }
+                    disabled={amenitiesSaving}
+                  />
+                ))}
+              </AmenityRow>
+
+              <AmenityRow label="Brew Method">
+                {(["Espresso", "Drip", "French Press", "Pour Over", "Cold Brew"] as const).map((opt) => (
+                  <ChipButton
+                    key={opt}
+                    label={opt}
+                    selected={amenitiesForm?.coffee_brew_method.includes(opt) ?? false}
+                    onPress={() =>
+                      setAmenitiesForm((p) => {
+                        if (!p) return p;
+                        const has = p.coffee_brew_method.includes(opt);
+                        return { ...p, coffee_brew_method: has ? p.coffee_brew_method.filter((s) => s !== opt) : [...p.coffee_brew_method, opt] };
+                      })
+                    }
+                    disabled={amenitiesSaving}
+                  />
+                ))}
+              </AmenityRow>
+
+              <AmenityRow label="Suitable For">
+                {(["Student", "Work", "Group", "Vibes"] as const).map((opt) => (
+                  <ChipButton
+                    key={opt}
+                    label={opt}
+                    selected={amenitiesForm?.suitable_for.includes(opt) ?? false}
+                    onPress={() =>
+                      setAmenitiesForm((p) => {
+                        if (!p) return p;
+                        const has = p.suitable_for.includes(opt);
+                        return { ...p, suitable_for: has ? p.suitable_for.filter((s) => s !== opt) : [...p.suitable_for, opt] };
+                      })
+                    }
+                    disabled={amenitiesSaving}
+                  />
+                ))}
+              </AmenityRow>
+
+            </ScrollView>
+
+            {amenitiesSaveError ? (
+              <Text style={{ color: "#C0392B", marginTop: 10, fontSize: 13, fontFamily: "SourceSerifPro-Regular" }}>
+                {amenitiesSaveError}
+              </Text>
+            ) : null}
+
+            <View style={editModalStyles.actionsRow}>
+              <TouchableOpacity
+                style={editModalStyles.cancelBtn}
+                onPress={() => setAmenitiesEditorVisible(false)}
+                disabled={amenitiesSaving}
+              >
+                <Text style={editModalStyles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[editModalStyles.saveBtn, amenitiesSaving && editModalStyles.saveBtnDisabled]}
+                onPress={async () => {
+                  if (!amenitiesForm || !cafeId) return;
+                  setAmenitiesSaveError(null);
+                  setAmenitiesSaving(true);
+                  try {
+                    const res = await saveAmenities(Number(cafeId), amenitiesForm);
+                    if (res.error) {
+                      setAmenitiesSaveError(res.error);
+                    } else {
+                      setAmenitiesEditorVisible(false);
+                      void reloadCafe();
+                    }
+                  } catch (err: any) {
+                    setAmenitiesSaveError(err?.message ?? "Failed to save amenities");
+                  } finally {
+                    setAmenitiesSaving(false);
+                  }
+                }}
+                disabled={amenitiesSaving}
+              >
+                {amenitiesSaving ? (
+                  <ActivityIndicator size="small" color="#FDF6EC" />
+                ) : (
+                  <Text style={editModalStyles.saveBtnText}>Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {activeTab !== "reviews" && (
         <TouchableOpacity
           style={styles.editButton}
-          onPress={() => {
-            if (activeTab === "info" && cafeId) {
-              navigation.navigate("EditCafeProfile", { cafeId });
-              return;
-            }
-            handleFabPress();
-          }}
+          onPress={handleFabPress}
         >
           <MaterialIcons
             name={activeTab === "posts" ? "add" : "edit"}
@@ -1451,6 +1705,56 @@ function OwnerReviewsTab({
         </ScrollView>
       )}
     </View>
+  );
+}
+
+function AmenityRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={{ marginTop: 14 }}>
+      <Text style={{ color: "#6B4F2E", fontSize: 13, fontFamily: "SourceSerifPro-Bold", marginBottom: 8 }}>
+        {label}
+      </Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+function ChipButton({
+  label,
+  selected,
+  onPress,
+  disabled,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <TouchableOpacity
+      style={{
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: "#D2BA94",
+        backgroundColor: selected ? "#6B4F2E" : "transparent",
+      }}
+      onPress={onPress}
+      disabled={disabled}
+    >
+      <Text style={{ color: selected ? "#FFF7EA" : "#6B4F2E", fontSize: 13, fontFamily: "SourceSerifPro-Regular" }}>
+        {label}
+      </Text>
+    </TouchableOpacity>
   );
 }
 

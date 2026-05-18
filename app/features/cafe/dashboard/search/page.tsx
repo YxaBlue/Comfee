@@ -23,13 +23,13 @@ import {
   getCafesWithFeatures,
   getNearbyCafes,
   getUserLocation,
-} from "../services/cafeService";
+} from "../../services/cafeService";
 import {
   cafeMatchesFilters,
   FILTER_CATEGORIES,
   FilterSelectionState,
   normalizeFilterSelections,
-} from "../services/filtering";
+} from "../../services/filtering";
 
 type NavProps = NativeStackNavigationProp<RootStackParamList>;
 type SearchScreenRouteProp = RouteProp<RootStackParamList, "Search">;
@@ -333,7 +333,7 @@ export default function SearchScreen() {
 
   return (
     <ImageBackground
-      source={require("../../../../assets/images/bg1.png")}
+      source={require("../../../../../assets/images/bg1.png")}
       style={styles.background}
       resizeMode="cover"
     >

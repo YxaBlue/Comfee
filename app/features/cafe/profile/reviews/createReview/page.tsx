@@ -21,7 +21,7 @@ import {
   createReview,
   editReview,
   uploadReviewImage,
-} from "../../../shared/modals/reviewService";
+} from "../../../../../shared/modals/reviewService";
 
 type Props = NativeStackScreenProps<RootStackParamList, "WriteReviewFE">;
 

@@ -12,6 +12,9 @@ const COLORS = {
   accent: "#A0713A",
   accentLight: "#C8A97A",
   border: "#DFC392",
+  uploadBg: "#F0D3A0",
+  uploadBorder: "#C9A66E",
+  uploadText: "#C19B61",
 };
 
 interface Props {
@@ -65,7 +68,11 @@ export default function BusinessLocation({
       nextDisabled={!isValid}
       submitting={submitting}
     >
-      <Text style={styles.sectionLabel}>Lease of Contract / Land Title</Text>
+      {/* Lease / Land Title */}
+      <Text style={styles.sectionLabel}>
+        Lease of Contract / Land Title
+        <Text style={styles.requiredStar}> *</Text>
+      </Text>
 
       <View style={styles.previewBox}>
         {leaseImage ? (
@@ -83,7 +90,7 @@ export default function BusinessLocation({
       </View>
 
       <Pressable style={styles.uploadBox} onPress={pickLease}>
-        <MaterialIcons name="image" size={44} color={COLORS.accentLight} />
+        <MaterialIcons name="image" size={44} color={COLORS.uploadText} />
         <Text style={styles.uploadText}>Click to upload</Text>
         <Text style={styles.uploadHint}>JPG, PNG, WebP up to 5MB</Text>
       </Pressable>
@@ -100,9 +107,11 @@ export default function BusinessLocation({
 
       <View style={styles.divider} />
 
+      {/* Interior / Exterior / Signage */}
       <View style={styles.sectionRow}>
         <Text style={[styles.sectionLabel, styles.flexLabel]}>
-          Cafe Interior / Exterior / Signage
+          Café Interior / Exterior / Signage
+          <Text style={styles.requiredStar}> *</Text>
         </Text>
         <Text style={styles.sectionCount}>{interiorImage ? "1/1" : "0/1"}</Text>
       </View>
@@ -123,7 +132,7 @@ export default function BusinessLocation({
       </View>
 
       <Pressable style={styles.uploadBox} onPress={pickInterior}>
-        <MaterialIcons name="image" size={44} color={COLORS.accentLight} />
+        <MaterialIcons name="image" size={44} color={COLORS.uploadText} />
         <Text style={styles.uploadText}>Click to upload</Text>
         <Text style={styles.uploadHint}>JPG, PNG, WebP up to 5MB</Text>
       </Pressable>
@@ -149,6 +158,11 @@ const styles = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 4,
   },
+  requiredStar: {
+    color: "#C0392B",
+    fontSize: 14,
+    fontWeight: "800",
+  },
   flexLabel: {
     flex: 1,
     marginBottom: 0,
@@ -163,12 +177,6 @@ const styles = StyleSheet.create({
     fontFamily: "serif",
     color: COLORS.muted,
     fontWeight: "600",
-  },
-  sectionSub: {
-    fontSize: 9,
-    fontFamily: "serif",
-    color: COLORS.muted,
-    marginBottom: 8,
   },
   divider: {
     height: 1,
@@ -201,9 +209,9 @@ const styles = StyleSheet.create({
   uploadBox: {
     width: "100%",
     height: 82,
-    backgroundColor: COLORS.card,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    backgroundColor: COLORS.uploadBg,
+    borderWidth: 1.5,
+    borderColor: COLORS.uploadBorder,
     borderStyle: "dashed",
     borderRadius: 12,
     alignItems: "center",
@@ -214,12 +222,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     fontFamily: "serif",
-    color: COLORS.accentLight,
+    color: COLORS.uploadText,
   },
   uploadHint: {
     fontSize: 8,
     fontFamily: "serif",
-    color: COLORS.accentLight,
+    color: COLORS.uploadText,
   },
   removeBtn: {
     flexDirection: "row",
@@ -227,6 +235,7 @@ const styles = StyleSheet.create({
     gap: 6,
     alignSelf: "center",
     marginTop: 10,
+    marginBottom: 10,
     paddingVertical: 7,
     paddingHorizontal: 14,
     borderRadius: 8,
