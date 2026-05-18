@@ -100,7 +100,6 @@ export default function BusinessProfile() {
         }
 
         setCurrentUserId(user.id);
-        console.log("[BusinessProfile] Authenticated user id:", user.id);
 
         try {
           const profile = await getProfile(user.id);
@@ -152,7 +151,6 @@ export default function BusinessProfile() {
         }
 
         const ownerCafeId = ownerRows?.[0]?.cafe_id;
-        console.log("[BusinessProfile] cafe_owners result:", ownerRows);
 
         if (!ownerCafeId) {
           setLoadStatus("no_owner");
@@ -975,7 +973,6 @@ function OwnerPostsTab({
   };
 
   const confirmDeletePost = async (postId: number) => {
-    console.log("[BusinessProfile] confirmDeletePost", { postId });
     setDeletingPostId(postId);
     setPostDeleteErrors((prev) => {
       const next = { ...prev };
@@ -984,7 +981,6 @@ function OwnerPostsTab({
     });
 
     const result = await deletePost(postId);
-    console.log("[BusinessProfile] deletePost result", result);
 
     setDeletingPostId(null);
     setPendingDeletePostId(null);

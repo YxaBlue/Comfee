@@ -324,7 +324,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
         setCurrentUserId(session.user.id);
         try {
           const profile = await getProfile(session.user.id);
-          console.log("Profile data:", JSON.stringify(profile));
           setCurrentUserProfile(profile);
         } catch (err) {
           console.error("Failed to fetch user profile:", err);
