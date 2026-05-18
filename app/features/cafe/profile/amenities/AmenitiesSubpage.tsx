@@ -391,7 +391,9 @@ export function AmenitiesMenuTab({ amenities, menuURLs, coffee, price }: Ameniti
       {/* ── Menu ── */}
         <Text style={amenityCardStyles.sectionLabel}>Menu</Text>
         {menuURLs && menuURLs.length > 0 ? (
-        <MenuCarousel menuURLs={menuURLs} />
+        <View style={{ marginBottom: 12 }}>
+          <MenuCarousel menuURLs={menuURLs} />
+        </View>
         ) : (
         <View style={amenityStyles.menuPlaceholder}>
             <MaterialIcons name="menu-book" size={32} color="#C4A882" />
@@ -522,9 +524,6 @@ export function AmenitiesMenuTab({ amenities, menuURLs, coffee, price }: Ameniti
   );
 }
 
-
-
-
 const priceCoffeeStyles = StyleSheet.create({
   sectionCard: {
     backgroundColor: "#FFF7ED",
@@ -540,9 +539,8 @@ const priceCoffeeStyles = StyleSheet.create({
   },
   sectionCardTitle: {
     fontSize: 16,
-    fontWeight: "700",
     color: "#3B2A1A",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
     lineHeight: 20,
   },
   sectionCardSubtitle: {
@@ -561,7 +559,7 @@ const priceCoffeeStyles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: "#D2BA94",
+    borderColor: "#d2ba948a",
     backgroundColor: "transparent",
     gap: 2,
   },
@@ -569,10 +567,8 @@ const priceCoffeeStyles = StyleSheet.create({
     backgroundColor: "#6B4F2E",
     borderColor: "#6B4F2E",
   },
-  // No line-through by default — only the selected state should be visually distinct
   priceSymbol: {
     fontSize: 15,
-    fontWeight: "700",
     color: "#6B4F2E",
     fontFamily: "SourceSerifPro-Regular",
   },
@@ -591,15 +587,15 @@ const priceCoffeeStyles = StyleSheet.create({
   coffeeSubCard: {
     backgroundColor: "#F5ECD8",
     borderRadius: 10,
-    padding: 12,
+    paddingTop: 6,
+    padding: 10,
     marginBottom: 8,
   },
   coffeeSubCardTitle: {
-    fontSize: 12,
-    fontWeight: "700",
+    fontSize: 15,
     color: "#3B2A1A",
     marginBottom: 8,
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
   optionsRow: {
     flexDirection: "row",
@@ -611,7 +607,7 @@ const priceCoffeeStyles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#D2BA94",
+    borderColor: "#d2ba9493",
     backgroundColor: "transparent",
   },
   coffeePillSelected: {
@@ -625,7 +621,6 @@ const priceCoffeeStyles = StyleSheet.create({
   },
   coffeePillTextSelected: {
     color: "#FFF7EA",
-    fontWeight: "600",
   },
 });
 
@@ -653,9 +648,8 @@ const amenityCardStyles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 13,
-    fontWeight: "700",
     color: "#3B2A1A",
-    fontFamily: "SourceSerifPro-Regular",
+    fontFamily: "SourceSerifPro-Bold",
   },
   optionsRow: {
     flexDirection: "row",
@@ -704,7 +698,11 @@ const amenityStyles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
-  menuPlaceholderText: { fontSize: 12, color: "#B09070" },
+  menuPlaceholderText: { 
+    fontSize: 12,
+    color: "#B09070",
+    fontFamily: "SourceSerifPro-Regular",
+  },
 });
 
 const menuCarouselStyles = StyleSheet.create({

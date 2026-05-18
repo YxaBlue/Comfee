@@ -279,7 +279,7 @@ export async function getCafeById(cafeId: string): Promise<CafeDetail | null> {
       .select(
         `
         id, name, address, email, phone, landline,
-        review ( rating ), avatar_url, main_photo_url,
+        review ( rating ), avatar_url, main_photo_url, menu_urls,
         cafe_hours (weekday, open_time, close_time),
         info
       `,
