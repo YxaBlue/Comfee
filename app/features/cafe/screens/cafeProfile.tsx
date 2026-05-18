@@ -11,7 +11,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 import { supabase } from "@/app/shared/lib/supabaseClient";
@@ -37,29 +37,32 @@ type Props = {
 type Tab = "Cafe-Info" | "Cafe-Reviews" | "Cafe-Ammenities-Menu";
 
 
-const ALL_DAYS = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-];
+// 1 = Sunday, 2 = Monday, ... 7 = Saturday (matches Supabase numeric day values)
+const DAYS_SUN_FIRST = [1, 2, 3, 4, 5, 6, 7];
 
-const DAY_SHORT: Record<string, string> = {
-  Monday: "Mon",
-  Tuesday: "Tue",
-  Wednesday: "Wed",
-  Thursday: "Thu",
-  Friday: "Fri",
-  Saturday: "Sat",
-  Sunday: "Sun",
+const DAY_SHORT: Record<number, string> = {
+  1: "Sun",
+  2: "Mon",
+  3: "Tue",
+  4: "Wed",
+  5: "Thu",
+  6: "Fri",
+  7: "Sat",
+};
+
+const DAY_FULL: Record<number, string> = {
+  1: "Sunday",
+  2: "Monday",
+  3: "Tuesday",
+  4: "Wednesday",
+  5: "Thursday",
+  6: "Friday",
+  7: "Saturday",
 };
 
 // ─── Star Filter Bar ──────────────────────────────────────────────────────────
 
-function StarFilterBar({
+export function StarFilterBar({
   selected,
   counts,
   onSelect,
@@ -75,7 +78,10 @@ function StarFilterBar({
       contentContainerStyle={filterStyles.row}
     >
       <TouchableOpacity
-        style={[filterStyles.pill, selected === null && filterStyles.pillActive]}
+        style={[
+          filterStyles.pill,
+          selected === null && filterStyles.pillActive,
+        ]}
         onPress={() => onSelect(null)}
       >
         <Text
@@ -134,7 +140,11 @@ function StarFilterBar({
 
 // ─── Info Tab ─────────────────────────────────────────────────────────────────
 
-function CafeInfoTab({ cafe }: { cafe: CafeDetail & { favoritesCount: number } }) {
+export function CafeInfoTab({
+  cafe,
+}: {
+  cafe: CafeDetail & { favoritesCount: number };
+}) {
   return (
     <View>
       <View style={infoStyles.section}>
@@ -164,45 +174,71 @@ function CafeInfoTab({ cafe }: { cafe: CafeDetail & { favoritesCount: number } }
       </View>
 
       <Text style={infoStyles.sectionLabel}>Operating Hours</Text>
-      {ALL_DAYS.map((day) => {
-        const dayHours = cafe.opening_hours.find((hours) => hours.day === day);
-        const isOpen = Boolean(dayHours);
-        const isOpen24Hours =
-          dayHours?.opening_time === "12:00 AM" &&
-          dayHours?.closing_time === "11:59 PM";
-        const hoursText = isOpen24Hours
-          ? "Open for 24 hours"
-          : `${dayHours?.opening_time ?? cafe.opening_time} - ${
-              dayHours?.closing_time ?? cafe.closing_time
-            }`;
-        return (
-          <View key={day} style={infoStyles.infoRow}>
-            <MaterialIcons
-              name="access-time"
-              size={15}
-              color={isOpen ? "#8C6D4F" : "#C4A882"}
-            />
-            <Text
-              style={[
-                infoStyles.infoText,
-                { width: 95, fontWeight: "700" },
-                !isOpen && { color: "#B09070" },
-              ]}
-            >
-              {day}
-            </Text>
-            {isOpen ? (
-              <Text style={[infoStyles.infoText, { flex: 1 }]}>
-                {hoursText}
+      {(() => {
+        type Group = { hoursText: string; days: number[]; isOpen: boolean };
+        const groupsMap = new Map<string, Group>();
+
+        for (const day of DAYS_SUN_FIRST) {
+          const dayName = DAY_FULL[day];
+          const dayHours = cafe.opening_hours.find((h) => h.day === dayName);
+          const inDefaultDays = (cafe.opening_days ?? []).includes(dayName);
+          const hasDefaultTimes = !!(cafe.opening_time && cafe.closing_time);
+          const isOpen = Boolean(dayHours) || (inDefaultDays && hasDefaultTimes);
+          const isOpen24Hours =
+            (dayHours?.opening_time === "12:00 AM" && dayHours?.closing_time === "11:59 PM") ||
+            (isOpen && cafe.opening_time === "12:00 AM" && cafe.closing_time === "11:59 PM");
+
+          const hoursText = isOpen
+            ? isOpen24Hours
+              ? "Open for 24 hours"
+              : `${dayHours?.opening_time ?? cafe.opening_time} - ${
+                  dayHours?.closing_time ?? cafe.closing_time
+                }`
+            : "Closed";
+
+          const existing = groupsMap.get(hoursText);
+          if (existing) existing.days.push(day);
+          else groupsMap.set(hoursText, { hoursText, days: [day], isOpen });
+        }
+
+        return Array.from(groupsMap.values()).map((grp) => (
+          <View key={grp.hoursText} style={infoStyles.hoursGroup}>
+            <View style={infoStyles.hoursGroupHeader}>
+              <MaterialIcons
+                name="access-time"
+                size={18}
+                color={grp.isOpen ? "#8C6D4F" : "#C4A882"}
+              />
+              <Text style={[infoStyles.infoText, { fontFamily: "SourceSerifPro-Bold", marginLeft: 8 }]}>
+                {grp.hoursText}
               </Text>
-            ) : (
-              <Text style={[infoStyles.infoText, { flex: 1, color: "#B09070", fontStyle: "italic" }]}>
-                Closed
-              </Text>
-            )}
+            </View>
+            <View style={infoStyles.daysRow}>
+              {DAYS_SUN_FIRST.map((d) => {
+                const isHighlighted = grp.days.includes(d);
+                return (
+                  <View
+                    key={d}
+                    style={[
+                      infoStyles.dayPill,
+                      isHighlighted && infoStyles.dayPillActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        infoStyles.dayText,
+                        isHighlighted && infoStyles.dayTextActive,
+                      ]}
+                    >
+                      {DAY_SHORT[d]}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
           </View>
-        );
-      })}
+        ));
+      })()}
 
       <Text style={[infoStyles.sectionLabel, { marginTop: 16 }]}>Contact</Text>
       <View style={infoStyles.infoRow}>
@@ -216,6 +252,163 @@ function CafeInfoTab({ cafe }: { cafe: CafeDetail & { favoritesCount: number } }
       <View style={infoStyles.infoRow}>
         <MaterialIcons name="place" size={15} color="#8C6D4F" />
         <Text style={[infoStyles.infoText, { flex: 1 }]}>{cafe.address}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ─── Amenities & Menu Tab ─────────────────────────────────────────────────────
+function AmenityCard({
+  label,
+  icon,
+  options,
+  selected,
+}: {
+  label: string;
+  icon: keyof typeof MaterialIcons.glyphMap;
+  options: string[];
+  selected: string | string[] | null;
+}) {
+  return (
+    <View style={amenityCardStyles.card}>
+      <View style={amenityCardStyles.cardHeader}>
+        <MaterialIcons name={icon} size={17} color="#6B4F2E" />
+        <Text style={amenityCardStyles.cardTitle}>{label}</Text>
+      </View>
+      <View style={amenityCardStyles.optionsRow}>
+        {options.map((opt) => {
+          const isSelected = Array.isArray(selected)
+            ? selected.includes(opt)
+            : selected === opt;
+          return (
+            <View
+              key={opt}
+              style={[
+                amenityCardStyles.optionPill,
+                isSelected && amenityCardStyles.optionPillSelected,
+              ]}
+            >
+              <Text
+                style={[
+                  amenityCardStyles.optionText,
+                  isSelected && amenityCardStyles.optionTextSelected,
+                ]}
+              >
+                {opt}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+// ─── Price Pill ───────────────────────────────────────────────────────────────
+
+function PricePill({
+  symbol,
+  label,
+  selected,
+}: {
+  symbol: string;
+  label: string;
+  selected: boolean;
+}) {
+  return (
+    <View
+      style={[
+        priceCoffeeStyles.pricePill,
+        selected && priceCoffeeStyles.pricePillSelected,
+      ]}
+    >
+      <Text
+        style={[
+          priceCoffeeStyles.priceSymbol,
+          selected && priceCoffeeStyles.priceSymbolSelected,
+        ]}
+      >
+        {symbol}
+      </Text>
+      <Text
+        style={[
+          priceCoffeeStyles.priceLabel,
+          selected && priceCoffeeStyles.priceLabelSelected,
+        ]}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+// ─── Section Card ─────────────────────────────────────────────────────────────
+
+function SectionCard({
+  icon,
+  title,
+  subtitle,
+  children,
+}: {
+  icon: keyof typeof MaterialIcons.glyphMap;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={priceCoffeeStyles.sectionCard}>
+      <View style={priceCoffeeStyles.sectionCardHeader}>
+        <MaterialIcons name={icon} size={22} color="#6B4F2E" />
+        <View>
+          <Text style={priceCoffeeStyles.sectionCardTitle}>{title}</Text>
+          {subtitle ? (
+            <Text style={priceCoffeeStyles.sectionCardSubtitle}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
+      </View>
+      {children}
+    </View>
+  );
+}
+
+// ─── Coffee Sub Card ──────────────────────────────────────────────────────────
+
+function CoffeeSubCard({
+  label,
+  options,
+  selected,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+}) {
+  return (
+    <View style={priceCoffeeStyles.coffeeSubCard}>
+      <Text style={priceCoffeeStyles.coffeeSubCardTitle}>{label}</Text>
+      <View style={priceCoffeeStyles.optionsRow}>
+        {options.map((opt) => {
+          const isSelected = selected.includes(opt);
+          return (
+            <View
+              key={opt}
+              style={[
+                priceCoffeeStyles.coffeePill,
+                isSelected && priceCoffeeStyles.coffeePillSelected,
+              ]}
+            >
+              <Text
+                style={[
+                  priceCoffeeStyles.coffeePillText,
+                  isSelected && priceCoffeeStyles.coffeePillTextSelected,
+                ]}
+              >
+                {opt}
+              </Text>
+            </View>
+          );
+        })}
       </View>
     </View>
   );
@@ -240,8 +433,6 @@ function EmptyState({
     </View>
   );
 }
-
-// ─── Favorite Button ──────────────────────────────────────────────────────────
 
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -321,26 +512,25 @@ export default function CafeProfileScreen({ navigation }: Props) {
     fetchReviews();
   }, [fetchReviews]);
 
-  const starCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-  for (const r of cafeReviews) {
-    const bucket = Math.floor(r.rating);
-    if (bucket >= 1 && bucket <= 5) {
-      starCounts[bucket] = (starCounts[bucket] ?? 0) + 1;
-    }
-  }
-
   const filteredReviews =
     starFilter === null
       ? cafeReviews
       : cafeReviews.filter((r) => Math.floor(r.rating) === starFilter);
 
-  const handleToggleLike = async (reviewId: number, currentlyLiked: boolean) => {
+  const handleToggleLike = async (
+    reviewId: number,
+    currentlyLiked: boolean,
+  ) => {
     if (!currentUserId) return;
     const previous = cafeReviews;
     setCafeReviews((prev) =>
       prev.map((r) =>
         r.id === reviewId
-          ? { ...r, isLiked: !currentlyLiked, likes: r.likes + (currentlyLiked ? -1 : 1) }
+          ? {
+              ...r,
+              isLiked: !currentlyLiked,
+              likes: r.likes + (currentlyLiked ? -1 : 1),
+            }
           : r,
       ),
     );
@@ -475,13 +665,6 @@ export default function CafeProfileScreen({ navigation }: Props) {
                   cafeId={cafeId}
                   onReviewPosted={fetchReviews}
                 />
-                {!reviewsLoading && cafeReviews.length > 0 && (
-                  <StarFilterBar
-                    selected={starFilter}
-                    counts={starCounts}
-                    onSelect={setStarFilter}
-                  />
-                )}
                 {reviewsLoading ? (
                   <ActivityIndicator
                     size="small"
@@ -608,12 +791,18 @@ const styles = StyleSheet.create({
 });
 
 
+const reviewsHeaderStyles = StyleSheet.create({
+  block: {
+    marginTop: 4,
+  },
+});
+
 const filterStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
     gap: 6,
-    paddingHorizontal: 0,
-    paddingVertical: 10,
+    paddingHorizontal: 4,
+    paddingVertical: 6,
   },
   pill: {
     flexDirection: "row",
@@ -761,6 +950,7 @@ const infoStyles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 6,
+    marginLeft: 10,
   },
   infoRow: {
     flexDirection: "row",
@@ -778,60 +968,36 @@ const infoStyles = StyleSheet.create({
     fontFamily: "SourceSerifPro-Regular",
   },
   infoSubText: { fontSize: 11, color: "#8C6D4F", marginTop: 2 },
-  hoursRow: {
+  hoursGroup: {
+    flexDirection: "column",
+    gap: 8,
+    backgroundColor: "#FFF7ED",
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 6,
+  },
+  hoursGroupHeader: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 7,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EDE0CE",
   },
-  hoursDay: {
-    width: 100,
-    alignItems: "flex-start",
+  daysRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 5,
   },
-  hoursDayOpen: {
-    backgroundColor: "transparent",
-  },
-  hoursDayClosed: {
-    backgroundColor: "transparent",
-  },
-  hoursDayText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#4B2C11",
-    fontFamily: "SourceSerifPro-Regular",
-  },
-  hoursDayTextClosed: {
-    color: "#B09070",
-    fontWeight: "400",
-  },
-  hoursTime: {
-    flex: 1,
-    fontSize: 13,
-    color: "#4B2C11",
-    fontFamily: "SourceSerifPro-Regular",
-  },
-  hoursClosed: {
-    flex: 1,
-    fontSize: 13,
-    color: "#B09070",
-    fontStyle: "italic",
-    fontFamily: "SourceSerifPro-Regular",
-  },
-  daysRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 4 },
   dayPill: {
-    backgroundColor: "#D2BA94",
-    borderRadius: 20,
-    paddingHorizontal: 10,
+    backgroundColor: "#EDE0CE",
+    borderRadius: 16,
+    paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  dayPillClosed: { backgroundColor: "#EDE0CE" },
-  dayPillText: {
+  dayPillActive: { backgroundColor: "#6B4F2E" },
+  dayText: {
     fontSize: 11,
     fontFamily: "SourceSerifPro-Bold",
     color: "#5A3E28",
   },
-  dayPillTextClosed: { color: "#B09070", textDecorationLine: "line-through" },
+  dayTextActive: { color: "#FFF7EA" },
   section: {
     paddingVertical: 8,
     backgroundColor: "#FFF7ED",
@@ -842,6 +1008,7 @@ const infoStyles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     color: "#3B2A1A",
+    marginTop: 5,
     marginBottom: 2,
     marginLeft: 10,
     fontFamily: "SourceSerifPro-Bold",
@@ -865,5 +1032,217 @@ const infoStyles = StyleSheet.create({
     height: 5,
     backgroundColor: "#FFEFD5",
     marginBottom: 4,
+  },
+});
+
+const amenityStyles = StyleSheet.create({
+  sectionLabel: {
+    fontSize: 11,
+    fontFamily: "SourceSerifPro-Bold",
+    color: "#8C6D4F",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  item: {
+    width: "47.5%",
+    backgroundColor: "#E6D6BE",
+    borderRadius: 8,
+    padding: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  itemOff: { backgroundColor: "#EDE0CE" },
+  itemLabel: { fontSize: 12, color: "#4A3220", flex: 1 },
+  itemLabelOff: { color: "#B09070", textDecorationLine: "line-through" },
+  othersRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 4 },
+  otherPill: {
+    backgroundColor: "#D2BA94",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  otherPillText: {
+    fontSize: 11,
+    color: "#5A3E28",
+    fontFamily: "SourceSerifPro-Semibold",
+  },
+  menuImage: {
+    width: "100%",
+    height: 200,
+    borderRadius: 10,
+    backgroundColor: "#E6D6BE",
+    marginBottom: 8,
+  },
+  menuPlaceholder: {
+    width: "100%",
+    height: 140,
+    borderRadius: 10,
+    backgroundColor: "#E6D6BE",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  menuPlaceholderText: { fontSize: 12, color: "#B09070" },
+});
+
+const amenityCardStyles = StyleSheet.create({
+  sectionLabel: {
+    fontSize: 11,
+    fontFamily: "SourceSerifPro-Bold",
+    color: "#8C6D4F",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  card: {
+    backgroundColor: "#FFF7ED",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 8,
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontFamily: "SourceSerifPro-Bold",
+    color: "#3B2A1A",
+  },
+  optionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  optionPill: {
+    paddingHorizontal: 13,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#D2BA94",
+    backgroundColor: "transparent",
+  },
+  optionPillSelected: {
+    backgroundColor: "#6B4F2E",
+    borderColor: "#6B4F2E",
+  },
+  optionText: {
+    fontSize: 12,
+    color: "#6B4F2E",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  optionTextSelected: {
+    color: "#FFF7EA",
+    fontFamily: "SourceSerifPro-Bold",
+  },
+});
+
+const priceCoffeeStyles = StyleSheet.create({
+  sectionCard: {
+    backgroundColor: "#FFF7ED",
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+  },
+  sectionCardHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    marginBottom: 14,
+  },
+  sectionCardTitle: {
+    fontSize: 16,
+    color: "#3B2A1A",
+    fontFamily: "SourceSerifPro-Bold",
+    lineHeight: 20,
+  },
+  sectionCardSubtitle: {
+    fontSize: 11,
+    color: "#8C6D4F",
+    marginTop: 1,
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  priceRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  pricePill: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#D2BA94",
+    backgroundColor: "transparent",
+    gap: 2,
+  },
+  pricePillSelected: {
+    backgroundColor: "#6B4F2E",
+    borderColor: "#6B4F2E",
+  },
+  // No line-through by default — only the selected state should be visually distinct
+  priceSymbol: {
+    fontSize: 15,
+    fontFamily: "SourceSerifPro-Bold",
+    color: "#6B4F2E",
+    textDecorationLine: "line-through",
+    textDecorationColor: "#6B4F2E",
+  },
+  priceSymbolSelected: {
+    color: "#FFF7EA",
+  },
+  priceLabel: {
+    fontSize: 10,
+    color: "#8C6D4F",
+    fontFamily: "SourceSerifPro-Regular",
+    textAlign: "center",
+  },
+  priceLabelSelected: {
+    color: "#F0D8B8",
+  },
+  coffeeSubCard: {
+    backgroundColor: "#F5ECD8",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+  },
+  coffeeSubCardTitle: {
+    fontSize: 12,
+    fontFamily: "SourceSerifPro-Bold",
+    color: "#3B2A1A",
+    marginBottom: 8,
+  },
+  optionsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  coffeePill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#D2BA94",
+    backgroundColor: "transparent",
+  },
+  coffeePillSelected: {
+    backgroundColor: "#6B4F2E",
+    borderColor: "#6B4F2E",
+  },
+  coffeePillText: {
+    fontSize: 12,
+    color: "#6B4F2E",
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  coffeePillTextSelected: {
+    color: "#FFF7EA",
+    fontFamily: "SourceSerifPro-Bold",
   },
 });
