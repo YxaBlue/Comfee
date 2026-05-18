@@ -23,7 +23,7 @@ import Dashboard from "./app/features/cafe/dashboard/page";
 import FilteredCafes from "./app/features/cafe/dashboard/results/page";
 import SearchScreen from "./app/features/cafe/dashboard/search/page";
 import CafeProfileScreen from "./app/features/cafe/profile/page";
-import WriteReviewFEScreen from "./app/features/cafe/screens/write-review-FE";
+import WriteReviewFEScreen from "./app/features/cafe/profile/reviews/createReview/page";
 import { FilterSelectionState } from "./app/features/cafe/services/filtering";
 import ProfileScreen from "./app/features/profile/screens/Profile";
 import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";

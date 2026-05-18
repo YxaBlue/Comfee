@@ -25,12 +25,11 @@ import {
 import { getProfile } from "../../profile/services/profileService";
 import { CafeDetail, getCafeById } from "../services/cafeService";
 
-import { ReviewCard } from "@/components/cafe/ReviewCard";
-import { WriteReviewCTA } from "@/components/cafe/WriteReview";
 import { FavoriteButton } from "@/components/input/FavoritesBtn";
 import { CafePost, useCafePosts } from "@/hooks/useCafePosts";
 import { formatReviewDate } from "../../../shared/modals/reviewService";
 import { Amenities, AmenitiesMenuTab, Coffee } from "./amenities/AmenitiesSubpage";
+import CafeReviewsTab from "./reviews/page";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "CafeProfile">;
@@ -525,54 +524,30 @@ export default function CafeProfileScreen({ navigation }: Props) {
             )}
 
             {activeTab === "Cafe-Reviews" && (
-              <View>
-                <WriteReviewCTA
-                  navigation={navigation}
-                  cafeName={cafe.name}
-                  cafeId={cafeId}
-                  onReviewPosted={fetchReviews}
-                />
-                {reviewsLoading ? (
-                  <ActivityIndicator
-                    size="small"
-                    color="#8C6D4F"
-                    style={{ marginTop: 20 }}
-                  />
-                ) : cafeReviews.length === 0 ? (
-                  <EmptyState
-                    icon="rate-review"
-                    title="No reviews yet..."
-                    subtitle="Be the first to leave a review for this café!"
-                  />
-                ) : filteredReviews.length === 0 ? (
-                  <EmptyState
-                    icon="filter-list"
-                    title="No matching reviews"
-                    subtitle={`No reviews with a ${starFilter}-star rating yet.`}
-                  />
-                ) : (
-                  filteredReviews.map((review) => (
-                    <ReviewCard
-                      key={review.id}
-                      review={review}
-                      isOwn={review.user_id === currentUserId}
-                      onToggleLike={handleToggleLike}
-                      onReport={(r) => setReportTarget(r)}
-                      onDelete={handleDeleteReview}
-                      onEdit={(r) => {
-                        navigation.navigate("WriteReviewFE", {
-                          cafeName: cafe.name,
-                          cafeId: Number(cafeId),
-                          initialRating: r.rating,
-                          reviewId: r.id,
-                          onReviewPosted: fetchReviews,
-                        });
-                      }}
-                      onNavigateToProfile={handleNavigateToProfile}
-                    />
-                  ))
-                )}
-              </View>
+              <CafeReviewsTab
+                navigation={navigation}
+                cafeName={cafe.name}
+                cafeId={cafeId}
+                onReviewPosted={fetchReviews}
+                reviewsLoading={reviewsLoading}
+                filteredReviews={filteredReviews}
+                totalReviews={cafeReviews.length}
+                starFilter={starFilter}
+                currentUserId={currentUserId}
+                onToggleLike={handleToggleLike}
+                onReport={(r) => setReportTarget(r)}
+                onDelete={handleDeleteReview}
+                onEdit={(r) => {
+                  navigation.navigate("WriteReviewFE", {
+                    cafeName: cafe.name,
+                    cafeId: Number(cafeId),
+                    initialRating: r.rating,
+                    reviewId: r.id,
+                    onReviewPosted: fetchReviews,
+                  });
+                }}
+                onNavigateToProfile={handleNavigateToProfile}
+              />
             )}
 
             {activeTab === "Cafe-Ammenities-Menu" && (
