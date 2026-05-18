@@ -33,21 +33,29 @@ export default function VerificationWizard() {
   };
 
   const handleSubmit = async (stepData: Partial<VerificationFormData>) => {
+    if (submitting) return;
+
     const finalData = { ...formData, ...stepData };
     setFormData(finalData);
     setSubmitting(true);
 
     try {
       await submitOwnerVerification(finalData);
-
-      Alert.alert(
-        "Submitted!",
-        "Your verification request has been submitted. We'll review it within 3 business days.",
-        [{ text: "OK", onPress: () => navigation.goBack() }],
-      );
+      // Navigate first, then show the alert on the previous screen
+      // so the wizard is gone before the dialog appears
+      navigation.goBack();
+      setTimeout(() => {
+        Alert.alert(
+          "Submission received",
+          "Your verification request has been submitted. We'll review it within 3 business days.",
+          [{ text: "Got it" }],
+        );
+      }, 400);
     } catch (err: any) {
-      Alert.alert("Submission failed", err.message ?? "Something went wrong.");
-    } finally {
+      Alert.alert(
+        "Submission failed",
+        err.message ?? "Something went wrong. Please try again.",
+      );
       setSubmitting(false);
     }
   };

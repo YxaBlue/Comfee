@@ -253,8 +253,12 @@ export function CafeInfoTab({
 
       <Text style={[infoStyles.sectionLabel, { marginTop: 16 }]}>Contact</Text>
       <View style={infoStyles.infoRow}>
-        <MaterialIcons name="phone" size={15} color="#8C6D4F" />
+        <MaterialIcons name="smartphone" size={15} color="#8C6D4F" />
         <Text style={infoStyles.infoText}>{cafe.phone ?? "—"}</Text>
+      </View>
+      <View style={infoStyles.infoRow}>
+        <MaterialIcons name="phone" size={15} color="#8C6D4F" />
+        <Text style={infoStyles.infoText}>{cafe.landline ?? "—"}</Text>
       </View>
       <View style={infoStyles.infoRow}>
         <MaterialIcons name="email" size={15} color="#8C6D4F" />
