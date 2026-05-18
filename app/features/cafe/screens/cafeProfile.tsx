@@ -3,10 +3,9 @@ import ReportModal from "@/app/shared/modals/reportModal";
 import TopBar from "@/components/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
   Image,
   ScrollView,
   StyleSheet,
@@ -28,39 +27,17 @@ import { CafeDetail, getCafeById } from "../services/cafeService";
 
 import { ReviewCard } from "@/components/cafe/ReviewCard";
 import { WriteReviewCTA } from "@/components/cafe/WriteReview";
+import { FavoriteButton } from "@/components/input/FavoritesBtn";
+import { CafePost, useCafePosts } from "@/hooks/useCafePosts";
+import { formatReviewDate } from "../../../shared/modals/reviewService";
+import { Amenities, AmenitiesMenuTab, Coffee } from "./AmenitiesSubpage";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "CafeProfile">;
 };
 
-type Tab = "Cafe-Info" | "Cafe-Reviews" | "Cafe-Ammenities-Menu";
+type Tab = "Cafe-Info" | "Cafe-Posts" | "Cafe-Reviews" | "Cafe-Ammenities-Menu";
 
-type Amenities = {
-  WiFi: "None" | "Slow" | "Moderate" | "Fast" | null;
-  Sockets: "None" | "Some" | "Many" | null;
-  Parking: "None" | "Limited" | "Plenty" | null;
-  Lighting: "Dim" | "Balanced" | "Bright" | null;
-  Seating: string[];
-  Tables: string[];
-  Music: "Quiet" | "Normal" | "Blaring" | null;
-  PetFriendly: boolean;
-  SuitableConditions: ("Student" | "Work" | "Group" | "Vibes")[];
-};
-
-type Coffee = {
-  BeanType: ("Arabica" | "Robusta" | "Liberica" | "Excelsa")[];
-  BrewMethod: (
-    | "Espresso"
-    | "Drip"
-    | "French Press"
-    | "Pour Over"
-    | "Cold Brew"
-  )[];
-};
-
-type PriceLevel = {
-  PriceRange: "P" | "PP" | "PPP" | null;
-};
 
 // 1 = Sunday, 2 = Monday, ... 7 = Saturday (matches Supabase numeric day values)
 const DAYS_SUN_FIRST = [1, 2, 3, 4, 5, 6, 7];
@@ -291,384 +268,6 @@ export function CafeInfoTab({
   );
 }
 
-// ─── Amenities & Menu Tab ─────────────────────────────────────────────────────
-
-type AmenitiesMenuTabProps = {
-  amenities: Amenities;
-  menuURLs: string[] | null;
-  coffee: Coffee;
-  price: PriceLevel;
-};
-
-function AmenityCard({
-  label,
-  icon,
-  options,
-  selected,
-}: {
-  label: string;
-  icon: keyof typeof MaterialIcons.glyphMap;
-  options: string[];
-  selected: string | string[] | null;
-}) {
-  return (
-    <View style={amenityCardStyles.card}>
-      <View style={amenityCardStyles.cardHeader}>
-        <MaterialIcons name={icon} size={17} color="#6B4F2E" />
-        <Text style={amenityCardStyles.cardTitle}>{label}</Text>
-      </View>
-      <View style={amenityCardStyles.optionsRow}>
-        {options.map((opt) => {
-          const isSelected = Array.isArray(selected)
-            ? selected.includes(opt)
-            : selected === opt;
-          return (
-            <View
-              key={opt}
-              style={[
-                amenityCardStyles.optionPill,
-                isSelected && amenityCardStyles.optionPillSelected,
-              ]}
-            >
-              <Text
-                style={[
-                  amenityCardStyles.optionText,
-                  isSelected && amenityCardStyles.optionTextSelected,
-                ]}
-              >
-                {opt}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-function AmenitiesMenuTab({
-  amenities,
-  menuURLs,
-  coffee,
-  price,
-}: AmenitiesMenuTabProps) {
-  const AMENITY_ROWS: {
-    label: string;
-    icon: keyof typeof MaterialIcons.glyphMap;
-    options: string[];
-    value: string | string[] | null;
-  }[] = [
-    {
-      label: "WiFi",
-      icon: "wifi",
-      options: ["None", "Slow", "Moderate", "Fast"],
-      value: amenities.WiFi,
-    },
-    {
-      label: "Sockets",
-      icon: "electrical-services",
-      options: ["None", "Some", "Many"],
-      value: amenities.Sockets,
-    },
-    {
-      label: "Parking",
-      icon: "local-parking",
-      options: ["None", "Limited", "Plenty"],
-      value: amenities.Parking,
-    },
-    {
-      label: "Lighting",
-      icon: "light-mode",
-      options: ["Dim", "Balanced", "Bright"],
-      value: amenities.Lighting,
-    },
-    {
-      label: "Seating",
-      icon: "chair",
-      options: ["Inside", "Outside"],
-      value: amenities.Seating,
-    },
-    {
-      label: "Tables",
-      icon: "table-bar",
-      options: ["Bar Type", "Individual Tables", "Large Tables"],
-      value: amenities.Tables,
-    },
-    {
-      label: "Music",
-      icon: "music-note",
-      options: ["Quiet", "Normal", "Blaring"],
-      value: amenities.Music,
-    },
-  ];
-
-  const PRICE_OPTIONS: {
-    symbol: string;
-    value: "P" | "PP" | "PPP";
-    label: string;
-  }[] = [
-    { symbol: "₱", value: "P", label: "Below ₱150" },
-    { symbol: "₱₱", value: "PP", label: "₱150–300" },
-    { symbol: "₱₱₱", value: "PPP", label: "Above ₱300" },
-  ];
-
-  return (
-    <View>
-      {/* ── Menu ── */}
-      <Text style={amenityCardStyles.sectionLabel}>Menu</Text>
-      {menuURLs && menuURLs.length > 0 ? (
-        menuURLs.map((url, i) => (
-          <Image
-            key={i}
-            source={{ uri: url }}
-            style={amenityStyles.menuImage}
-            resizeMode="contain"
-          />
-        ))
-      ) : (
-        <View style={amenityStyles.menuPlaceholder}>
-          <MaterialIcons name="menu-book" size={32} color="#C4A882" />
-          <Text style={amenityStyles.menuPlaceholderText}>
-            No menu uploaded yet
-          </Text>
-        </View>
-      )}
-
-      {/* ── Price Level ── */}
-      <SectionCard
-        icon="local-offer"
-        title="Price Level"
-        subtitle="Based on average drink prices"
-      >
-        <View style={priceCoffeeStyles.priceRow}>
-          {PRICE_OPTIONS.map((opt) => (
-            <PricePill
-              key={opt.value}
-              symbol={opt.symbol}
-              label={opt.label}
-              selected={price.PriceRange === opt.value}
-            />
-          ))}
-        </View>
-      </SectionCard>
-
-      {/* ── Coffee ── */}
-      <SectionCard
-        icon="coffee"
-        title="Coffee"
-        subtitle="Bean type, brewing methods, etc."
-      >
-        <CoffeeSubCard
-          label="Bean Type"
-          options={["Arabica", "Robusta", "Liberica", "Excelsa"]}
-          selected={coffee.BeanType}
-        />
-        <CoffeeSubCard
-          label="Brew Method"
-          options={[
-            "Espresso",
-            "Drip",
-            "French Press",
-            "Pour Over",
-            "Cold Brew",
-          ]}
-          selected={coffee.BrewMethod}
-        />
-      </SectionCard>
-
-      {/* ── Amenities ── */}
-      <Text style={[amenityCardStyles.sectionLabel, { marginTop: 20 }]}>
-        Amenities
-      </Text>
-      {AMENITY_ROWS.map((row) => (
-        <AmenityCard
-          key={row.label}
-          label={row.label}
-          icon={row.icon}
-          options={row.options}
-          selected={row.value}
-        />
-      ))}
-
-      {/* ── Suitable Conditions ── */}
-      {amenities.SuitableConditions?.length > 0 && (
-        <View style={amenityCardStyles.card}>
-          <View style={amenityCardStyles.cardHeader}>
-            <MaterialIcons name="group" size={17} color="#6B4F2E" />
-            <Text style={amenityCardStyles.cardTitle}>Suitable Conditions</Text>
-          </View>
-          <View style={amenityCardStyles.optionsRow}>
-            {(["Student", "Work", "Group", "Vibes"] as const).map((cond) => {
-              const isSelected = amenities.SuitableConditions.includes(cond);
-              return (
-                <View
-                  key={cond}
-                  style={[
-                    amenityCardStyles.optionPill,
-                    isSelected && amenityCardStyles.optionPillSelected,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      amenityCardStyles.optionText,
-                      isSelected && amenityCardStyles.optionTextSelected,
-                    ]}
-                  >
-                    {cond}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-      )}
-
-      {/* ── Pet Friendly ── */}
-      <View style={amenityCardStyles.card}>
-        <View style={amenityCardStyles.cardHeader}>
-          <MaterialIcons name="pets" size={17} color="#6B4F2E" />
-          <Text style={amenityCardStyles.cardTitle}>Pet Friendly</Text>
-        </View>
-        <View style={amenityCardStyles.optionsRow}>
-          {(["Yes", "No"] as const).map((opt) => {
-            const isSelected =
-              (opt === "Yes" && amenities.PetFriendly) ||
-              (opt === "No" && !amenities.PetFriendly);
-            return (
-              <View
-                key={opt}
-                style={[
-                  amenityCardStyles.optionPill,
-                  isSelected && amenityCardStyles.optionPillSelected,
-                ]}
-              >
-                <Text
-                  style={[
-                    amenityCardStyles.optionText,
-                    isSelected && amenityCardStyles.optionTextSelected,
-                  ]}
-                >
-                  {opt}
-                </Text>
-              </View>
-            );
-          })}
-        </View>
-      </View>
-    </View>
-  );
-}
-
-// ─── Price Pill ───────────────────────────────────────────────────────────────
-
-function PricePill({
-  symbol,
-  label,
-  selected,
-}: {
-  symbol: string;
-  label: string;
-  selected: boolean;
-}) {
-  return (
-    <View
-      style={[
-        priceCoffeeStyles.pricePill,
-        selected && priceCoffeeStyles.pricePillSelected,
-      ]}
-    >
-      <Text
-        style={[
-          priceCoffeeStyles.priceSymbol,
-          selected && priceCoffeeStyles.priceSymbolSelected,
-        ]}
-      >
-        {symbol}
-      </Text>
-      <Text
-        style={[
-          priceCoffeeStyles.priceLabel,
-          selected && priceCoffeeStyles.priceLabelSelected,
-        ]}
-      >
-        {label}
-      </Text>
-    </View>
-  );
-}
-
-// ─── Section Card ─────────────────────────────────────────────────────────────
-
-function SectionCard({
-  icon,
-  title,
-  subtitle,
-  children,
-}: {
-  icon: keyof typeof MaterialIcons.glyphMap;
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={priceCoffeeStyles.sectionCard}>
-      <View style={priceCoffeeStyles.sectionCardHeader}>
-        <MaterialIcons name={icon} size={22} color="#6B4F2E" />
-        <View>
-          <Text style={priceCoffeeStyles.sectionCardTitle}>{title}</Text>
-          {subtitle ? (
-            <Text style={priceCoffeeStyles.sectionCardSubtitle}>
-              {subtitle}
-            </Text>
-          ) : null}
-        </View>
-      </View>
-      {children}
-    </View>
-  );
-}
-
-// ─── Coffee Sub Card ──────────────────────────────────────────────────────────
-
-function CoffeeSubCard({
-  label,
-  options,
-  selected,
-}: {
-  label: string;
-  options: string[];
-  selected: string[];
-}) {
-  return (
-    <View style={priceCoffeeStyles.coffeeSubCard}>
-      <Text style={priceCoffeeStyles.coffeeSubCardTitle}>{label}</Text>
-      <View style={priceCoffeeStyles.optionsRow}>
-        {options.map((opt) => {
-          const isSelected = selected.includes(opt);
-          return (
-            <View
-              key={opt}
-              style={[
-                priceCoffeeStyles.coffeePill,
-                isSelected && priceCoffeeStyles.coffeePillSelected,
-              ]}
-            >
-              <Text
-                style={[
-                  priceCoffeeStyles.coffeePillText,
-                  isSelected && priceCoffeeStyles.coffeePillTextSelected,
-                ]}
-              >
-                {opt}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
 // ─── Empty State ──────────────────────────────────────────────────────────────
 
 function EmptyState({
@@ -689,115 +288,6 @@ function EmptyState({
   );
 }
 
-// ─── Favorite Button ──────────────────────────────────────────────────────────
-
-function FavoriteButton({
-  cafeId,
-  userId,
-  onToggle,
-}: {
-  cafeId: string;
-  userId: string;
-  onToggle?: (isFavorited: boolean) => void;
-}) {
-  const [isFavorited, setIsFavorited] = useState(false);
-  const [favoriteId, setFavoriteId] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [toggling, setToggling] = useState(false);
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    if (!userId || !cafeId) return;
-    (async () => {
-      try {
-        const { data } = await supabase
-          .from("favorite_cafes")
-          .select("id")
-          .eq("user_id", userId)
-          .eq("cafe_id", Number(cafeId))
-          .maybeSingle();
-        if (data) {
-          setIsFavorited(true);
-          setFavoriteId(data.id);
-        }
-      } catch (err) {
-        console.error("Failed to check favorite status:", err);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [userId, cafeId]);
-
-  const handleToggle = async () => {
-    if (toggling || !userId) return;
-    setToggling(true);
-
-    Animated.sequence([
-      Animated.spring(scaleAnim, {
-        toValue: 1.3,
-        useNativeDriver: true,
-        speed: 50,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        speed: 50,
-      }),
-    ]).start();
-
-    const wasLiked = isFavorited;
-    setIsFavorited(!wasLiked);
-    onToggle?.(!wasLiked);
-
-    try {
-      if (wasLiked && favoriteId) {
-        const { error } = await supabase
-          .from("favorite_cafes")
-          .delete()
-          .eq("id", favoriteId);
-        if (error) throw error;
-        setFavoriteId(null);
-      } else {
-        const { data, error } = await supabase
-          .from("favorite_cafes")
-          .insert({ user_id: userId, cafe_id: Number(cafeId) })
-          .select("id")
-          .single();
-        if (error) throw error;
-        setFavoriteId(data.id);
-      }
-    } catch (err) {
-      console.error("Failed to toggle favorite:", err);
-      setIsFavorited(wasLiked);
-      onToggle?.(wasLiked);
-    } finally {
-      setToggling(false);
-    }
-  };
-
-  if (loading) return null;
-
-  return (
-    <TouchableOpacity
-      onPress={handleToggle}
-      disabled={toggling || !userId}
-      activeOpacity={0.8}
-      style={favStyles.btn}
-      accessibilityRole="button"
-      accessibilityLabel={
-        isFavorited ? "Remove from favorites" : "Add to favorites"
-      }
-    >
-      <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-        <MaterialIcons
-          name={isFavorited ? "favorite" : "favorite-border"}
-          size={18}
-          color={isFavorited ? "#C0392B" : "#8C6D4F"}
-        />
-      </Animated.View>
-    </TouchableOpacity>
-  );
-}
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
@@ -820,6 +310,7 @@ export default function CafeProfileScreen({ navigation }: Props) {
 
   const TAB_ICONS: { key: Tab; icon: keyof typeof MaterialIcons.glyphMap }[] = [
     { key: "Cafe-Info", icon: "info" },
+    { key: "Cafe-Posts", icon: "article" },
     { key: "Cafe-Reviews", icon: "rate-review" },
     { key: "Cafe-Ammenities-Menu", icon: "list" },
   ];
@@ -1021,6 +512,14 @@ export default function CafeProfileScreen({ navigation }: Props) {
               <CafeInfoTab cafe={{ ...cafe, favoritesCount }} />
             )}
 
+            {activeTab === "Cafe-Posts" && (
+              <PublicPostsTab
+                cafeId={Number(cafeId)}
+                cafeName={cafe.name}
+                cafeAvatarUrl={cafe.avatar_url}
+              />
+            )}
+
             {activeTab === "Cafe-Reviews" && (
               <View>
                 <WriteReviewCTA
@@ -1154,16 +653,6 @@ const styles = StyleSheet.create({
   },
 });
 
-const favStyles = StyleSheet.create({
-  btn: { padding: 4 },
-});
-
-const reviewsHeaderStyles = StyleSheet.create({
-  block: {
-    marginTop: 4,
-  },
-});
-
 const filterStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
@@ -1290,197 +779,6 @@ const avatarStyles = StyleSheet.create({
   },
 });
 
-const starStyles = StyleSheet.create({
-  row: { flexDirection: "row", gap: 1, marginTop: 1 },
-});
-
-const writeReviewStyles = StyleSheet.create({
-  container: {
-    backgroundColor: "#E6D6BE",
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingTop: 6,
-    paddingBottom: 16,
-    marginBottom: 12,
-  },
-  starsRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 15,
-    marginBottom: 2,
-    paddingVertical: 5,
-  },
-  button: {
-    height: 40,
-    borderRadius: 14,
-    backgroundColor: "#9B6A3F",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonText: {
-    color: "#FFF7EA",
-    fontSize: 18,
-    fontFamily: "SourceSerifPro-Bold",
-  },
-});
-
-const starInputStyles = StyleSheet.create({
-  starBox: {
-    width: 34,
-    height: 34,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  leftHalf: { position: "absolute", left: 0, top: 0, bottom: 0, width: "50%" },
-  rightHalf: {
-    position: "absolute",
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: "50%",
-  },
-});
-
-const reviewCardStyles = StyleSheet.create({
-  container: {
-    backgroundColor: "#E6D6BE",
-    borderRadius: 12,
-    marginBottom: 10,
-    overflow: "visible",
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    padding: 12,
-    paddingBottom: 4,
-    position: "relative",
-    zIndex: 1,
-  },
-  avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#D2BA94",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-    overflow: "hidden",
-  },
-  meta: { flex: 1, gap: 1 },
-  userName: {
-    fontSize: 13,
-    fontFamily: "SourceSerifPro-Bold",
-    color: "#3B2A1A",
-  },
-  youBadge: {
-    fontSize: 11,
-    fontFamily: "SourceSerifPro-Semibold",
-    color: "#8C6D4F",
-  },
-  date: { fontSize: 11, color: "#8C6D4F", marginTop: 1 },
-  comment: {
-    fontSize: 12,
-    color: "#4A3220",
-    lineHeight: 18,
-    fontStyle: "italic",
-    paddingHorizontal: 12,
-    paddingTop: 6,
-    paddingBottom: 8,
-  },
-  mediaWrapper: { overflow: "hidden" },
-  imageGrid: { flexDirection: "row", flexWrap: "wrap", padding: 8 },
-  dotsRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 4,
-    paddingVertical: 6,
-  },
-  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: "#C8A97A" },
-  dotActive: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: "#6B4F2E",
-  },
-  likesRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 10,
-  },
-  likesCount: { fontSize: 12, color: "#8C6D4F" },
-  likesCountActive: { color: "#6B4F2E", fontFamily: "SourceSerifPro-Bold" },
-  dropdownMenu: {
-    position: "absolute",
-    top: 24,
-    right: 0,
-    backgroundColor: "#FDF6EC",
-    borderRadius: 10,
-    paddingVertical: 4,
-    minWidth: 130,
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 20,
-    zIndex: 999,
-    borderWidth: 1,
-    borderColor: "#E6D6BE",
-  },
-  dropdownItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 13,
-  },
-  dropdownItemText: {
-    fontSize: 13,
-    color: "#3B2A1A",
-    fontFamily: "SourceSerifPro-Regular",
-  },
-  dropdownDivider: {
-    height: 1,
-    backgroundColor: "#E6D6BE",
-    marginHorizontal: 8,
-  },
-});
-
-const postCardStyles = StyleSheet.create({
-  container: {
-    backgroundColor: "#E6D6BE",
-    borderRadius: 12,
-    overflow: "hidden",
-    marginBottom: 10,
-  },
-  imageSingle: { width: "100%", height: 200, backgroundColor: "#C8A97A" },
-  imageRow: { flexDirection: "row" },
-  imageHalf: { flex: 1, height: 160, backgroundColor: "#C8A97A" },
-  imageGrid3: { flexDirection: "row", height: 180 },
-  imageGrid3Main: { flex: 2, height: "100%", backgroundColor: "#C8A97A" },
-  imageGrid3Sub: { flex: 1, flexDirection: "column" },
-  imageGrid3SubItem: { flex: 1, backgroundColor: "#BFA080" },
-  moreOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  moreText: { color: "#fff", fontSize: 16, fontFamily: "SourceSerifPro-Bold" },
-  body: { padding: 10 },
-  caption: { fontSize: 13, color: "#4A3220", lineHeight: 19, marginBottom: 8 },
-  footer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  date: { fontSize: 11, color: "#8C6D4F" },
-  likesRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  likesCount: { fontSize: 12, color: "#8C6D4F" },
-});
-
 const infoStyles = StyleSheet.create({
   statsRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
   statCard: {
@@ -1593,214 +891,237 @@ const infoStyles = StyleSheet.create({
   },
 });
 
-const amenityStyles = StyleSheet.create({
-  sectionLabel: {
-    fontSize: 11,
-    fontFamily: "SourceSerifPro-Bold",
-    color: "#8C6D4F",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  grid: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  item: {
-    width: "47.5%",
-    backgroundColor: "#E6D6BE",
-    borderRadius: 8,
-    padding: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  itemOff: { backgroundColor: "#EDE0CE" },
-  itemLabel: { fontSize: 12, color: "#4A3220", flex: 1 },
-  itemLabelOff: { color: "#B09070", textDecorationLine: "line-through" },
-  othersRow: { flexDirection: "row", flexWrap: "wrap", gap: 5, marginTop: 4 },
-  otherPill: {
-    backgroundColor: "#D2BA94",
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  otherPillText: {
-    fontSize: 11,
-    color: "#5A3E28",
-    fontFamily: "SourceSerifPro-Semibold",
-  },
-  menuImage: {
-    width: "100%",
-    height: 200,
-    borderRadius: 10,
-    backgroundColor: "#E6D6BE",
-    marginBottom: 8,
-  },
-  menuPlaceholder: {
-    width: "100%",
-    height: 140,
-    borderRadius: 10,
-    backgroundColor: "#E6D6BE",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginBottom: 8,
-  },
-  menuPlaceholderText: { fontSize: 12, color: "#B09070" },
-});
+// ─── Public Posts Tab ─────────────────────────────────────────────────────────
 
-const amenityCardStyles = StyleSheet.create({
-  sectionLabel: {
-    fontSize: 11,
-    fontFamily: "SourceSerifPro-Bold",
-    color: "#8C6D4F",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    marginBottom: 8,
-  },
-  card: {
+function PublicPostsTab({
+  cafeId,
+  cafeName,
+  cafeAvatarUrl,
+}: {
+  cafeId: number;
+  cafeName: string;
+  cafeAvatarUrl: string | null;
+}) {
+  const { posts, loading } = useCafePosts(cafeId);
+
+  if (loading) {
+    return (
+      <ActivityIndicator
+        size="small"
+        color="#8C6D4F"
+        style={{ marginTop: 20 }}
+      />
+    );
+  }
+
+  if (posts.length === 0) {
+    return (
+      <View style={styles.emptyState}>
+        <MaterialIcons name="article" size={44} color="#D2BA94" />
+        <Text style={styles.emptyText}>No posts yet</Text>
+        <Text style={styles.emptySubText}>
+          This café hasn't shared any updates yet.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View>
+      {posts.map((post) => (
+        <PublicPostCard
+          key={post.id}
+          post={post}
+          cafeName={cafeName}
+          cafeAvatarUrl={cafeAvatarUrl}
+        />
+      ))}
+    </View>
+  );
+}
+
+// ─── Public Post Card (read-only) ────────────────────────────────────────────
+
+function PublicPostCard({
+  post,
+  cafeName,
+  cafeAvatarUrl,
+}: {
+  post: CafePost;
+  cafeName: string;
+  cafeAvatarUrl: string | null;
+}) {
+  const [cardWidth, setCardWidth] = useState(0);
+  const [activePhotoIndex, setActivePhotoIndex] = useState(0);
+  const displayDate = formatReviewDate(post.created_at, null);
+  const postPhotoUrls = post.photo_url?.filter(Boolean) ?? [];
+  const postImageHeight = Math.round(cardWidth * 0.68);
+
+  return (
+    <View
+      style={publicPostStyles.container}
+      onLayout={(e) => setCardWidth(e.nativeEvent.layout.width)}
+    >
+      <View style={publicPostStyles.header}>
+        <View style={publicPostStyles.avatar}>
+          {cafeAvatarUrl ? (
+            <Image
+              source={{ uri: cafeAvatarUrl }}
+              style={{ width: "100%", height: "100%", borderRadius: 25 }}
+              resizeMode="cover"
+            />
+          ) : (
+            <MaterialIcons name="store" size={20} color="#C8A97A" />
+          )}
+        </View>
+        <View style={publicPostStyles.meta}>
+          <Text
+            style={publicPostStyles.cafeName}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {cafeName}
+          </Text>
+          <Text style={publicPostStyles.date}>{displayDate}</Text>
+        </View>
+      </View>
+
+      {post.caption ? (
+        <Text style={publicPostStyles.caption}>{post.caption}</Text>
+      ) : null}
+
+      {postPhotoUrls.length > 0 && cardWidth > 0 ? (
+        <View style={{ overflow: "hidden" }}>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={(e) =>
+              setActivePhotoIndex(
+                Math.round(e.nativeEvent.contentOffset.x / cardWidth),
+              )
+            }
+            scrollEventThrottle={16}
+          >
+            {postPhotoUrls.map((uri, i) => (
+              <Image
+                key={`${uri}-${i}`}
+                source={{ uri }}
+                style={{ width: cardWidth, height: postImageHeight }}
+                resizeMode="cover"
+              />
+            ))}
+          </ScrollView>
+          {postPhotoUrls.length > 1 && (
+            <View style={publicPostStyles.dotsRow}>
+              {postPhotoUrls.map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    publicPostStyles.dot,
+                    i === activePhotoIndex && publicPostStyles.dotActive,
+                  ]}
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      ) : null}
+
+      <View style={publicPostStyles.footer}>
+        <MaterialIcons name="thumb-up-off-alt" size={20} color="#8C6D4F" />
+        <Text style={publicPostStyles.likesCount}>{post.likes}</Text>
+      </View>
+    </View>
+  );
+}
+
+const publicPostStyles = StyleSheet.create({
+  container: {
     backgroundColor: "#FFF7ED",
     borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 8,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 8,
-  },
-  cardTitle: {
-    fontSize: 13,
-    fontFamily: "SourceSerifPro-Bold",
-    color: "#3B2A1A",
-  },
-  optionsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  optionPill: {
-    paddingHorizontal: 13,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#D2BA94",
-    backgroundColor: "transparent",
-  },
-  optionPillSelected: {
-    backgroundColor: "#6B4F2E",
-    borderColor: "#6B4F2E",
-  },
-  optionText: {
-    fontSize: 12,
-    color: "#6B4F2E",
-    fontFamily: "SourceSerifPro-Regular",
-  },
-  optionTextSelected: {
-    color: "#FFF7EA",
-    fontFamily: "SourceSerifPro-Bold",
-  },
-});
-
-const priceCoffeeStyles = StyleSheet.create({
-  sectionCard: {
-    backgroundColor: "#FFF7ED",
-    borderRadius: 14,
-    padding: 14,
+    borderColor: "#E9D0A2",
+    borderWidth: 0.2,
     marginBottom: 10,
+    overflow: "visible",
+    shadowColor: "#8C6D4F",
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 6,
+    elevation: 3,
   },
-  sectionCardHeader: {
+  header: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 10,
-    marginBottom: 14,
+    gap: 8,
+    padding: 12,
+    paddingBottom: 4,
   },
-  sectionCardTitle: {
-    fontSize: 16,
+  avatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: "#D2BA94",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    overflow: "hidden",
+  },
+  meta: {
+    flex: 1,
+    gap: 1,
+    justifyContent: "center",
+    minHeight: 50,
+  },
+  cafeName: {
+    fontSize: 15,
     color: "#3B2A1A",
     fontFamily: "SourceSerifPro-Bold",
-    lineHeight: 20,
   },
-  sectionCardSubtitle: {
+  date: {
     fontSize: 11,
     color: "#8C6D4F",
-    marginTop: 1,
     fontFamily: "SourceSerifPro-Regular",
   },
-  priceRow: {
+  caption: {
+    fontSize: 14,
+    color: "#4A3220",
+    lineHeight: 18,
+    paddingHorizontal: 20,
+    paddingTop: 6,
+    paddingBottom: 8,
+    fontFamily: "SourceSerifPro-Regular",
+  },
+  dotsRow: {
     flexDirection: "row",
-    gap: 8,
+    justifyContent: "center",
+    gap: 4,
+    paddingVertical: 6,
   },
-  pricePill: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: "#D2BA94",
-    backgroundColor: "transparent",
-    gap: 2,
+  dot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#C8A97A",
   },
-  pricePillSelected: {
+  dotActive: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: "#6B4F2E",
-    borderColor: "#6B4F2E",
   },
-  // No line-through by default — only the selected state should be visually distinct
-  priceSymbol: {
-    fontSize: 15,
-    fontFamily: "SourceSerifPro-Bold",
-    color: "#6B4F2E",
-    textDecorationLine: "line-through",
-    textDecorationColor: "#6B4F2E",
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    paddingBottom: 6,
   },
-  priceSymbolSelected: {
-    color: "#FFF7EA",
-  },
-  priceLabel: {
-    fontSize: 10,
+  likesCount: {
+    fontSize: 14,
     color: "#8C6D4F",
     fontFamily: "SourceSerifPro-Regular",
-    textAlign: "center",
-  },
-  priceLabelSelected: {
-    color: "#F0D8B8",
-  },
-  coffeeSubCard: {
-    backgroundColor: "#F5ECD8",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
-  },
-  coffeeSubCardTitle: {
-    fontSize: 12,
-    fontFamily: "SourceSerifPro-Bold",
-    color: "#3B2A1A",
-    marginBottom: 8,
-  },
-  optionsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-  },
-  coffeePill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#D2BA94",
-    backgroundColor: "transparent",
-  },
-  coffeePillSelected: {
-    backgroundColor: "#6B4F2E",
-    borderColor: "#6B4F2E",
-  },
-  coffeePillText: {
-    fontSize: 12,
-    color: "#6B4F2E",
-    fontFamily: "SourceSerifPro-Regular",
-  },
-  coffeePillTextSelected: {
-    color: "#FFF7EA",
-    fontFamily: "SourceSerifPro-Bold",
   },
 });
