@@ -1,34 +1,35 @@
+import CreateAccountScreen from "./app/features/auth/screens/createAccount/page";
+import ForgotPasswordScreen from "./app/features/auth/screens/forgotPassword/page";
+import LoginScreen from "./app/features/auth/screens/login/page";
+import ResetPasswordScreen from "./app/features/auth/screens/resetPassword/page";
+import BusinessNavigation from "./app/features/business/screens/landing/page";
+import OwnerVerificationScreen from "./app/features/business/screens/ownerVerification/page";
+import EditCafeProfile from "./app/features/business/screens/profile/edit/profile/page";
+import BusinessProfile from "./app/features/business/screens/profile/page";
+import BusinessPreview from "./app/features/business/screens/profile/preview/page";
+import FilterScreen from "./app/features/cafe/screens/dashboard/filter/page";
+import Dashboard from "./app/features/cafe/screens/dashboard/page";
+import FilteredCafes from "./app/features/cafe/screens/dashboard/results/page";
+import SearchScreen from "./app/features/cafe/screens/dashboard/search/page";
+import CafeProfileScreen from "./app/features/cafe/screens/profile/page";
+import WriteReviewFEScreen from "./app/features/cafe/screens/profile/reviews/createReview/page";
+import { FilterSelectionState } from "./app/features/cafe/services/filtering";
+import ProfileScreen from "./app/features/profile/screens/page";
+import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";
+import SettingsScreen from "./app/features/settings/screens/Settings";
+import SubmitCafeScreen from "./app/features/settings/screens/SubmitCafe";
+
+import { supabase } from "@/app/shared/lib/supabaseClient";
 import {
   NavigationContainer,
   NavigationContainerRef,
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { useFonts } from "expo-font";
 import * as Linking from "expo-linking";
+import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useRef } from "react";
 
-import { supabase } from "@/app/shared/lib/supabaseClient";
-import { useFonts } from "expo-font";
-import * as SplashScreen from "expo-splash-screen";
-import CreateAccountScreen from "./app/features/auth/screens/CreateAccount";
-import ForgotPasswordScreen from "./app/features/auth/screens/ForgotPassword";
-import LoginScreen from "./app/features/auth/screens/Login";
-import ResetPasswordScreen from "./app/features/auth/screens/ResetPassword";
-import BusinessNavigation from "./app/features/business/screens/BusinessNavigation";
-import BusinessPreview from "./app/features/business/screens/BusinessPreview";
-import BusinessProfile from "./app/features/business/screens/BusinessProfile";
-import EditCafeProfileScreen from "./app/features/business/screens/EditCafeProfile";
-import OwnerVerificationScreen from "./app/features/business/screens/OwnerVerification";
-import FilterScreen from "./app/features/cafe/dashboard/filter/page";
-import Dashboard from "./app/features/cafe/dashboard/page";
-import FilteredCafes from "./app/features/cafe/dashboard/results/page";
-import SearchScreen from "./app/features/cafe/dashboard/search/page";
-import CafeProfileScreen from "./app/features/cafe/profile/page";
-import WriteReviewFEScreen from "./app/features/cafe/profile/reviews/createReview/page";
-import { FilterSelectionState } from "./app/features/cafe/services/filtering";
-import ProfileScreen from "./app/features/profile/screens/Profile";
-import ChangePasswordScreen from "./app/features/settings/screens/ChangePassword";
-import SettingsScreen from "./app/features/settings/screens/Settings";
-import SubmitCafeScreen from "./app/features/settings/screens/SubmitCafe";
 SplashScreen.preventAutoHideAsync();
 
 console.log(Linking.createURL("/"));
@@ -283,7 +284,7 @@ export default function App() {
         <Stack.Screen name="ProfileBusi" component={BusinessProfile} />
         <Stack.Screen
           name="EditCafeProfile"
-          component={EditCafeProfileScreen}
+          component={EditCafeProfile}
         />
         <Stack.Screen name="CafeProfile" component={CafeProfileScreen} />
         <Stack.Screen name="WriteReviewFE" component={WriteReviewFEScreen} />
