@@ -1,6 +1,6 @@
 import { RootStackParamList } from "@/App";
 import ReportModal from "@/app/shared/modals/reportModal";
-import TopBar from "@/components/TopBar";
+import TopBar from "@/components/navigation/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useState } from "react";
@@ -25,7 +25,7 @@ import {
 import { getProfile } from "../../../profile/services/profileService";
 import { CafeDetail, getCafeById } from "../../services/cafeService";
 
-import { FavoriteButton } from "@/components/input/FavoritesBtn";
+import { FavoriteButton } from "@/components/input/FavoritesButton";
 import { CafePost, useCafePosts } from "@/hooks/useCafePosts";
 import { formatReviewDate } from "../../../../shared/modals/reviewService";
 import { Amenities, AmenitiesMenuTab, Coffee } from "./amenities/page";

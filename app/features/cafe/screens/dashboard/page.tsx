@@ -1,32 +1,32 @@
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  ImageBackground,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Image,
+    ImageBackground,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    useWindowDimensions,
+    View,
 } from "react-native";
 
 import { RootStackParamList } from "@/App";
 import { getProfile } from "@/app/features/profile/services/profileService";
 import { supabase } from "@/app/shared/lib/supabaseClient";
-import TopBar from "@/components/TopBar";
+import TopBar from "@/components/navigation/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
-  Cafe,
-  DASHBOARD_PAGE_SIZE,
-  getDiscoverCafes,
-  getFeaturedCafes,
-  getUserLocation,
+    Cafe,
+    DASHBOARD_PAGE_SIZE,
+    getDiscoverCafes,
+    getFeaturedCafes,
+    getUserLocation,
 } from "../../services/cafeService";
 
 type NavProps = NativeStackNavigationProp<RootStackParamList, "Dashboard">;

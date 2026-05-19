@@ -24,7 +24,7 @@ export default function TopBar({ navigation, profilePicture }: TopBarProps) {
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.navigate("Dashboard")}>
           <Image
-            source={require("../assets/images/logo.png")}
+            source={require("../../assets/images/logo.png")}
             style={styles.logo}
             resizeMode="contain"
           />

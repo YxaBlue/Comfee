@@ -1,48 +1,48 @@
 import { RootStackParamList } from "@/App";
 import { ReviewsSummaryStrip } from "@/app/features/business/components/ReviewsSummaryStrip";
 import { ReviewCard } from "@/app/features/cafe/components/ReviewCard";
-import TopBar from "@/components/TopBar";
+import TopBar from "@/components/navigation/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Animated,
-  Image,
-  ImageBackground,
-  KeyboardAvoidingView,
-  Modal, Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Animated,
+    Image,
+    ImageBackground,
+    KeyboardAvoidingView,
+    Modal, Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import {
-  AmenitiesFormState,
-  saveAmenities
+    AmenitiesFormState,
+    saveAmenities
 } from "@/app/features/business/services/editCafeService";
 import { AmenitiesMenuTab } from "@/app/features/cafe/screens/profile/amenities/page";
 import {
-  CafeInfoTab,
-  StarFilterBar,
+    CafeInfoTab,
+    StarFilterBar,
 } from "@/app/features/cafe/screens/profile/page";
 import {
-  CafeDetail,
-  getCafeById,
+    CafeDetail,
+    getCafeById,
 } from "@/app/features/cafe/services/cafeService";
 import { getProfile } from "@/app/features/profile/services/profileService";
 import { supabase } from "@/app/shared/lib/supabaseClient";
 import {
-  formatReviewDate,
-  getReviewsByCafe,
-  ReviewWithMeta,
-  toggleCafeReviewUpvote,
+    formatReviewDate,
+    getReviewsByCafe,
+    ReviewWithMeta,
+    toggleCafeReviewUpvote,
 } from "@/app/shared/modals/reviewService";
 import { CafePost, useCafePosts } from "@/hooks/useCafePosts";
 

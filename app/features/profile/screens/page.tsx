@@ -1,20 +1,20 @@
 import {
-  editProfile,
-  getProfile,
-  uploadAvatar,
-  uploadCoverPhoto,
+    editProfile,
+    getProfile,
+    uploadAvatar,
+    uploadCoverPhoto,
 } from "@/app/features/profile/services/profileService";
 import { supabase } from "@/app/shared/lib/supabaseClient";
 import ReportModal from "@/app/shared/modals/reportModal";
 import {
-  deleteReview,
-  editReview,
-  formatReviewDate,
-  getReviewsByUser,
-  ProfileReview,
-  toggleUpvote,
+    deleteReview,
+    editReview,
+    formatReviewDate,
+    getReviewsByUser,
+    ProfileReview,
+    toggleUpvote,
 } from "@/app/shared/modals/reviewService";
-import TopBar from "@/components/TopBar";
+import TopBar from "@/components/navigation/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRoute } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -22,16 +22,16 @@ import { format, parseISO } from "date-fns";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Image,
-  ImageBackground,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    ImageBackground,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { RootStackParamList } from "../../../../App";
 

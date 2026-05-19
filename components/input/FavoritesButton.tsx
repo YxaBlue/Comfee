@@ -1,13 +1,13 @@
 import {
-    useEffect,
-    useRef,
-    useState,
+  useEffect,
+  useRef,
+  useState,
 } from "react";
 
 import {
-    Animated,
-    StyleSheet,
-    TouchableOpacity,
+  Animated,
+  StyleSheet,
+  TouchableOpacity,
 } from "react-native";
 
 import { supabase } from "@/app/shared/lib/supabaseClient";
