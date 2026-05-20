@@ -1,6 +1,7 @@
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Shadow } from "react-native-shadow-2";
 
 type Props = {
   title: string;
@@ -24,73 +25,64 @@ export default function Header({
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        {showBack ? (
-          <Pressable style={styles.backIconButton} onPress={handleBack}>
-            <MaterialIcons name="arrow-back-ios-new" size={20} color={stylesVars.text} />
-            <Text style={styles.backButtonText}>Back</Text>
-          </Pressable>
-        ) : (
-          <View style={styles.backIconButtonPlaceholder} />
-        )}
+    <Shadow
+      distance={10}           // blur/spread of shadow
+      startColor="#683a0a48" // shadow color + opacity in hex (last 2 digits)
+      offset={[0, 0.5]}        // [x, y] placement
+      style={{ width: "100%" }}
+    >
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          {showBack ? (
+            <Pressable style={styles.backIconButton} onPress={handleBack}>
+              <MaterialIcons name="arrow-back-ios-new" size={20} color={"#3b1f0e"} />
+            </Pressable>
+          ) : (
+            <View style={styles.backIconButtonPlaceholder} />
+          )}
 
-        <Text style={styles.pageTitle} numberOfLines={1}>
-          {title}
-        </Text>
+          <Text style={styles.pageTitle} numberOfLines={1}>
+            {title}
+          </Text>
+        </View>
       </View>
-    </View>
+    </Shadow>
   );
 }
 
-const stylesVars = {
-  header: "#E9D0A2",
-  text: "#3b1f0e",
-};
 
 const styles = StyleSheet.create({
   container: {
-    width: "100%",
-    backgroundColor: stylesVars.header,
+    width: "auto",
+    backgroundColor: "#E9D0A2",
     zIndex: 10,
     borderBottomLeftRadius: 18,
     borderBottomRightRadius: 18,
-    shadowColor: "#7A5A37",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.14,
-    shadowRadius: 8,
-    elevation: 6,
   },
   header: {
     paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: stylesVars.header,
-    height: 72,
+    height: 55,
   },
   backIconButton: {
     position: "absolute",
-    left: 18,
-    bottom: 16,
+    left: 15,
+    top: 0,
+    bottom: 0,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
   },
   backIconButtonPlaceholder: {
     position: "absolute",
     left: 18,
-    bottom: 16,
+    top: 0,
+    bottom: 0,
     width: 60,
-  },
-  backButtonText: {
-    color: stylesVars.text,
-    fontSize: 16,
-    fontWeight: "500",
   },
   pageTitle: {
     fontSize: 20,
-    fontWeight: "800",
-    fontFamily: "serif",
-    color: stylesVars.text,
+    fontFamily: "SourceSerifPro-Bold",
+    color: "#3b1f0e",
   },
 });
