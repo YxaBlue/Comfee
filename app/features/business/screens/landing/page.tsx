@@ -1,17 +1,18 @@
+import Header from "@/components/navigation/Header";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import { useNavigation, type NavigationProp } from "@react-navigation/native";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  ImageBackground,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    ImageBackground,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import type { RootStackParamList } from "../../../../../App";
 
@@ -191,17 +192,7 @@ export default function BusinessNavigation({
     >
       <ScrollView contentContainerStyle={styles.content}>
         {/* Top bar */}
-        <View style={styles.topBar}>
-          <Pressable style={styles.backIconButton} onPress={handleBack}>
-            <MaterialIcons
-              name="arrow-back-ios-new"
-              size={20}
-              color={COLORS.text}
-            />
-            <Text style={styles.backButtonText}>Back</Text>
-          </Pressable>
-          <Text style={styles.pageTitle}>My Cafés</Text>
-        </View>
+        <Header title="My Cafés" onBack={handleBack} />
 
         {/* Cafes section header */}
         <View style={styles.sectionHeader}>

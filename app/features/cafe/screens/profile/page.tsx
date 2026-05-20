@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -879,7 +880,89 @@ function PublicPostsTab({
   cafeName: string;
   cafeAvatarUrl: string | null;
 }) {
-  const { posts, loading } = useCafePosts(cafeId);
+  const { posts, loading, refetch } = useCafePosts(cafeId);
+  const [likedPostIds, setLikedPostIds] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    if (!posts.length || !cafeId) {
+      setLikedPostIds(new Set());
+      return;
+    }
+
+    (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const postIds = posts.map((post) => post.id);
+      const { data, error } = await supabase
+        .from("cafe_post_likes")
+        .select("post_id")
+        .eq("user_id", user.id)
+        .in("post_id", postIds);
+
+      if (error) {
+        console.error("Failed to fetch post likes:", error);
+        return;
+      }
+
+      setLikedPostIds(new Set((data ?? []).map((row) => row.post_id)));
+    })();
+  }, [cafeId, posts]);
+
+  const handleTogglePostLike = async (
+    postId: number,
+    currentlyLiked: boolean,
+  ) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const post = posts.find((item) => item.id === postId);
+    if (!post) return;
+
+    const nextLikes = Math.max(0, post.likes + (currentlyLiked ? -1 : 1));
+    setLikedPostIds((prev) => {
+      const next = new Set(prev);
+      if (currentlyLiked) next.delete(postId);
+      else next.add(postId);
+      return next;
+    });
+
+    try {
+      if (currentlyLiked) {
+        const { error: unlikeError } = await supabase
+          .from("cafe_post_likes")
+          .delete()
+          .eq("post_id", postId)
+          .eq("user_id", user.id);
+        if (unlikeError) throw unlikeError;
+      } else {
+        const { error: likeError } = await supabase
+          .from("cafe_post_likes")
+          .insert({ post_id: postId, user_id: user.id });
+        if (likeError) throw likeError;
+      }
+
+      const { error: updateError } = await supabase
+        .from("cafe_posts")
+        .update({ likes: nextLikes })
+        .eq("id", postId);
+      if (updateError) throw updateError;
+
+      await refetch({ silent: true });
+    } catch (err) {
+      console.error("Failed to toggle cafe post like:", err);
+      setLikedPostIds((prev) => {
+        const next = new Set(prev);
+        if (currentlyLiked) next.add(postId);
+        else next.delete(postId);
+        return next;
+      });
+    }
+  };
 
   if (loading) {
     return (
@@ -897,7 +980,7 @@ function PublicPostsTab({
         <MaterialIcons name="article" size={44} color="#D2BA94" />
         <Text style={styles.emptyText}>No posts yet</Text>
         <Text style={styles.emptySubText}>
-          This café hasn't shared any updates yet.
+          This cafe has not shared any updates yet.
         </Text>
       </View>
     );
@@ -911,6 +994,8 @@ function PublicPostsTab({
           post={post}
           cafeName={cafeName}
           cafeAvatarUrl={cafeAvatarUrl}
+          isLiked={likedPostIds.has(post.id)}
+          onToggleLike={handleTogglePostLike}
         />
       ))}
     </View>
@@ -923,10 +1008,14 @@ function PublicPostCard({
   post,
   cafeName,
   cafeAvatarUrl,
+  isLiked,
+  onToggleLike,
 }: {
   post: CafePost;
   cafeName: string;
   cafeAvatarUrl: string | null;
+  isLiked: boolean;
+  onToggleLike: (postId: number, currentlyLiked: boolean) => void;
 }) {
   const [cardWidth, setCardWidth] = useState(0);
   const [activePhotoIndex, setActivePhotoIndex] = useState(0);
@@ -1005,10 +1094,30 @@ function PublicPostCard({
         </View>
       ) : null}
 
-      <View style={publicPostStyles.footer}>
-        <MaterialIcons name="thumb-up-off-alt" size={20} color="#8C6D4F" />
-        <Text style={publicPostStyles.likesCount}>{post.likes}</Text>
-      </View>
+      <Pressable
+        onPress={() => onToggleLike(post.id, isLiked)}
+        accessibilityRole="button"
+        accessibilityLabel={isLiked ? "Unlike post" : "Like post"}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={({ pressed }) => [
+          publicPostStyles.footer,
+          pressed && publicPostStyles.footerPressed,
+        ]}
+      >
+        <MaterialIcons
+          name={isLiked ? "thumb-up" : "thumb-up-off-alt"}
+          size={20}
+          color={isLiked ? "#6B4F2E" : "#8C6D4F"}
+        />
+        <Text
+          style={[
+            publicPostStyles.likesCount,
+            isLiked && publicPostStyles.likesCountActive,
+          ]}
+        >
+          {post.likes}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -1095,10 +1204,17 @@ const publicPostStyles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingTop: 6,
     paddingBottom: 6,
+    minHeight: 44,
+  },
+  footerPressed: {
+    opacity: 0.7,
   },
   likesCount: {
     fontSize: 14,
     color: "#8C6D4F",
     fontFamily: "SourceSerifPro-Regular",
+  },
+  likesCountActive: {
+    color: "#6B4F2E",
   },
 });

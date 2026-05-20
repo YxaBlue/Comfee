@@ -1,20 +1,18 @@
-import { MaterialIcons } from "@expo/vector-icons";
+import Header from "@/components/navigation/Header";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { RootStackParamList } from "../../../../App";
 import { changePassword } from "../services/settingsService";
 
@@ -29,7 +27,6 @@ type FormErrors = {
 };
 
 export default function ChangePasswordScreen({ navigation }: Props) {
-  const insets = useSafeAreaInsets();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -97,36 +94,17 @@ export default function ChangePasswordScreen({ navigation }: Props) {
     }
   };
 
-  <Pressable
-    onPress={() => {
-      if (navigation.canGoBack()) {
-        navigation.goBack();
-        return;
-      }
-      navigation.navigate("Settings");
-    }}
-  ></Pressable>;
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.navigate("Settings");
+  };
 
   return (
     <View style={styles.wrapper}>
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: insets.top + 16,
-            paddingBottom: 20,
-          },
-        ]}
-      >
-        <Pressable
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <MaterialIcons name="arrow-back-ios-new" size={20} color="#4A2A0D" />
-          <Text style={styles.backButtonText}>Back</Text>
-        </Pressable>
-        <Text style={styles.title}>Change Password</Text>
-      </View>
+      <Header title="Change Password" onBack={handleBack} />
 
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
@@ -228,37 +206,6 @@ const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
     backgroundColor: "#EFE2CC",
-  },
-  header: {
-    backgroundColor: "#E4C79E",
-    alignItems: "center",
-    justifyContent: "center",
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    shadowColor: "#7A5A37",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.14,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  backButton: {
-    position: "absolute",
-    left: 18,
-    bottom: 23,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  backButtonText: {
-    color: "#4A2A0D",
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  title: {
-    fontSize: 23,
-    fontWeight: "700",
-    color: "#4A2A0D",
-    letterSpacing: 0.3,
   },
   keyboardContainer: {
     flex: 1,

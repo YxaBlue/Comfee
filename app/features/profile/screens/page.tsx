@@ -400,30 +400,29 @@ function FollowedCafePostCard({
         </View>
       ) : null}
 
-      <View
-        style={[
+      <Pressable
+        onPress={() => onToggleLike(post.id, post.isLiked)}
+        accessibilityRole="button"
+        accessibilityLabel={post.isLiked ? "Unlike post" : "Like post"}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={({ pressed }) => [
           styles.likesRow,
+          styles.postLikeButton,
           photoUrls.length === 0 && styles.likesRowWithoutMedia,
+          pressed && styles.likesRowPressed,
         ]}
       >
-        <Pressable
-          onPress={() => onToggleLike(post.id, post.isLiked)}
-          accessibilityRole="button"
-          accessibilityLabel={post.isLiked ? "Unlike post" : "Like post"}
-          style={({ pressed }) => [pressed && styles.likesRowPressed]}
-        >
-          <MaterialIcons
-            name={post.isLiked ? "thumb-up" : "thumb-up-off-alt"}
-            size={20}
-            color={post.isLiked ? "#6B4F2E" : "#8C6D4F"}
-          />
-        </Pressable>
+        <MaterialIcons
+          name={post.isLiked ? "thumb-up" : "thumb-up-off-alt"}
+          size={20}
+          color={post.isLiked ? "#6B4F2E" : "#8C6D4F"}
+        />
         <Text
           style={[styles.likesCount, post.isLiked && styles.likesCountActive]}
         >
           {post.likes}
         </Text>
-      </View>
+      </Pressable>
     </View>
   );
 }
@@ -712,6 +711,12 @@ export default function ProfileScreen({ navigation }: Props) {
   ) => {
     if (!sessionUserId) return;
     const previous = followedPosts;
+    const previousPost = previous.find((p) => p.id === postId);
+    if (!previousPost) return;
+    const nextLikes = Math.max(
+      0,
+      previousPost.likes + (currentlyLiked ? -1 : 1),
+    );
 
     // Optimistic update
     setFollowedPosts((prev) =>
@@ -720,7 +725,7 @@ export default function ProfileScreen({ navigation }: Props) {
           ? {
               ...p,
               isLiked: !currentlyLiked,
-              likes: p.likes + (currentlyLiked ? -1 : 1),
+              likes: Math.max(0, p.likes + (currentlyLiked ? -1 : 1)),
             }
           : p,
       ),
@@ -728,25 +733,29 @@ export default function ProfileScreen({ navigation }: Props) {
 
     try {
       if (currentlyLiked) {
-        await supabase
+        const { error: unlikeError } = await supabase
           .from("cafe_post_likes")
           .delete()
           .eq("post_id", postId)
           .eq("user_id", sessionUserId);
+        if (unlikeError) throw unlikeError;
 
-        await supabase
+        const { error: updateError } = await supabase
           .from("cafe_posts")
-          .update({ likes: previous.find((p) => p.id === postId)!.likes - 1 })
+          .update({ likes: nextLikes })
           .eq("id", postId);
+        if (updateError) throw updateError;
       } else {
-        await supabase
+        const { error: likeError } = await supabase
           .from("cafe_post_likes")
           .insert({ post_id: postId, user_id: sessionUserId });
+        if (likeError) throw likeError;
 
-        await supabase
+        const { error: updateError } = await supabase
           .from("cafe_posts")
-          .update({ likes: previous.find((p) => p.id === postId)!.likes + 1 })
+          .update({ likes: nextLikes })
           .eq("id", postId);
+        if (updateError) throw updateError;
       }
     } catch (err) {
       console.error("Failed to toggle post like:", err);
@@ -2039,6 +2048,10 @@ const styles = StyleSheet.create({
   },
   likesRowWithoutMedia: { paddingTop: 2 },
   likesRowPressed: { opacity: 0.7 },
+  postLikeButton: {
+    alignSelf: "stretch",
+    minHeight: 44,
+  },
   likesCount: {
     fontSize: 14,
     color: "#8C6D4F",

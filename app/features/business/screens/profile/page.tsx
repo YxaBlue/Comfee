@@ -3,7 +3,12 @@ import { ReviewsSummaryStrip } from "@/app/features/business/components/ReviewsS
 import { ReviewCard } from "@/app/features/cafe/components/ReviewCard";
 import TopBar from "@/components/navigation/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
-import { RouteProp, useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
+import {
+    RouteProp,
+    useFocusEffect,
+    useNavigation,
+    useRoute,
+} from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -13,7 +18,8 @@ import {
     Image,
     ImageBackground,
     KeyboardAvoidingView,
-    Modal, Platform,
+    Modal,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -25,7 +31,7 @@ import {
 
 import {
     AmenitiesFormState,
-    saveAmenities
+    saveAmenities,
 } from "@/app/features/business/services/editCafeService";
 import { AmenitiesMenuTab } from "@/app/features/cafe/screens/profile/amenities/page";
 import {
@@ -78,9 +84,13 @@ export default function BusinessProfile() {
   const [starFilter, setStarFilter] = useState<number | null>(null);
   const [createPostVisible, setCreatePostVisible] = useState(false);
   const [amenitiesEditorVisible, setAmenitiesEditorVisible] = useState(false);
-  const [amenitiesForm, setAmenitiesForm] = useState<AmenitiesFormState | null>(null);
+  const [amenitiesForm, setAmenitiesForm] = useState<AmenitiesFormState | null>(
+    null,
+  );
   const [amenitiesSaving, setAmenitiesSaving] = useState(false);
-  const [amenitiesSaveError, setAmenitiesSaveError] = useState<string | null>(null);
+  const [amenitiesSaveError, setAmenitiesSaveError] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     (async () => {
@@ -427,7 +437,13 @@ export default function BusinessProfile() {
             <CafeInfoTab cafe={{ ...cafe, favoritesCount }} />
           )}
           {activeTab === "amenities" && (
-            <View style={{ paddingHorizontal: 16, paddingTop: 18, paddingBottom: 100 }}>
+            <View
+              style={{
+                paddingHorizontal: 16,
+                paddingTop: 18,
+                paddingBottom: 100,
+              }}
+            >
               <AmenitiesMenuTab
                 amenities={{
                   WiFi: cafe.wifi_speed,
@@ -438,12 +454,28 @@ export default function BusinessProfile() {
                   Tables: cafe.tables_type,
                   Music: cafe.music,
                   PetFriendly: cafe.pet_friendly,
-                  SuitableConditions: cafe.suitable_for as ("Student" | "Work" | "Group" | "Vibes")[],
+                  SuitableConditions: cafe.suitable_for as (
+                    | "Student"
+                    | "Work"
+                    | "Group"
+                    | "Vibes"
+                  )[],
                 }}
                 menuURLs={cafe.menu_urls}
                 coffee={{
-                  BeanType: cafe.coffee_bean_type as ("Arabica" | "Robusta" | "Liberica" | "Excelsa")[],
-                  BrewMethod: cafe.coffee_brew_method as ("Espresso" | "Drip" | "French Press" | "Pour Over" | "Cold Brew")[],
+                  BeanType: cafe.coffee_bean_type as (
+                    | "Arabica"
+                    | "Robusta"
+                    | "Liberica"
+                    | "Excelsa"
+                  )[],
+                  BrewMethod: cafe.coffee_brew_method as (
+                    | "Espresso"
+                    | "Drip"
+                    | "French Press"
+                    | "Pour Over"
+                    | "Cold Brew"
+                  )[],
                 }}
                 price={{ PriceRange: cafe.price_level }}
               />
@@ -456,6 +488,7 @@ export default function BusinessProfile() {
               cafeAvatarUrl={cafe.avatar_url}
               createPostVisible={createPostVisible}
               onCloseCreatePost={() => setCreatePostVisible(false)}
+              currentUserId={currentUserId}
             />
           )}
           {activeTab === "reviews" && (
@@ -499,14 +532,17 @@ export default function BusinessProfile() {
             <Text style={editModalStyles.title}>Edit Amenities</Text>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-
               <AmenityRow label="WiFi">
                 {(["None", "Slow", "Moderate", "Fast"] as const).map((opt) => (
                   <ChipButton
                     key={opt}
                     label={opt}
                     selected={amenitiesForm?.wifi_speed === opt}
-                    onPress={() => setAmenitiesForm((p) => p ? { ...p, wifi_speed: opt } : p)}
+                    onPress={() =>
+                      setAmenitiesForm((p) =>
+                        p ? { ...p, wifi_speed: opt } : p,
+                      )
+                    }
                     disabled={amenitiesSaving}
                   />
                 ))}
@@ -518,7 +554,9 @@ export default function BusinessProfile() {
                     key={opt}
                     label={opt}
                     selected={amenitiesForm?.sockets === opt}
-                    onPress={() => setAmenitiesForm((p) => p ? { ...p, sockets: opt } : p)}
+                    onPress={() =>
+                      setAmenitiesForm((p) => (p ? { ...p, sockets: opt } : p))
+                    }
                     disabled={amenitiesSaving}
                   />
                 ))}
@@ -530,7 +568,9 @@ export default function BusinessProfile() {
                     key={opt}
                     label={opt}
                     selected={amenitiesForm?.parking === opt}
-                    onPress={() => setAmenitiesForm((p) => p ? { ...p, parking: opt } : p)}
+                    onPress={() =>
+                      setAmenitiesForm((p) => (p ? { ...p, parking: opt } : p))
+                    }
                     disabled={amenitiesSaving}
                   />
                 ))}
@@ -542,7 +582,9 @@ export default function BusinessProfile() {
                     key={opt}
                     label={opt}
                     selected={amenitiesForm?.lighting === opt}
-                    onPress={() => setAmenitiesForm((p) => p ? { ...p, lighting: opt } : p)}
+                    onPress={() =>
+                      setAmenitiesForm((p) => (p ? { ...p, lighting: opt } : p))
+                    }
                     disabled={amenitiesSaving}
                   />
                 ))}
@@ -554,7 +596,9 @@ export default function BusinessProfile() {
                     key={opt}
                     label={opt}
                     selected={amenitiesForm?.music === opt}
-                    onPress={() => setAmenitiesForm((p) => p ? { ...p, music: opt } : p)}
+                    onPress={() =>
+                      setAmenitiesForm((p) => (p ? { ...p, music: opt } : p))
+                    }
                     disabled={amenitiesSaving}
                   />
                 ))}
@@ -564,28 +608,42 @@ export default function BusinessProfile() {
                 <ChipButton
                   label="Yes"
                   selected={amenitiesForm?.pet_friendly === true}
-                  onPress={() => setAmenitiesForm((p) => p ? { ...p, pet_friendly: true } : p)}
+                  onPress={() =>
+                    setAmenitiesForm((p) =>
+                      p ? { ...p, pet_friendly: true } : p,
+                    )
+                  }
                   disabled={amenitiesSaving}
                 />
                 <ChipButton
                   label="No"
                   selected={amenitiesForm?.pet_friendly === false}
-                  onPress={() => setAmenitiesForm((p) => p ? { ...p, pet_friendly: false } : p)}
+                  onPress={() =>
+                    setAmenitiesForm((p) =>
+                      p ? { ...p, pet_friendly: false } : p,
+                    )
+                  }
                   disabled={amenitiesSaving}
                 />
               </AmenityRow>
 
               <AmenityRow label="Price Level">
-                {([
-                  { symbol: "₱", value: "P" },
-                  { symbol: "₱₱", value: "PP" },
-                  { symbol: "₱₱₱", value: "PPP" },
-                ] as const).map((opt) => (
+                {(
+                  [
+                    { symbol: "₱", value: "P" },
+                    { symbol: "₱₱", value: "PP" },
+                    { symbol: "₱₱₱", value: "PPP" },
+                  ] as const
+                ).map((opt) => (
                   <ChipButton
                     key={opt.value}
                     label={opt.symbol}
                     selected={amenitiesForm?.price_level === opt.value}
-                    onPress={() => setAmenitiesForm((p) => p ? { ...p, price_level: opt.value } : p)}
+                    onPress={() =>
+                      setAmenitiesForm((p) =>
+                        p ? { ...p, price_level: opt.value } : p,
+                      )
+                    }
                     disabled={amenitiesSaving}
                   />
                 ))}
@@ -601,7 +659,12 @@ export default function BusinessProfile() {
                       setAmenitiesForm((p) => {
                         if (!p) return p;
                         const has = p.seating.includes(opt);
-                        return { ...p, seating: has ? p.seating.filter((s) => s !== opt) : [...p.seating, opt] };
+                        return {
+                          ...p,
+                          seating: has
+                            ? p.seating.filter((s) => s !== opt)
+                            : [...p.seating, opt],
+                        };
                       })
                     }
                     disabled={amenitiesSaving}
@@ -610,7 +673,9 @@ export default function BusinessProfile() {
               </AmenityRow>
 
               <AmenityRow label="Tables">
-                {(["Bar Type", "Individual Tables", "Large Tables"] as const).map((opt) => (
+                {(
+                  ["Bar Type", "Individual Tables", "Large Tables"] as const
+                ).map((opt) => (
                   <ChipButton
                     key={opt}
                     label={opt}
@@ -619,7 +684,12 @@ export default function BusinessProfile() {
                       setAmenitiesForm((p) => {
                         if (!p) return p;
                         const has = p.tables_type.includes(opt);
-                        return { ...p, tables_type: has ? p.tables_type.filter((s) => s !== opt) : [...p.tables_type, opt] };
+                        return {
+                          ...p,
+                          tables_type: has
+                            ? p.tables_type.filter((s) => s !== opt)
+                            : [...p.tables_type, opt],
+                        };
                       })
                     }
                     disabled={amenitiesSaving}
@@ -628,34 +698,58 @@ export default function BusinessProfile() {
               </AmenityRow>
 
               <AmenityRow label="Bean Type">
-                {(["Arabica", "Robusta", "Liberica", "Excelsa"] as const).map((opt) => (
-                  <ChipButton
-                    key={opt}
-                    label={opt}
-                    selected={amenitiesForm?.coffee_bean_type.includes(opt) ?? false}
-                    onPress={() =>
-                      setAmenitiesForm((p) => {
-                        if (!p) return p;
-                        const has = p.coffee_bean_type.includes(opt);
-                        return { ...p, coffee_bean_type: has ? p.coffee_bean_type.filter((s) => s !== opt) : [...p.coffee_bean_type, opt] };
-                      })
-                    }
-                    disabled={amenitiesSaving}
-                  />
-                ))}
+                {(["Arabica", "Robusta", "Liberica", "Excelsa"] as const).map(
+                  (opt) => (
+                    <ChipButton
+                      key={opt}
+                      label={opt}
+                      selected={
+                        amenitiesForm?.coffee_bean_type.includes(opt) ?? false
+                      }
+                      onPress={() =>
+                        setAmenitiesForm((p) => {
+                          if (!p) return p;
+                          const has = p.coffee_bean_type.includes(opt);
+                          return {
+                            ...p,
+                            coffee_bean_type: has
+                              ? p.coffee_bean_type.filter((s) => s !== opt)
+                              : [...p.coffee_bean_type, opt],
+                          };
+                        })
+                      }
+                      disabled={amenitiesSaving}
+                    />
+                  ),
+                )}
               </AmenityRow>
 
               <AmenityRow label="Brew Method">
-                {(["Espresso", "Drip", "French Press", "Pour Over", "Cold Brew"] as const).map((opt) => (
+                {(
+                  [
+                    "Espresso",
+                    "Drip",
+                    "French Press",
+                    "Pour Over",
+                    "Cold Brew",
+                  ] as const
+                ).map((opt) => (
                   <ChipButton
                     key={opt}
                     label={opt}
-                    selected={amenitiesForm?.coffee_brew_method.includes(opt) ?? false}
+                    selected={
+                      amenitiesForm?.coffee_brew_method.includes(opt) ?? false
+                    }
                     onPress={() =>
                       setAmenitiesForm((p) => {
                         if (!p) return p;
                         const has = p.coffee_brew_method.includes(opt);
-                        return { ...p, coffee_brew_method: has ? p.coffee_brew_method.filter((s) => s !== opt) : [...p.coffee_brew_method, opt] };
+                        return {
+                          ...p,
+                          coffee_brew_method: has
+                            ? p.coffee_brew_method.filter((s) => s !== opt)
+                            : [...p.coffee_brew_method, opt],
+                        };
                       })
                     }
                     disabled={amenitiesSaving}
@@ -668,23 +762,36 @@ export default function BusinessProfile() {
                   <ChipButton
                     key={opt}
                     label={opt}
-                    selected={amenitiesForm?.suitable_for.includes(opt) ?? false}
+                    selected={
+                      amenitiesForm?.suitable_for.includes(opt) ?? false
+                    }
                     onPress={() =>
                       setAmenitiesForm((p) => {
                         if (!p) return p;
                         const has = p.suitable_for.includes(opt);
-                        return { ...p, suitable_for: has ? p.suitable_for.filter((s) => s !== opt) : [...p.suitable_for, opt] };
+                        return {
+                          ...p,
+                          suitable_for: has
+                            ? p.suitable_for.filter((s) => s !== opt)
+                            : [...p.suitable_for, opt],
+                        };
                       })
                     }
                     disabled={amenitiesSaving}
                   />
                 ))}
               </AmenityRow>
-
             </ScrollView>
 
             {amenitiesSaveError ? (
-              <Text style={{ color: "#C0392B", marginTop: 10, fontSize: 13, fontFamily: "SourceSerifPro-Regular" }}>
+              <Text
+                style={{
+                  color: "#C0392B",
+                  marginTop: 10,
+                  fontSize: 13,
+                  fontFamily: "SourceSerifPro-Regular",
+                }}
+              >
                 {amenitiesSaveError}
               </Text>
             ) : null}
@@ -698,13 +805,19 @@ export default function BusinessProfile() {
                 <Text style={editModalStyles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[editModalStyles.saveBtn, amenitiesSaving && editModalStyles.saveBtnDisabled]}
+                style={[
+                  editModalStyles.saveBtn,
+                  amenitiesSaving && editModalStyles.saveBtnDisabled,
+                ]}
                 onPress={async () => {
                   if (!amenitiesForm || !cafeId) return;
                   setAmenitiesSaveError(null);
                   setAmenitiesSaving(true);
                   try {
-                    const res = await saveAmenities(Number(cafeId), amenitiesForm);
+                    const res = await saveAmenities(
+                      Number(cafeId),
+                      amenitiesForm,
+                    );
                     if (res.error) {
                       setAmenitiesSaveError(res.error);
                     } else {
@@ -712,7 +825,9 @@ export default function BusinessProfile() {
                       void reloadCafe();
                     }
                   } catch (err: any) {
-                    setAmenitiesSaveError(err?.message ?? "Failed to save amenities");
+                    setAmenitiesSaveError(
+                      err?.message ?? "Failed to save amenities",
+                    );
                   } finally {
                     setAmenitiesSaving(false);
                   }
@@ -731,10 +846,7 @@ export default function BusinessProfile() {
       </Modal>
 
       {activeTab !== "reviews" && (
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={handleFabPress}
-        >
+        <TouchableOpacity style={styles.editButton} onPress={handleFabPress}>
           <MaterialIcons
             name={activeTab === "posts" ? "add" : "edit"}
             size={activeTab === "posts" ? 25 : 20}
@@ -746,23 +858,24 @@ export default function BusinessProfile() {
   );
 }
 
-
-
 function OwnerPostsTab({
   cafeId,
   cafeName,
   cafeAvatarUrl,
   createPostVisible,
   onCloseCreatePost,
+  currentUserId,
 }: {
   cafeId: number;
   cafeName: string;
   cafeAvatarUrl: string | null;
   createPostVisible: boolean;
   onCloseCreatePost: () => void;
+  currentUserId: string;
 }) {
-  const { posts, loading, addPost, updatePost, deletePost } =
+  const { posts, loading, addPost, updatePost, deletePost, refetch } =
     useCafePosts(cafeId);
+  const [likedPostIds, setLikedPostIds] = useState<Set<number>>(new Set());
   const [caption, setCaption] = useState("");
   const [selectedPhotoUris, setSelectedPhotoUris] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -861,6 +974,77 @@ function OwnerPostsTab({
       );
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!posts.length || !cafeId || !currentUserId) {
+      setLikedPostIds(new Set());
+      return;
+    }
+
+    (async () => {
+      try {
+        const postIds = posts.map((p) => p.id);
+        const { data, error } = await supabase
+          .from("cafe_post_likes")
+          .select("post_id")
+          .eq("user_id", currentUserId)
+          .in("post_id", postIds);
+        if (error) throw error;
+        setLikedPostIds(new Set((data ?? []).map((r) => r.post_id)));
+      } catch (err) {
+        console.error("Failed to fetch owner post likes:", err);
+      }
+    })();
+  }, [posts, cafeId, currentUserId]);
+
+  const handleTogglePostLike = async (
+    postId: number,
+    currentlyLiked: boolean,
+  ) => {
+    if (!currentUserId) return;
+    const post = posts.find((p) => p.id === postId);
+    if (!post) return;
+    const nextLikes = Math.max(0, post.likes + (currentlyLiked ? -1 : 1));
+
+    setLikedPostIds((prev) => {
+      const next = new Set(prev);
+      if (currentlyLiked) next.delete(postId);
+      else next.add(postId);
+      return next;
+    });
+
+    try {
+      if (currentlyLiked) {
+        const { error: unlikeError } = await supabase
+          .from("cafe_post_likes")
+          .delete()
+          .eq("post_id", postId)
+          .eq("user_id", currentUserId);
+        if (unlikeError) throw unlikeError;
+      } else {
+        const { error: likeError } = await supabase
+          .from("cafe_post_likes")
+          .insert({ post_id: postId, user_id: currentUserId });
+        if (likeError) throw likeError;
+      }
+
+      const { error: updateError } = await supabase
+        .from("cafe_posts")
+        .update({ likes: nextLikes })
+        .eq("id", postId);
+      if (updateError) throw updateError;
+
+      await refetch({ silent: true });
+    } catch (err) {
+      console.error("Failed to toggle owner post like:", err);
+      setLikedPostIds((prev) => {
+        const next = new Set(prev);
+        if (currentlyLiked) next.add(postId);
+        else next.delete(postId);
+        return next;
+      });
     }
   };
 
@@ -1116,6 +1300,8 @@ function OwnerPostsTab({
                 isDeleting={deletingPostId === postId}
                 onEdit={() => openEditPost(post)}
                 onDelete={() => requestDeletePost(postId)}
+                isLiked={likedPostIds.has(postId)}
+                onToggleLike={handleTogglePostLike}
               />
 
               {postDeleteErrors[postId] ? (
@@ -1452,6 +1638,8 @@ function OwnerPostCard({
   isDeleting,
   onEdit,
   onDelete,
+  isLiked,
+  onToggleLike,
 }: {
   post: CafePost;
   cafeName: string;
@@ -1459,6 +1647,8 @@ function OwnerPostCard({
   isDeleting?: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  isLiked?: boolean;
+  onToggleLike?: (postId: number, currentlyLiked: boolean) => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [cardWidth, setCardWidth] = useState(0);
@@ -1614,10 +1804,30 @@ function OwnerPostCard({
         {isDeleting ? (
           <ActivityIndicator size="small" color="#8C6D4F" />
         ) : (
-          <View style={postStyles.likeBtn}>
-            <MaterialIcons name="thumb-up-off-alt" size={20} color="#8C6D4F" />
-            <Text style={postStyles.likesCount}>{post.likes}</Text>
-          </View>
+          <Pressable
+            onPress={() => onToggleLike?.(post.id, !!isLiked)}
+            accessibilityRole="button"
+            accessibilityLabel={isLiked ? "Unlike post" : "Like post"}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={({ pressed }) => [
+              postStyles.likeBtn,
+              pressed && { opacity: 0.7 },
+            ]}
+          >
+            <MaterialIcons
+              name={isLiked ? "thumb-up" : "thumb-up-off-alt"}
+              size={20}
+              color={isLiked ? "#6B4F2E" : "#8C6D4F"}
+            />
+            <Text
+              style={[
+                postStyles.likesCount,
+                isLiked && postStyles.likesCountActive,
+              ]}
+            >
+              {post.likes}
+            </Text>
+          </Pressable>
         )}
       </View>
     </View>
@@ -1717,7 +1927,14 @@ function AmenityRow({
 }) {
   return (
     <View style={{ marginTop: 14 }}>
-      <Text style={{ color: "#6B4F2E", fontSize: 13, fontFamily: "SourceSerifPro-Bold", marginBottom: 8 }}>
+      <Text
+        style={{
+          color: "#6B4F2E",
+          fontSize: 13,
+          fontFamily: "SourceSerifPro-Bold",
+          marginBottom: 8,
+        }}
+      >
         {label}
       </Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -1751,14 +1968,18 @@ function ChipButton({
       onPress={onPress}
       disabled={disabled}
     >
-      <Text style={{ color: selected ? "#FFF7EA" : "#6B4F2E", fontSize: 13, fontFamily: "SourceSerifPro-Regular" }}>
+      <Text
+        style={{
+          color: selected ? "#FFF7EA" : "#6B4F2E",
+          fontSize: 13,
+          fontFamily: "SourceSerifPro-Regular",
+        }}
+      >
         {label}
       </Text>
     </TouchableOpacity>
   );
 }
-
-
 
 const deleteModalStyles = StyleSheet.create({
   overlay: {

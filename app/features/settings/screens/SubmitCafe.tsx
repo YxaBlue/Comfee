@@ -31,6 +31,7 @@ import {
   searchExistingCafes,
   submitCafeSubmission,
 } from "../services/submissionServices";
+import Header from "@/components/navigation/Header";
 
 type Props = {
   navigation: NativeStackNavigationProp<RootStackParamList, "SubmitCafe">;
@@ -287,7 +288,11 @@ export default function SubmitCafeScreen({ navigation }: Props) {
     navigation.goBack();
   };
 
-  const handleHeaderBack = () => {
+  const handleBack = () => {
+    if(navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
     navigation.navigate("Settings");
   };
 
@@ -547,21 +552,7 @@ export default function SubmitCafeScreen({ navigation }: Props) {
       style={styles.wrapper}
       resizeMode="cover"
     >
-      <View
-        style={[
-          styles.header,
-          { paddingTop: insets.top + 16, paddingBottom: 20 },
-        ]}
-      >
-        <Pressable
-          style={[styles.backIconButton, { top: insets.top + 18 }]}
-          onPress={handleHeaderBack}
-        >
-          <MaterialIcons name="arrow-back-ios-new" size={20} color="#4A2A0D" />
-          <Text style={styles.backButtonText}>Back</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>Submit Cafe</Text>
-      </View>
+      <Header title = "Submit a Cafe" onBack={handleBack} />
 
       <KeyboardAvoidingView
         style={styles.keyboardContainer}
