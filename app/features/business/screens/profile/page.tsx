@@ -1357,91 +1357,98 @@ function CreatePostSheet({
       onRequestClose={onClose}
     >
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={sheetStyles.overlay}
+        enabled
       >
         <Pressable style={sheetStyles.backdrop} onPress={onClose} />
         <View style={sheetStyles.sheet}>
-          <View style={sheetStyles.grabber} />
-          <View style={sheetStyles.header}>
-            <Text style={sheetStyles.title}>Create Post</Text>
-            <TouchableOpacity
-              style={sheetStyles.closeButton}
-              onPress={onClose}
-              disabled={submitting}
-            >
-              <MaterialIcons name="close" size={20} color="#6B4F2E" />
-            </TouchableOpacity>
-          </View>
-
-          <TextInput
-            value={caption}
-            onChangeText={onChangeCaption}
-            placeholder={"What's new at your caf\u00e9?"}
-            placeholderTextColor="#9C7A56"
-            multiline
-            textAlignVertical="top"
-            style={sheetStyles.captionInput}
-            editable={!submitting}
-          />
-
-          <Text style={sheetStyles.sectionLabel}>
-            Photos ({selectedPhotoUris.length}/5)
-          </Text>
           <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={sheetStyles.photoRow}
+            contentContainerStyle={sheetStyles.sheetContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            {selectedPhotoUris.map((uri, index) => (
-              <View key={`${uri}-${index}`} style={sheetStyles.previewWrap}>
-                <Image
-                  source={{ uri }}
-                  style={sheetStyles.preview}
-                  resizeMode="cover"
-                />
-                <TouchableOpacity
-                  style={sheetStyles.removePhotoButton}
-                  onPress={() => onRemovePhoto(index)}
-                  disabled={submitting}
-                >
-                  <Text style={sheetStyles.removePhotoText}>{"\u2715"}</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-            {selectedPhotoUris.length < 5 && (
+            <View style={sheetStyles.grabber} />
+            <View style={sheetStyles.header}>
+              <Text style={sheetStyles.title}>Create Post</Text>
               <TouchableOpacity
-                style={sheetStyles.photoPicker}
-                onPress={onPickPhoto}
+                style={sheetStyles.closeButton}
+                onPress={onClose}
                 disabled={submitting}
               >
-                <MaterialIcons
-                  name="add-photo-alternate"
-                  size={28}
-                  color="#B08354"
-                />
-                <Text style={sheetStyles.photoPickerText}>Add</Text>
+                <MaterialIcons name="close" size={20} color="#6B4F2E" />
               </TouchableOpacity>
-            )}
-          </ScrollView>
-          {submitError ? (
-            <Text style={sheetStyles.errorText}>{submitError}</Text>
-          ) : null}
+            </View>
 
-          <TouchableOpacity
-            style={[
-              sheetStyles.submitButton,
-              (!canSubmit || submitting) && sheetStyles.submitButtonDisabled,
-            ]}
-            onPress={onSubmit}
-            disabled={!canSubmit || submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator size="small" color="#FFF7ED" />
-            ) : (
-              <Text style={sheetStyles.submitButtonText}>Post</Text>
-            )}
-          </TouchableOpacity>
+            <TextInput
+              value={caption}
+              onChangeText={onChangeCaption}
+              placeholder={"What's new at your caf\u00e9?"}
+              placeholderTextColor="#9C7A56"
+              multiline
+              textAlignVertical="top"
+              style={sheetStyles.captionInput}
+              editable={!submitting}
+            />
+
+            <Text style={sheetStyles.sectionLabel}>
+              Photos ({selectedPhotoUris.length}/5)
+            </Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={sheetStyles.photoRow}
+            >
+              {selectedPhotoUris.map((uri, index) => (
+                <View key={`${uri}-${index}`} style={sheetStyles.previewWrap}>
+                  <Image
+                    source={{ uri }}
+                    style={sheetStyles.preview}
+                    resizeMode="cover"
+                  />
+                  <TouchableOpacity
+                    style={sheetStyles.removePhotoButton}
+                    onPress={() => onRemovePhoto(index)}
+                    disabled={submitting}
+                  >
+                    <Text style={sheetStyles.removePhotoText}>{"\u2715"}</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {selectedPhotoUris.length < 5 && (
+                <TouchableOpacity
+                  style={sheetStyles.photoPicker}
+                  onPress={onPickPhoto}
+                  disabled={submitting}
+                >
+                  <MaterialIcons
+                    name="add-photo-alternate"
+                    size={28}
+                    color="#B08354"
+                  />
+                  <Text style={sheetStyles.photoPickerText}>Add</Text>
+                </TouchableOpacity>
+              )}
+            </ScrollView>
+            {submitError ? (
+              <Text style={sheetStyles.errorText}>{submitError}</Text>
+            ) : null}
+
+            <TouchableOpacity
+              style={[
+                sheetStyles.submitButton,
+                (!canSubmit || submitting) && sheetStyles.submitButtonDisabled,
+              ]}
+              onPress={onSubmit}
+              disabled={!canSubmit || submitting}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color="#FFF7ED" />
+              ) : (
+                <Text style={sheetStyles.submitButtonText}>Post</Text>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -2178,6 +2185,9 @@ const postStyles = StyleSheet.create({
     color: "#8C6D4F",
     fontFamily: "SourceSerifPro-Regular",
   },
+  likesCountActive: {
+    color: "#6B4F2E",
+  },
   dropdownMenu: {
     position: "absolute",
     top: 24,
@@ -2435,6 +2445,9 @@ const sheetStyles = StyleSheet.create({
     fontSize: 16,
     color: "#A26F3B",
     fontFamily: "SourceSerifPro-Bold",
+  },
+  sheetContent: {
+    paddingBottom: 28,
   },
   photoRow: {
     gap: 12,
