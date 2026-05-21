@@ -5,23 +5,23 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Image,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 
 import { supabase } from "@/app/shared/lib/supabaseClient";
 import { useRoute } from "@react-navigation/native";
 import {
-  deleteReview,
-  getReviewsByCafe,
-  ReviewWithMeta,
-  toggleCafeReviewUpvote,
+    deleteReview,
+    getReviewsByCafe,
+    ReviewWithMeta,
+    toggleCafeReviewUpvote,
 } from "../../../../shared/modals/reviewService";
 import { getProfile } from "../../../profile/services/profileService";
 import { CafeDetail, getCafeById } from "../../services/cafeService";
@@ -37,7 +37,6 @@ type Props = {
 };
 
 type Tab = "Cafe-Info" | "Cafe-Posts" | "Cafe-Reviews" | "Cafe-Ammenities-Menu";
-
 
 // 1 = Sunday, 2 = Monday, ... 7 = Saturday (matches Supabase numeric day values)
 const DAYS_SUN_FIRST = [1, 2, 3, 4, 5, 6, 7];
@@ -291,7 +290,6 @@ function EmptyState({
     </View>
   );
 }
-
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 

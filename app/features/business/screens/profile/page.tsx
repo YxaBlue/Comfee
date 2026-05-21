@@ -4,51 +4,51 @@ import { ReviewCard } from "@/app/features/cafe/components/ReviewCard";
 import TopBar from "@/components/navigation/TopBar";
 import { MaterialIcons } from "@expo/vector-icons";
 import {
-    RouteProp,
-    useFocusEffect,
-    useNavigation,
-    useRoute,
+  RouteProp,
+  useFocusEffect,
+  useNavigation,
+  useRoute,
 } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Animated,
-    Image,
-    ImageBackground,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Animated,
+  Image,
+  ImageBackground,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
 import {
-    AmenitiesFormState,
-    saveAmenities,
+  AmenitiesFormState,
+  saveAmenities,
 } from "@/app/features/business/services/editCafeService";
 import { AmenitiesMenuTab } from "@/app/features/cafe/screens/profile/amenities/page";
 import {
-    CafeInfoTab,
-    StarFilterBar,
+  CafeInfoTab,
+  StarFilterBar,
 } from "@/app/features/cafe/screens/profile/page";
 import {
-    CafeDetail,
-    getCafeById,
+  CafeDetail,
+  getCafeById,
 } from "@/app/features/cafe/services/cafeService";
 import { getProfile } from "@/app/features/profile/services/profileService";
 import { supabase } from "@/app/shared/lib/supabaseClient";
 import {
-    formatReviewDate,
-    getReviewsByCafe,
-    ReviewWithMeta,
-    toggleCafeReviewUpvote,
+  formatReviewDate,
+  getReviewsByCafe,
+  ReviewWithMeta,
+  toggleCafeReviewUpvote,
 } from "@/app/shared/modals/reviewService";
 import { CafePost, useCafePosts } from "@/hooks/useCafePosts";
 
@@ -392,10 +392,13 @@ export default function BusinessProfile() {
           <View style={styles.infoHolder}>
             <Text style={styles.cafeName}>{cafe.name}</Text>
             <View style={styles.locRow}>
-              <MaterialIcons name="location-on" size={12} color="#8C6D4F" />
-              <Text style={styles.cafeLoc} numberOfLines={1}>
-                {cafe.address}
-              </Text>
+              <MaterialIcons
+                name="location-on"
+                size={12}
+                color="#8C6D4F"
+                style={{ marginTop: 1 }}
+              />
+              <Text style={styles.cafeLoc}>{cafe.address}</Text>
             </View>
           </View>
 
@@ -2583,10 +2586,10 @@ const styles = StyleSheet.create({
     height: "100%",
   },
   divider: {
-    height: 110,
+    height: 140,
     backgroundColor: "#E9D0A2",
     width: "100%",
-    marginTop: 5,
+    marginTop: -25,
     zIndex: 1,
   },
   businessProf: {
@@ -2617,7 +2620,7 @@ const styles = StyleSheet.create({
   },
   locRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     flex: 1,
     paddingRight: 16,
   },
@@ -2626,6 +2629,7 @@ const styles = StyleSheet.create({
     color: "#3B2A1A",
     fontFamily: "SourceSerifPro-Bold",
     flexShrink: 1,
+    flexWrap: "wrap",
   },
   line: {
     height: 1,
