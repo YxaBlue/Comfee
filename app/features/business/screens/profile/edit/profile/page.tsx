@@ -35,7 +35,10 @@ import Page3Coffee from "./coffee/page";
 import Page2Menu from "./menu/page";
 import Page1Hours from "./operatingHours/page";
 
-type NavProps = NativeStackNavigationProp<RootStackParamList, "EditCafeProfile">;
+type NavProps = NativeStackNavigationProp<
+  RootStackParamList,
+  "EditCafeProfile"
+>;
 type RouteProps = RouteProp<RootStackParamList, "EditCafeProfile">;
 type FieldErrors = Record<string, string>;
 
@@ -60,7 +63,7 @@ export default function EditCafeProfile() {
   const [coverUri, setCoverUri] = useState<string | null>(null);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [newCoverLocalUri, setNewCoverLocalUri] = useState<string | null>(null);
-  const [newAvatarLocalUri, setNewAvatarLocalUri] = useState<string | null>(null);
+  const [newAvatarLocalUri, setNewAvatarLocalUri] = useState<string | null>(null,);
 
   // ── Hours ──
   const [hours, setHours] = useState<EditCafeDayHours[]>([]);
@@ -137,7 +140,10 @@ export default function EditCafeProfile() {
   const pickImage = async (type: "cover" | "avatar") => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Permission needed", "Allow photo library access to upload images.");
+      Alert.alert(
+        "Permission needed",
+        "Allow photo library access to upload images.",
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -160,7 +166,10 @@ export default function EditCafeProfile() {
   const pickMenuImages = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert("Permission needed", "Allow photo library access to upload images.");
+      Alert.alert(
+        "Permission needed",
+        "Allow photo library access to upload images.",
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -169,7 +178,9 @@ export default function EditCafeProfile() {
       allowsMultipleSelection: true,
     } as any);
     if (result.canceled || !result.assets?.length) return;
-    const uris = result.assets.map((a: any) => a.uri).filter(Boolean) as string[];
+    const uris = result.assets
+      .map((a: any) => a.uri)
+      .filter(Boolean) as string[];
     if (!uris.length) return;
     setMenuUris((prev) => {
       const next = [...prev];
@@ -182,7 +193,11 @@ export default function EditCafeProfile() {
     setNewMenuLocalUris((prev) => {
       const next = [...prev];
       for (const u of uris) {
-        if (next.length + menuUris.filter((x) => !x.startsWith("http")).length >= 5) break;
+        if (
+          next.length + menuUris.filter((x) => !x.startsWith("http")).length >=
+          5
+        )
+          break;
         next.push(u);
       }
       return next;
@@ -219,9 +234,11 @@ export default function EditCafeProfile() {
       if (!day.openTime.trim())
         errors[`hours_${index}_open`] = `Opening time required for ${day.day}.`;
       if (!day.closeTime.trim())
-        errors[`hours_${index}_close`] = `Closing time required for ${day.day}.`;
+        errors[`hours_${index}_close`] =
+          `Closing time required for ${day.day}.`;
     });
-    if (!hours.some((d) => d.isOpen)) errors.hours = "At least one day must be open.";
+    if (!hours.some((d) => d.isOpen))
+      errors.hours = "At least one day must be open.";
     return errors;
   };
 
@@ -242,7 +259,8 @@ export default function EditCafeProfile() {
         if (!day.openTime || !day.openTime.trim())
           errs[`hours_${index}_open`] = `Opening time required for ${day.day}.`;
         if (!day.closeTime || !day.closeTime.trim())
-          errs[`hours_${index}_close`] = `Closing time required for ${day.day}.`;
+          errs[`hours_${index}_close`] =
+            `Closing time required for ${day.day}.`;
       });
       if (!hours.some((d) => d.isOpen))
         errs.hours = "At least one day must be open.";
@@ -293,7 +311,7 @@ export default function EditCafeProfile() {
       return;
     }
 
-    navigation.navigate("ProfileBusi");
+    navigation.navigate("BusinessProfile", { cafeId });
   };
 
   if (loading) {
@@ -338,11 +356,26 @@ export default function EditCafeProfile() {
               fieldErrors={fieldErrors}
               onPickCover={() => pickImage("cover")}
               onPickAvatar={() => pickImage("avatar")}
-              onChangeName={(v) => { setName(v); clearFieldError("name"); }}
-              onChangeInfo={(v) => { setInfo(v); clearFieldError("info"); }}
-              onChangeAddress={(v) => { setAddress(v); clearFieldError("address"); }}
-              onChangePhone={(v) => { setPhone(v); clearFieldError("phone"); }}
-              onChangeEmail={(v) => { setEmail(v); clearFieldError("email"); }}
+              onChangeName={(v) => {
+                setName(v);
+                clearFieldError("name");
+              }}
+              onChangeInfo={(v) => {
+                setInfo(v);
+                clearFieldError("info");
+              }}
+              onChangeAddress={(v) => {
+                setAddress(v);
+                clearFieldError("address");
+              }}
+              onChangePhone={(v) => {
+                setPhone(v);
+                clearFieldError("phone");
+              }}
+              onChangeEmail={(v) => {
+                setEmail(v);
+                clearFieldError("email");
+              }}
             />
           )}
 
@@ -363,10 +396,7 @@ export default function EditCafeProfile() {
           )}
 
           {page === 3 && (
-            <Page3Coffee
-              amenities={amenities}
-              onSetAmenities={setAmenities}
-            />
+            <Page3Coffee amenities={amenities} onSetAmenities={setAmenities} />
           )}
 
           {page === 4 && (
@@ -378,10 +408,20 @@ export default function EditCafeProfile() {
 
           {/* ── Navigation ── */}
           <View style={{ marginTop: 12 }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", gap: 8 }}>
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                gap: 8,
+              }}
+            >
               {page > 0 ? (
                 <View style={{ flex: 1, alignItems: "flex-start" }}>
-                  <IconCircleButton icon="arrow-back" variant="secondary" onPress={goPrev} />
+                  <IconCircleButton
+                    icon="arrow-back"
+                    variant="secondary"
+                    onPress={goPrev}
+                  />
                 </View>
               ) : (
                 <View style={{ flex: 1 }} />
